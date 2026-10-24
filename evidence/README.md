@@ -19,7 +19,9 @@ evidence/m0.1/<source-commit>/
     mappings.json
     classification-rules.json
     audit-policy.json
+    surface-register.json
     external-surfaces.json
+    applicability-decisions.json
     visual-inspection.json
     limitations.json
   generated/
@@ -41,6 +43,11 @@ accepted tooling revision, compact inputs, external/visual observations, and
 generated package. It also denies execution, approval, custody, replay,
 semantic-acceptance, merge, release, cutover, and next-phase authority.
 
+Each dependency is supplied as an authenticated Git export containing its raw
+commit object and complete path/mode/blob/content inventory. Verification
+reconstructs the nominated tree and compares it against a separately supplied
+filesystem snapshot. A self-hash or named path list is not correspondence proof.
+
 ## Package rules
 
 - Occurrence chunks are canonical, uncompressed JSONL and remain reachable in
@@ -56,6 +63,10 @@ semantic-acceptance, merge, release, cutover, and next-phase authority.
 - Missing, expired, limited, unavailable, or invalidated required external
   evidence fails current eligibility. `not_applicable` requires independent
   semantic review; the tool cannot establish it merely from a label.
+- The required-surface register is closed-world, and applicability decisions
+  exactly match the not-applicable subset.
+- The verifier reconstructs canonical greedy chunk boundaries; a fully rehashed
+  alternative partition is not equivalent evidence.
 
 ## Decisions and authority
 

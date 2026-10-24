@@ -19,12 +19,6 @@
     "independently_authored": true,
     "protocol_version": "m0.1-v2"
   },
-  "expected_occurrence_keys": [
-    "sha256:0320d4c52154a86cf55eb3da2214396fa188343884e011709af02f058b98d2b8",
-    "sha256:2c41c4f25aba18ad45bc24d49b1fa59a2ade4f2ddc732f8d4e6375f5bc87ad0e",
-    "sha256:c3f6ad7687d733e11eca46c659e972e724b938be368e3f2f76984e48400e5965",
-    "sha256:d00f97d713fe46d01bfc0d3509f2d2fcc70e3190632e741c921bbb09ebad2cdd"
-  ],
   "external_surfaces": {
     "protocol_version": "m0.1-v2",
     "surfaces": [

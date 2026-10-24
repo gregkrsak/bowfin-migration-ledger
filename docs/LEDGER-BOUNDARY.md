@@ -54,19 +54,22 @@ Every current M0.1 evidence record must identify at least:
 | `record_class` | Exactly `migration_evidence` |
 | `protocol_version` | Exact accepted protocol version |
 | `phase` | Exactly `M0.1` for this gate |
-| `source_repository` | Exact source owner/repository |
-| `source_commit` / `source_tree` | Exact fixed compiler candidate C |
-| `accepted_base_commit` / `accepted_base_tree` | Exact staging base |
+| `source` | Exact repository/commit/tree plus authenticated export for C |
+| `accepted_base` | Exact repository/commit/tree plus authenticated export |
 | `governing_contract` | Repository, commit, tree, path, and blob |
 | `tooling` | Ledger repository, accepted commit/tree, paths, and blobs |
-| `inputs` | Ledger commit/tree, exact paths/blobs, and aggregate digest |
-| `external_snapshots` | Exact retained observations and freshness policies |
+| `inputs` | Exact eight-file set, aggregate digest, and authenticated export |
 | `generated` | Index, summary, chunk, and aggregate identities |
 | `non_authority` | Explicit denials of executable or decision authority |
 
 Required fields may not be inferred from directory names, branch names, issue
 numbers, comments, timestamps, or conversational context. Unknown mapping kinds,
 roles, or required status records fail closed.
+
+Authenticated exports carry raw commit objects and complete ordered path, mode,
+blob-SHA-1, SHA-256, and byte-count inventories. The verifier reconstructs each
+tree and compares every actual snapshot path, mode, and byte. A manifest that
+only names a commit or hashes itself does not prove correspondence.
 
 An unaccepted historical snapshot instead uses its archival wrapper and records
 origin repository/reference, origin commit/tree, imported path set, sizes, and
@@ -100,6 +103,11 @@ or counts do not create a drift exception.
 Source and evidence integrations use ordinary merge commits. Pre-merge test-merge
 SHAs are not post-merge proof. Introduced ancestry must reject prohibited bulk
 compiler evidence even if later deleted from the final tree.
+
+C and E record their complete introduced first-parent commit chains, not only
+endpoints. D records authenticated review and owner-decision commits. P records
+raw source and ledger merge objects and verifies exact parents, resulting trees,
+integrated heads, and target branches.
 
 ## 6. Decision records
 

@@ -25,7 +25,8 @@ The governing migration contract remains in `gregkrsak/klyxr`:
 | Item | Exact identity |
 | --- | --- |
 | Integration branch | `bowfin-migration-staging` |
-| Accepted staging merge commit | `9feb01fb68ebb72dfb7f0d6781e8e65b01b3c56d` |
+| Accepted staging merge commit | `609822762abd46c13ecd6187ccc8510695e52b2f` |
+| Pre-merge test object, not integration | `9feb01fb68ebb72dfb7f0d6781e8e65b01b3c56d` |
 | Accepted staging tree | `ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239` |
 | Accepted Amendment 2 candidate | `0ca819ab9f627f586df453c7a97a55c9a9694bf3` |
 | Contract path | `docs/migration/BOWFIN-NAME-MIGRATION-PLAN.md` |

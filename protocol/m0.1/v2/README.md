@@ -26,23 +26,37 @@ authorization to execute this candidate:
 ```text
 python3 -I generate.py \
   --source-root <read-only-snapshot> \
+  --source-export <authenticated-source-export.json> \
   --source-repository <owner/repository> \
+  --source-commit <40-hex-commit> \
   --source-tree <40-hex-tree> \
-  --mappings <mappings.json> \
-  --rules <classification-rules.json> \
+  --input-root <read-only-input-snapshot> \
+  --input-export <authenticated-input-export.json> \
+  --input-repository <owner/repository> \
+  --input-commit <40-hex-commit> \
+  --input-tree <40-hex-tree> \
   --output <empty-directory>
 
 python3 -I audit_scan.py \
   --source-root <read-only-snapshot> \
+  --source-export <authenticated-source-export.json> \
   --source-repository <owner/repository> \
+  --source-commit <40-hex-commit> \
   --source-tree <40-hex-tree> \
-  --policy <audit-policy.json> \
+  --input-root <read-only-input-snapshot> \
+  --input-export <authenticated-input-export.json> \
+  --input-repository <owner/repository> \
+  --input-commit <40-hex-commit> \
+  --input-tree <40-hex-tree> \
   --output <new-audit-result.json>
 
 python3 -I verify.py package \
   --package <generated-directory> \
   --source-repository <owner/repository> \
+  --source-commit <40-hex-commit> \
   --source-tree <40-hex-tree> \
+  --source-export-sha256 <64-hex-digest> \
+  --input-export-sha256 <64-hex-digest> \
   --audit <audit-result.json>
 
 python3 -I verify.py binding \

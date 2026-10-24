@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Expand reviewed compact rules into a deterministic occurrence package."""
+"""Expand reviewed compact rules into a deterministic occurrence package.
+
+The generator authenticates source and input exports before discovery. Its
+matching and structured traversal are implemented here and are not imported by
+the independent auditor.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +12,7 @@ import argparse
 import importlib.util
 import sys
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Iterator
 
 
 def _load_library() -> Any:
@@ -31,98 +36,102 @@ MACHINE_NAMESPACES = frozenset(
 )
 
 
+def require_document(document: Any, payload_key: str) -> list[Any]:
+    if not isinstance(document, dict):
+        lib.fail("E_DOCUMENT_TYPE", f"{payload_key} document must be an object")
+    lib.require_keys(document, {"protocol_version", payload_key}, set(), payload_key)
+    if document["protocol_version"] != lib.PROTOCOL_VERSION or not isinstance(document[payload_key], list):
+        lib.fail("E_DOCUMENT_TYPE", f"invalid {payload_key} document")
+    return document[payload_key]
+
+
 def validate_mappings(document: Any, limits: dict[str, int]) -> list[dict[str, Any]]:
-    rows = lib.require_protocol_document(document, "mappings")
+    rows = require_document(document, "mappings")
     if len(rows) > limits["max_mappings"]:
         lib.fail("E_MAPPING_COUNT", "max_mappings exceeded")
-    ids: set[str] = set()
+    identifiers: set[str] = set()
     originals: set[tuple[str, str]] = set()
-    canonicals: set[tuple[str, str]] = set()
+    destinations: set[tuple[str, str]] = set()
     result: list[dict[str, Any]] = []
-    required = {"mapping_id", "namespace", "original", "policy"}
-    optional = {"canonical"}
     for index, row in enumerate(rows):
         label = f"mappings[{index}]"
         if not isinstance(row, dict):
             lib.fail("E_MAPPING_TYPE", f"{label} must be an object")
-        lib.require_keys(row, required, optional, label)
-        mapping_id = row["mapping_id"]
-        namespace = row["namespace"]
+        lib.require_keys(row, {"mapping_id", "namespace", "original", "canonical", "policy"}, set(), label)
+        mapping_id = lib.require_identifier(row["mapping_id"], f"{label}.mapping_id")
+        namespace = lib.require_identifier(row["namespace"], f"{label}.namespace")
         original = row["original"]
         policy = row["policy"]
-        canonical = row.get("canonical")
-        if not all(isinstance(value, str) and value for value in (mapping_id, namespace, original, policy)):
-            lib.fail("E_MAPPING_FIELD", f"{label} has an empty or non-string field")
-        if mapping_id in ids:
+        canonical = row["canonical"]
+        if not isinstance(original, str) or not original:
+            lib.fail("E_MAPPING_FIELD", f"{label}.original must be nonempty")
+        if mapping_id in identifiers:
             lib.fail("E_MAPPING_ID", f"duplicate mapping_id: {mapping_id}")
-        ids.add(mapping_id)
-        source_key = (namespace, original)
-        if source_key in originals:
-            lib.fail("E_MAPPING_SOURCE", f"duplicate namespace/original: {source_key}")
-        originals.add(source_key)
+        identifiers.add(mapping_id)
+        source = (namespace, original)
+        if source in originals:
+            lib.fail("E_MAPPING_SOURCE", f"duplicate namespace/original: {source}")
+        originals.add(source)
         if policy not in {"replace", "retain", "compatibility"}:
             lib.fail("E_MAPPING_POLICY", f"unknown policy: {policy}")
         if policy == "retain":
             if canonical is not None:
-                lib.fail("E_MAPPING_CANONICAL", f"retained mapping {mapping_id} must use null canonical")
+                lib.fail("E_MAPPING_CANONICAL", f"retained mapping {mapping_id} requires null canonical")
+            effective = original
         else:
             if not isinstance(canonical, str) or not canonical:
                 lib.fail("E_MAPPING_CANONICAL", f"mapping {mapping_id} requires canonical")
-            target_key = (namespace, canonical)
-            if target_key in canonicals:
-                lib.fail("E_MAPPING_INJECTIVE", f"duplicate namespace/canonical: {target_key}")
-            canonicals.add(target_key)
+            effective = canonical
+        destination = (namespace, effective)
+        if destination in destinations:
+            lib.fail("E_MAPPING_INJECTIVE", f"duplicate effective destination: {destination}")
+        destinations.add(destination)
         result.append(dict(row))
     return result
 
 
+def _validate_path_suffix(value: Any, limits: dict[str, int], label: str) -> str:
+    if not isinstance(value, str) or not value or value.startswith("/") or "\\" in value or "\x00" in value:
+        lib.fail("E_SELECTOR_PATH", f"invalid {label}")
+    if any(0xD800 <= ord(char) <= 0xDFFF for char in value) or len(value.encode("utf-8")) > limits["max_path_bytes"]:
+        lib.fail("E_SELECTOR_PATH", f"invalid {label}")
+    return value
+
+
 def validate_rules(
-    document: Any, mappings: list[dict[str, Any]], limits: dict[str, int]
+    document: Any,
+    mappings: list[dict[str, Any]],
+    limits: dict[str, int],
 ) -> list[dict[str, Any]]:
-    rows = lib.require_protocol_document(document, "rules")
+    rows = require_document(document, "rules")
     if len(rows) > limits["max_rules"]:
         lib.fail("E_RULE_COUNT", "max_rules exceeded")
     mapping_ids = {item["mapping_id"] for item in mappings}
-    ids: set[str] = set()
+    identifiers: set[str] = set()
+    result: list[dict[str, Any]] = []
     required = {
-        "rule_id",
-        "selector",
-        "expected_count",
-        "role",
-        "phase",
-        "rationale",
-        "representative_context",
-        "boundary_context",
-        "producer",
-        "consumer",
-        "support_policy",
-        "validation_test_id",
-        "historical_relationship",
+        "rule_id", "selector", "expected_count", "role", "phase", "rationale",
+        "representative_context", "boundary_context", "producer", "consumer",
+        "support_policy", "validation_test_id", "historical_relationship",
     }
     selector_allowed = {
-        "mapping_id",
-        "unit_kind",
-        "path_exact",
-        "path_prefix",
-        "path_suffix",
+        "mapping_id", "unit_kind", "path_exact", "path_prefix", "path_suffix",
         "json_pointer_prefix",
     }
-    result: list[dict[str, Any]] = []
     for index, row in enumerate(rows):
         label = f"rules[{index}]"
         if not isinstance(row, dict):
             lib.fail("E_RULE_TYPE", f"{label} must be an object")
         lib.require_keys(row, required, set(), label)
-        rule_id = row["rule_id"]
-        if not isinstance(rule_id, str) or not rule_id or rule_id in ids:
-            lib.fail("E_RULE_ID", f"invalid or duplicate rule_id: {rule_id!r}")
-        ids.add(rule_id)
+        rule_id = lib.require_identifier(row["rule_id"], f"{label}.rule_id")
+        if rule_id in identifiers:
+            lib.fail("E_RULE_ID", f"duplicate rule_id: {rule_id}")
+        identifiers.add(rule_id)
         selector = row["selector"]
         if not isinstance(selector, dict):
             lib.fail("E_SELECTOR_TYPE", f"{label}.selector must be an object")
-        unknown = set(selector) - selector_allowed
-        if unknown:
-            lib.fail("E_SELECTOR_FIELD", f"{label}.selector unknown fields: {sorted(unknown)}")
+        if set(selector) - selector_allowed:
+            lib.fail("E_SELECTOR_FIELD", f"{label}.selector has unknown fields")
         if selector.get("mapping_id") not in mapping_ids:
             lib.fail("E_SELECTOR_MAPPING", f"{label} names unknown mapping")
         if selector.get("unit_kind") not in lib.UNIT_KINDS:
@@ -130,47 +139,72 @@ def validate_rules(
         path_fields = [name for name in ("path_exact", "path_prefix", "path_suffix") if name in selector]
         if len(path_fields) != 1:
             lib.fail("E_SELECTOR_PATH", f"{label} requires exactly one path selector")
-        selected_path = selector[path_fields[0]]
-        if not isinstance(selected_path, str) or not selected_path:
-            lib.fail("E_SELECTOR_PATH", f"{label} has empty path selector")
-        if path_fields[0] != "path_suffix":
-            lib.validate_relpath(selected_path, limits)
-        elif (
-            selected_path.startswith("/") or "\\" in selected_path or "\x00" in selected_path
-            or any(0xD800 <= ord(char) <= 0xDFFF for char in selected_path)
-            or len(selected_path.encode("utf-8")) > limits["max_path_bytes"]
-        ):
-            lib.fail("E_SELECTOR_PATH", f"{label} has invalid path suffix")
-        pointer_prefix = selector.get("json_pointer_prefix")
-        if pointer_prefix is not None and not isinstance(pointer_prefix, str):
+        selected = selector[path_fields[0]]
+        if path_fields[0] == "path_suffix":
+            _validate_path_suffix(selected, limits, f"{label}.path_suffix")
+        else:
+            lib.validate_relpath(selected, limits)
+        pointer = selector.get("json_pointer_prefix")
+        if pointer is not None and not isinstance(pointer, str):
             lib.fail("E_SELECTOR_POINTER", f"{label}.json_pointer_prefix must be a string")
         if row["role"] not in lib.ROLES:
             lib.fail("E_RULE_ROLE", f"{label} has unknown role")
         if row["role"] == "historical" and path_fields[0] != "path_exact":
             lib.fail("E_HISTORICAL_BROAD", f"{label} historical rule requires path_exact")
-        if not isinstance(row["expected_count"], int) or isinstance(row["expected_count"], bool) or row["expected_count"] < 0:
-            lib.fail("E_RULE_COUNT", f"{label}.expected_count must be nonnegative integer")
-        for name in ("rationale", "phase", "support_policy", "validation_test_id"):
+        count = row["expected_count"]
+        if not isinstance(count, int) or isinstance(count, bool) or count < 0 or count > limits["max_occurrences"]:
+            lib.fail("E_RULE_COUNT", f"{label}.expected_count is invalid")
+        lib.require_phase(row["phase"], f"{label}.phase")
+        for name in ("rationale", "support_policy", "validation_test_id"):
             if not isinstance(row[name], str) or not row[name]:
                 lib.fail("E_RULE_FIELD", f"{label}.{name} must be nonempty")
-        phase = row["phase"]
-        phase_parts = phase.split(".")
-        if (
-            len(phase_parts) > 2 or phase_parts[0] not in {f"M{number}" for number in range(8)}
-            or (len(phase_parts) == 2 and (not phase_parts[1].isdigit() or not phase_parts[1]))
-        ):
-            lib.fail("E_RULE_PHASE", f"{label}.phase is invalid")
         for name in ("representative_context", "boundary_context"):
-            if not isinstance(row[name], list) or not row[name] or any(not isinstance(x, str) or not x for x in row[name]):
+            if not isinstance(row[name], list) or not row[name] or any(not isinstance(item, str) or not item for item in row[name]):
                 lib.fail("E_RULE_CONTEXT", f"{label}.{name} must be a nonempty string array")
         for name in ("producer", "consumer", "historical_relationship"):
-            if row[name] is not None and not isinstance(row[name], str):
-                lib.fail("E_RULE_FIELD", f"{label}.{name} must be string or null")
+            if row[name] is not None and (not isinstance(row[name], str) or not row[name]):
+                lib.fail("E_RULE_FIELD", f"{label}.{name} must be nonempty string or null")
         result.append(dict(row))
     return result
 
 
-def raw_unit_kind(namespace: str) -> str:
+def _literal_positions(text: str, needle: str) -> Iterator[int]:
+    position = 0
+    while position <= len(text):
+        found = text.find(needle, position)
+        if found < 0:
+            return
+        yield found
+        position = found + 1
+
+
+def _byte_offsets(text: str) -> list[int]:
+    offsets = [0]
+    total = 0
+    for character in text:
+        total += len(character.encode("utf-8"))
+        offsets.append(total)
+    return offsets
+
+
+def _escape_pointer(value: str) -> str:
+    return value.replace("~", "~0").replace("/", "~1")
+
+
+def _walk_structured(value: Any, pointer: str = "") -> Iterator[tuple[str, str, str]]:
+    if isinstance(value, dict):
+        for key in sorted(value):
+            child = pointer + "/" + _escape_pointer(key)
+            yield ("structured_key", child, key)
+            yield from _walk_structured(value[key], child)
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            yield from _walk_structured(item, pointer + "/" + str(index))
+    elif isinstance(value, str):
+        yield ("structured_value", pointer, value)
+
+
+def _raw_unit_kind(namespace: str) -> str:
     if namespace in EMBEDDED_NAMESPACES:
         return "embedded_identity"
     if namespace in MACHINE_NAMESPACES:
@@ -178,97 +212,7 @@ def raw_unit_kind(namespace: str) -> str:
     return "raw_text"
 
 
-def discover(
-    files: list[tuple[str, bytes]],
-    mappings: list[dict[str, Any]],
-    source_repository: str,
-    source_tree: str,
-    limits: dict[str, int],
-) -> list[dict[str, Any]]:
-    candidates: list[dict[str, Any]] = []
-    steps = 0
-    for path, data in files:
-        file_sha = lib.sha256_hex(data)
-        components = PurePosixPath(path).parts
-        try:
-            text = data.decode("utf-8", "strict")
-        except UnicodeDecodeError:
-            text = None
-        for mapping in mappings:
-            original = mapping["original"]
-            namespace = mapping["namespace"]
-            mapping_id = mapping["mapping_id"]
-            for component_index, component in enumerate(components):
-                steps += len(component)
-                if steps > limits["max_processing_steps"]:
-                    lib.fail("E_PROCESSING_STEPS", "max_processing_steps exceeded")
-                for match_index, position in enumerate(lib.overlapping_positions(component, original)):
-                    locator = {"component_index": component_index, "match_index": match_index}
-                    candidates.append(
-                        candidate(
-                            source_repository, source_tree, path, "path_component", locator,
-                            namespace, original, mapping_id, file_sha, component, position,
-                            position + len(original), limits,
-                        )
-                    )
-                    steps += 1
-            if text is not None:
-                kind = raw_unit_kind(namespace)
-                steps += len(text)
-                if steps > limits["max_processing_steps"]:
-                    lib.fail("E_PROCESSING_STEPS", "max_processing_steps exceeded")
-                for position in lib.overlapping_positions(text, original):
-                    start = lib.utf8_byte_offset(text, position)
-                    end = lib.utf8_byte_offset(text, position + len(original))
-                    locator = {"byte_start": start, "byte_end": end}
-                    candidates.append(
-                        candidate(
-                            source_repository, source_tree, path, kind, locator,
-                            namespace, original, mapping_id, file_sha, text, position,
-                            position + len(original), limits,
-                        )
-                    )
-                    steps += 1
-            if steps > limits["max_processing_steps"]:
-                lib.fail("E_PROCESSING_STEPS", "max_processing_steps exceeded")
-
-        if text is not None and path.endswith(".json"):
-            try:
-                parsed = lib.source_json_strings(data, limits, path)
-            except lib.ProtocolError as exc:
-                if exc.code not in {
-                    "E_SOURCE_JSON_BOM", "E_SOURCE_JSON_SYNTAX", "E_JSON_DUPLICATE_KEY",
-                    "E_JSON_CONSTANT", "E_JSON_DEPTH", "E_JSON_NFC", "E_JSON_STRING",
-                    "E_JSON_SURROGATE",
-                }:
-                    raise
-                parsed = None
-            if parsed is None:
-                continue
-            for unit_kind, pointer, value in lib.walk_json_strings(parsed):
-                for mapping in mappings:
-                    original = mapping["original"]
-                    steps += len(value)
-                    if steps > limits["max_processing_steps"]:
-                        lib.fail("E_PROCESSING_STEPS", "max_processing_steps exceeded")
-                    for match_index, position in enumerate(lib.overlapping_positions(value, original)):
-                        locator = {"json_pointer": pointer, "match_index": match_index}
-                        candidates.append(
-                            candidate(
-                                source_repository, source_tree, path, unit_kind, locator,
-                                mapping["namespace"], original, mapping["mapping_id"], file_sha,
-                                value, position, position + len(original), limits,
-                            )
-                        )
-                        steps += 1
-                        if steps > limits["max_processing_steps"]:
-                            lib.fail("E_PROCESSING_STEPS", "max_processing_steps exceeded")
-    if len(candidates) > limits["max_occurrences"]:
-        lib.fail("E_OCCURRENCE_COUNT", "max_occurrences exceeded")
-    return candidates
-
-
-def candidate(
+def _candidate(
     source_repository: str,
     source_tree: str,
     path: str,
@@ -278,9 +222,9 @@ def candidate(
     original: str,
     mapping_id: str,
     file_sha: str,
-    context_text: str,
-    context_start: int,
-    context_end: int,
+    context_data: bytes,
+    start: int,
+    end: int,
     limits: dict[str, int],
 ) -> dict[str, Any]:
     return {
@@ -294,13 +238,97 @@ def candidate(
         "namespace": namespace,
         "original": original,
         "mapping_id": mapping_id,
-        "context": lib.bounded_context(
-            context_text, context_start, context_end, limits["max_context_codepoints"]
-        ),
+        "context": lib.bounded_context_bytes(context_data, start, end, limits["max_context_bytes"]),
     }
 
 
-def selector_matches(selector: dict[str, Any], item: dict[str, Any]) -> bool:
+def discover(
+    files: list[tuple[str, bytes]],
+    mappings: list[dict[str, Any]],
+    source_repository: str,
+    source_tree: str,
+    limits: dict[str, int],
+) -> list[dict[str, Any]]:
+    budget = lib.WorkBudget(limits)
+    candidates: list[dict[str, Any]] = []
+
+    def append(item: dict[str, Any]) -> None:
+        budget.add_occurrence()
+        candidates.append(item)
+
+    for path, data in files:
+        file_sha = lib.sha256_hex(data)
+        components = PurePosixPath(path).parts
+        try:
+            text = data.decode("utf-8", "strict")
+        except UnicodeDecodeError:
+            text = None
+        text_offsets = _byte_offsets(text) if text is not None else None
+        if text is not None:
+            budget.charge(len(text))
+        for mapping in mappings:
+            original = mapping["original"]
+            namespace = mapping["namespace"]
+            mapping_id = mapping["mapping_id"]
+            for component_index, component in enumerate(components):
+                budget.charge(len(component))
+                offsets = _byte_offsets(component)
+                component_bytes = component.encode("utf-8")
+                for position in _literal_positions(component, original):
+                    start, end = offsets[position], offsets[position + len(original)]
+                    locator = {
+                        "component_index": component_index,
+                        "component_byte_start": start,
+                        "component_byte_end": end,
+                    }
+                    append(
+                        _candidate(
+                            source_repository, source_tree, path, "path_component", locator,
+                            namespace, original, mapping_id, file_sha, component_bytes, start, end, limits,
+                        )
+                    )
+            if text is not None and text_offsets is not None:
+                budget.charge(len(text))
+                for position in _literal_positions(text, original):
+                    start, end = text_offsets[position], text_offsets[position + len(original)]
+                    locator = {"byte_start": start, "byte_end": end}
+                    append(
+                        _candidate(
+                            source_repository, source_tree, path, _raw_unit_kind(namespace), locator,
+                            namespace, original, mapping_id, file_sha, data, start, end, limits,
+                        )
+                    )
+
+        if text is not None and path.endswith(".json"):
+            try:
+                parsed = lib.source_json_strings(data, limits, path)
+            except lib.ProtocolError:
+                parsed = None
+            if parsed is not None:
+                for unit_kind, pointer, value in _walk_structured(parsed):
+                    offsets = _byte_offsets(value)
+                    value_bytes = value.encode("utf-8")
+                    for mapping in mappings:
+                        original = mapping["original"]
+                        budget.charge(len(value))
+                        for position in _literal_positions(value, original):
+                            start, end = offsets[position], offsets[position + len(original)]
+                            locator = {
+                                "json_pointer": pointer,
+                                "value_byte_start": start,
+                                "value_byte_end": end,
+                            }
+                            append(
+                                _candidate(
+                                    source_repository, source_tree, path, unit_kind, locator,
+                                    mapping["namespace"], original, mapping["mapping_id"], file_sha,
+                                    value_bytes, start, end, limits,
+                                )
+                            )
+    return candidates
+
+
+def _selector_matches(selector: dict[str, Any], item: dict[str, Any]) -> bool:
     if selector["mapping_id"] != item["mapping_id"] or selector["unit_kind"] != item["unit_kind"]:
         return False
     path = item["path"]
@@ -322,25 +350,33 @@ def classify(
     candidates: list[dict[str, Any]],
     mappings: list[dict[str, Any]],
     rules: list[dict[str, Any]],
+    limits: dict[str, int],
 ) -> list[dict[str, Any]]:
+    budget = lib.WorkBudget(limits)
     mappings_by_id = {item["mapping_id"]: item for item in mappings}
+    rules_by_unit: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for rule in rules:
+        selector = rule["selector"]
+        rules_by_unit.setdefault((selector["mapping_id"], selector["unit_kind"]), []).append(rule)
     selected_counts = {rule["rule_id"]: 0 for rule in rules}
     rows: list[dict[str, Any]] = []
     for item in candidates:
-        matched = [rule for rule in rules if selector_matches(rule["selector"], item)]
+        possible = rules_by_unit.get((item["mapping_id"], item["unit_kind"]), [])
+        budget.charge(len(possible))
+        matched = [rule for rule in possible if _selector_matches(rule["selector"], item)]
         if not matched:
             lib.fail("E_UNCLASSIFIED", f"unclassified occurrence: {item['occurrence_key']}")
         if len(matched) != 1:
-            ids = [rule["rule_id"] for rule in matched]
-            lib.fail("E_MULTIPLE_CLASSIFICATION", f"{item['occurrence_key']} matched {ids}")
+            lib.fail("E_MULTIPLE_CLASSIFICATION", f"multiple classifications: {item['occurrence_key']}")
         rule = matched[0]
         selected_counts[rule["rule_id"]] += 1
         mapping = mappings_by_id[item["mapping_id"]]
+        budget.add_occurrence()
         rows.append(
             {
                 "protocol_version": lib.PROTOCOL_VERSION,
                 **item,
-                "canonical": mapping.get("canonical"),
+                "canonical": mapping["canonical"],
                 "role": rule["role"],
                 "phase": rule["phase"],
                 "producer": rule["producer"],
@@ -354,22 +390,24 @@ def classify(
     for rule in rules:
         actual = selected_counts[rule["rule_id"]]
         if actual != rule["expected_count"]:
-            lib.fail(
-                "E_EXPECTED_COUNT",
-                f"{rule['rule_id']} expected {rule['expected_count']} but selected {actual}",
-            )
+            lib.fail("E_EXPECTED_COUNT", f"{rule['rule_id']} expected {rule['expected_count']} but selected {actual}")
     return rows
+
+
+def _identity_arguments(parser: argparse.ArgumentParser, prefix: str) -> None:
+    parser.add_argument(f"--{prefix}-root", required=True, type=Path)
+    parser.add_argument(f"--{prefix}-export", required=True, type=Path)
+    parser.add_argument(f"--{prefix}-repository", required=True)
+    parser.add_argument(f"--{prefix}-commit", required=True)
+    parser.add_argument(f"--{prefix}-tree", required=True)
+    parser.add_argument(f"--{prefix}-fixture", action="store_true")
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--source-root", required=True, type=Path)
-    parser.add_argument("--source-repository", required=True)
-    parser.add_argument("--source-tree", required=True)
-    parser.add_argument("--mappings", required=True, type=Path)
-    parser.add_argument("--rules", required=True, type=Path)
+    _identity_arguments(parser, "source")
+    _identity_arguments(parser, "input")
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--limits", type=Path, default=Path(__file__).resolve().with_name("limits.json"))
     return parser.parse_args()
 
 
@@ -377,17 +415,26 @@ def main() -> int:
     if not sys.flags.isolated:
         lib.fail("E_RUNTIME_ISOLATION", "invoke with python3 -I")
     args = parse_args()
-    if len(args.source_tree) != 40 or any(char not in "0123456789abcdef" for char in args.source_tree):
-        lib.fail("E_SOURCE_TREE", "source tree must be lowercase 40-hex SHA-1")
-    limits = lib.load_limits(args.limits)
-    mappings = validate_mappings(lib.strict_json_file(args.mappings, limits), limits)
-    rules = validate_rules(lib.strict_json_file(args.rules, limits), mappings, limits)
-    files = lib.snapshot_files(args.source_root, limits)
-    rows = classify(
-        discover(files, mappings, args.source_repository, args.source_tree, limits),
-        mappings,
-        rules,
+    limits = lib.load_limits(Path(__file__).resolve().with_name("limits.json"))
+    _source_export, files = lib.verify_git_export(
+        args.source_root, args.source_export, limits, args.source_repository,
+        args.source_commit, args.source_tree, args.source_fixture,
     )
+    _input_export, input_files = lib.verify_git_export(
+        args.input_root, args.input_export, limits, args.input_repository,
+        args.input_commit, args.input_tree, args.input_fixture,
+    )
+    inputs = dict(input_files)
+    required_inputs = {"mappings.json", "classification-rules.json"}
+    if not required_inputs.issubset(inputs):
+        lib.fail("E_INPUT_SET", f"missing compact inputs: {sorted(required_inputs - set(inputs))}")
+    mappings = validate_mappings(lib.strict_json_bytes(inputs["mappings.json"], limits, "mappings.json"), limits)
+    rules = validate_rules(
+        lib.strict_json_bytes(inputs["classification-rules.json"], limits, "classification-rules.json"),
+        mappings,
+        limits,
+    )
+    rows = classify(discover(files, mappings, args.source_repository, args.source_tree, limits), mappings, rules, limits)
     lib.write_package(rows, lib.scan_manifest(files, limits), args.output, limits)
     return 0
 
@@ -395,6 +442,6 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except lib.ProtocolError as exc:
-        print(f"{exc.code}: {exc.message}", file=sys.stderr)
+    except lib.ProtocolError as error:
+        print(f"{error.code}: {error.message}", file=sys.stderr)
         raise SystemExit(2)

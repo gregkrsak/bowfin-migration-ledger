@@ -28,10 +28,19 @@
     "immediately_preceding_scope": "The next step was identified as separately authorized preparation of the M0.1 v2 protocol specification and tooling in the ledger repository, excluding compact-input construction, evidence generation, M0.1 acceptance, and M1.",
     "governing_contract": {
       "blob": "03cd2c5b584a996ebfb873491f0d2888c984cfb9",
-      "commit": "9feb01fb68ebb72dfb7f0d6781e8e65b01b3c56d",
+      "commit": "609822762abd46c13ecd6187ccc8510695e52b2f",
       "path": "docs/migration/BOWFIN-NAME-MIGRATION-PLAN.md",
       "repository": "gregkrsak/klyxr",
       "tree": "ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239"
+    },
+    "provenance_correction": {
+      "actual_merge_commit": "609822762abd46c13ecd6187ccc8510695e52b2f",
+      "actual_merge_tree": "ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239",
+      "correction_reason": "The initial candidate recorded the pre-merge test object as the accepted integration. Independent review identified the actual PR #96 merge and live staging identity.",
+      "originally_recorded_commit": "9feb01fb68ebb72dfb7f0d6781e8e65b01b3c56d",
+      "originally_recorded_tree": "ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239",
+      "preserved_owner_statement_unchanged": true,
+      "review_finding": "BML-P01"
     }
   },
   "record_class": "owner_authorization",

@@ -26,7 +26,8 @@ This candidate is subordinate to:
 | Item | Identity |
 | --- | --- |
 | Source repository | `gregkrsak/klyxr` |
-| Accepted integration commit | `9feb01fb68ebb72dfb7f0d6781e8e65b01b3c56d` |
+| Accepted integration commit | `609822762abd46c13ecd6187ccc8510695e52b2f` |
+| Pre-merge test object, not integration | `9feb01fb68ebb72dfb7f0d6781e8e65b01b3c56d` |
 | Accepted integration tree | `ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239` |
 | Contract path | `docs/migration/BOWFIN-NAME-MIGRATION-PLAN.md` |
 | Contract blob | `03cd2c5b584a996ebfb873491f0d2888c984cfb9` |
@@ -63,12 +64,21 @@ reviewed `protocol_lib.py` beside themselves by absolute path.
 The tools do not invoke Git, hooks, filters, diff drivers, shells, compilers,
 package managers, network clients, plugins, databases, services, templates,
 regular expressions supplied by inputs, or general query languages. They require
-read-only source snapshots and write only to an explicitly empty output directory.
+read-only authenticated snapshots and write only to paths that do not yet exist
+beneath a pre-existing, non-symlink output directory.
 
 Source snapshots must be ordinary directories containing regular files and
 directories only. Symlinks, special files, `.git`, and any path equal to or beneath
 `archive/unaccepted` are rejected. Paths are relative POSIX UTF-8 strings; absolute
 paths, `.`/`..`, backslashes, NUL, and non-NFC spellings reject.
+
+Every source, accepted-base, contract, tooling, and compact-input snapshot is
+accompanied by an `authenticated_git_export`. It carries the raw Git commit
+object and complete ordered path/mode/blob-SHA-1/SHA-256/byte-count set.
+Verification reconstructs the Git tree, authenticates the commit object,
+enumerates the filesystem independently, and requires exact mode and byte
+equality. `synthetic_fixture` and `current_accepted_dependency` eligibility
+classes are explicit and never interchangeable.
 
 ## 5. Normative files
 
@@ -112,7 +122,9 @@ authorized input set contains:
 - `mappings.json` — namespace-qualified original/canonical mappings;
 - `classification-rules.json` — semantic rules and reviewed population claims;
 - `audit-policy.json` — independently authored discovery families;
+- `surface-register.json` — the complete required external-surface set;
 - `external-surfaces.json` — retained observations and freshness policies;
+- `applicability-decisions.json` — reviewed not-applicable decisions;
 - `visual-inspection.json` — exact image identities and whole-image review;
 - `limitations.json` — affected surface, reason, consequence, and disposition.
 
@@ -198,6 +210,12 @@ SHA-256, original/canonical identity, namespace, role, phase, producer, consumer
 support/removal policy, validation/test identity, historical relationship,
 mapping ID, rule ID, and bounded context. Rows sort by occurrence key bytewise.
 
+Locators never use encounter order. Raw, embedded, and machine matches use exact
+UTF-8 byte start/end coordinates. Path matches add component index and component
+byte start/end. Structured matches use JSON Pointer plus value-local UTF-8 byte
+start/end. The independently authored scanner can derive the same key without
+sharing generator traversal state.
+
 ## 10. Chunking, index, and aggregate digest
 
 Every row is canonical JSON plus LF. A row exceeding `max_row_bytes` rejects.
@@ -219,6 +237,8 @@ The aggregate digest is SHA-256 over the UTF-8 concatenation, in index order, of
 The verifier recomputes every field and rejects missing, extra, duplicated,
 renamed, noncontiguous, or reordered chunks. `summary.json` contains counts by
 namespace, role, phase, and unit kind; it contains no occurrence rows.
+The verifier independently reconstructs the unique greedy chunk partition and
+rejects a byte-valid, fully rehashed alternative partition.
 
 ## 11. Freshness eligibility
 
@@ -236,7 +256,10 @@ expired windows, limited or unavailable required surfaces, or applicable
 invalidating events fail closed even when snapshot bytes are unchanged.
 Reacquisition creates a new bound observation and requires renewed disposition.
 A `not_applicable` record retains only that reviewed claim; the tooling does not
-manufacture semantic applicability from the label.
+manufacture semantic applicability from the label. The required-surface register
+and observation set must match exactly. Each not-applicable observation requires
+one decision bound to the subject commit/tree and a content-addressed review
+record; other observations must have none.
 
 Offline regeneration consumes retained inputs only and never refreshes them.
 
@@ -270,8 +293,10 @@ matched occurrences, expected-count mismatch, key-set mismatch, digest mismatch,
 bad ordering/chunking, stale freshness, path escape, symlink/special file, archive
 dependency, excessive size/depth/count, and output overwrite.
 
-Partial output is written to a sibling temporary directory and removed on failure.
-An existing or nonempty destination rejects.
+The package destination must not exist. Individual documents use exclusive,
+no-follow creation beneath an already-existing non-symlink parent. Row, chunk,
+aggregate, and processing budgets are charged before or during work. An existing
+destination rejects.
 
 ## 15. Retention, transfer, recovery, and R8
 
@@ -288,6 +313,12 @@ never deletes or reclassifies accepted evidence or unaccepted archives.
 Ledger unavailability blocks only migration gates that require it. It never blocks
 normal compiler build, check, verify, run, failure recovery, or accepted production
 operation.
+
+The C/E/D/P receipt carries raw commit objects. C and E each include an ordered,
+nonempty `introduced_commits` first-parent chain from accepted base to reviewed
+head. P verifies merge parents, resulting trees, integrated heads, and target
+branches rather than trusting asserted correspondence. Recovery authenticates the
+restored E commit/tree and separately binds backup and recovery-evidence digests.
 
 ## 16. Synthetic test boundary
 

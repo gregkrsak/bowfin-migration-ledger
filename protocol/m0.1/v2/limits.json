@@ -1,8 +1,10 @@
 {
   "max_audit_families": 2048,
+  "max_audit_output_bytes": 134217728,
   "max_chunk_bytes": 8388608,
   "max_chunks": 10000,
-  "max_context_codepoints": 160,
+  "max_context_bytes": 512,
+  "max_export_bytes": 33554432,
   "max_generated_bytes": 134217728,
   "max_input_file_bytes": 8388608,
   "max_json_depth": 32,
