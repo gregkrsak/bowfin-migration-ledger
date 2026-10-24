@@ -8,6 +8,34 @@
     "preservation_only": true,
     "tooling_adopted": false
   },
+  "preservation_records": {
+    "authorization": {
+      "authorizer": "Greg Krsak",
+      "record_url": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/2#issuecomment-6385732756",
+      "scope": "Retention-only preservation of the exact PR #95 historical payload and the narrow external-wrapper provenance repair required by BML-A01, with the payload subtree unchanged.",
+      "payload_subtree": "78a089b0373f7d870a9d3831556a5e0ea2a51ad9",
+      "merge_authorized": false
+    },
+    "independent_review": {
+      "reviewer": "Sarah",
+      "role": "Independent Adversarial Reviewer",
+      "record_url": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/2#issuecomment-6385732992",
+      "reviewed_head": "f3f0ca149cbc5f7bec5a7b1901c35d2466942c01",
+      "reviewed_tree": "7bd6d5df45dcea690f6458f6c12f57703bacae5f",
+      "disposition": "REPAIR REQUIRED",
+      "blocking_findings": [
+        "BML-A01"
+      ],
+      "non_blocking_observations": [
+        "BML-A02"
+      ],
+      "follow_up": {
+        "status": "pending",
+        "location": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/2",
+        "note": "The wrapper repair changes the ledger head, tree, and wrapper blob and requires focused independent confirmation against the repaired identities."
+      }
+    }
+  },
   "claimed_source": {
     "commit": "37cb00d5cc01804e46446809fd325322c0c3f05f",
     "governing_contract_blob": "2d03f764b3fb516bc8d18c4e32a26c5c06a4d3fa",
