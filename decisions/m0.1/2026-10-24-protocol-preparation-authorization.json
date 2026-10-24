@@ -1,0 +1,41 @@
+{
+  "authorization": {
+    "authorized_actions": [
+      "prepare the M0.1 v2 protocol specification",
+      "prepare bounded protocol tooling, schemas, limits, synthetic fixtures, and tests",
+      "create a ledger branch and draft pull request for independent review"
+    ],
+    "authorizer": "Greg Krsak",
+    "prohibited_actions": [
+      "execute the unreviewed candidate tooling",
+      "construct production classification inputs",
+      "generate migration-acceptance evidence",
+      "accept M0.1",
+      "begin or authorize M1",
+      "modify the compiler or governance repository",
+      "merge any pull request"
+    ]
+  },
+  "capture": {
+    "captured_at": "2026-10-24T22:11:42.006Z",
+    "captured_by": "Miles",
+    "method": "manual transcription from the active ChatGPT project conversation",
+    "source_record_id": null,
+    "source_url": null,
+    "verification_limit": "The copied body and digest do not authenticate authority by themselves; the active owner conversation and Greg's sole-merge role provide process context."
+  },
+  "context": {
+    "immediately_preceding_scope": "The next step was identified as separately authorized preparation of the M0.1 v2 protocol specification and tooling in the ledger repository, excluding compact-input construction, evidence generation, M0.1 acceptance, and M1.",
+    "governing_contract": {
+      "blob": "03cd2c5b584a996ebfb873491f0d2888c984cfb9",
+      "commit": "9feb01fb68ebb72dfb7f0d6781e8e65b01b3c56d",
+      "path": "docs/migration/BOWFIN-NAME-MIGRATION-PLAN.md",
+      "repository": "gregkrsak/klyxr",
+      "tree": "ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239"
+    }
+  },
+  "record_class": "owner_authorization",
+  "record_version": 1,
+  "source_body": "Take this next step.",
+  "source_body_sha256": "6059bb2ca98651bdeec9e484a1ccbdff11f390c8f1e3fa2b01c18e77a4b936ef"
+}

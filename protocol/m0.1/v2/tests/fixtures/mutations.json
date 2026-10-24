@@ -1,0 +1,22 @@
+{
+  "mutations": [
+    {"expected_code": "E_JSON_DUPLICATE_KEY", "mutation_id": "duplicate-json-key"},
+    {"expected_code": "E_JSON_NFC", "mutation_id": "non-nfc-string"},
+    {"expected_code": "E_MAPPING_INJECTIVE", "mutation_id": "non-injective-mapping"},
+    {"expected_code": "E_SELECTOR_UNIT", "mutation_id": "unknown-unit-kind"},
+    {"expected_code": "E_KEY_SET_MISMATCH", "mutation_id": "equal-count-different-key"},
+    {"expected_code": "E_AUDIT_MANIFEST", "mutation_id": "different-scan-manifest"},
+    {"expected_code": "E_EXPECTED_COUNT", "mutation_id": "stale-rule-count"},
+    {"expected_code": "E_CHUNK_SET", "mutation_id": "missing-chunk"},
+    {"expected_code": "E_CHUNK_SET", "mutation_id": "extra-chunk"},
+    {"expected_code": "E_CHUNK_DESCRIPTOR", "mutation_id": "tampered-chunk"},
+    {"expected_code": "E_ROW_ORDER", "mutation_id": "reordered-rows"},
+    {"expected_code": "E_ROW_SIZE", "mutation_id": "oversized-row"},
+    {"expected_code": "E_SYMLINK", "mutation_id": "symlink-source"},
+    {"expected_code": "E_ARCHIVE_DEPENDENCY", "mutation_id": "archive-root"},
+    {"expected_code": "E_FRESHNESS", "mutation_id": "limited-required-surface"},
+    {"expected_code": "E_FRESHNESS", "mutation_id": "expired-unchanged-snapshot"},
+    {"expected_code": "E_FRESHNESS", "mutation_id": "invalidating-event"}
+  ],
+  "protocol_version": "m0.1-v2-fixture"
+}

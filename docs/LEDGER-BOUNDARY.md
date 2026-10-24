@@ -1,24 +1,32 @@
 # Ledger Boundary
 
-**Status:** Proposed foundation. This document governs work inside this repository only. It is subordinate to the accepted migration contract in `gregkrsak/klyxr` and cannot amend or replace that contract.
+**Status:** Accepted descriptive-ledger foundation, subordinate to the accepted
+migration contract in `gregkrsak/klyxr`. This repository cannot amend or replace
+that contract. Proposed M0.1 v2 tooling remains unaccepted.
 
 ## 1. Controlling question
 
 > What new power does this create, where is that power bounded, and can we explain the answer plainly?
 
-Creating this ledger creates the power to record, reproduce, compare, and review migration evidence. That power is bounded to description and verification. It creates no power to execute Bowfin programs, approve operations, recover authority, assume custody, consume resources, merge code, publish packages, change domains, rename repositories, or release software.
+The ledger creates the power to record, reproduce, compare, and review migration
+evidence. That power is bounded to description and verification. It creates no
+power to execute Bowfin programs, approve operations, recover authority, assume
+custody, consume resources, merge code, publish packages, change domains, rename
+repositories, release software, accept M0.1, or begin M1.
 
 ## 2. Allowed responsibilities
 
 The ledger may:
 
-1. record exact source commit and tree identities;
-2. store typed mapping and occurrence-classification inputs;
-3. store deterministic schemas, generators, and validators;
-4. preserve generated inventories and digests when their retention is justified;
-5. document bounded scanner coverage and limitations;
-6. preserve phase reports and independent review records;
-7. preserve byte-truthful rejected or superseded material under the explicit class `UNACCEPTED_HISTORICAL_SNAPSHOT`; and
+1. record exact source, contract, tooling, input, evidence, and merge identities;
+2. store compact typed mapping and occurrence-classification inputs;
+3. store deterministic schemas, generators, independent auditors, and validators;
+4. preserve bounded canonical inventories and digests when retention is justified;
+5. document scanner coverage, external-surface freshness, and limitations;
+6. preserve append-only review, owner-decision, correction, revocation, and
+   integration records;
+7. preserve byte-truthful rejected or superseded material under the explicit class
+   `UNACCEPTED_HISTORICAL_SNAPSHOT`; and
 8. provide stable links used by source-repository acceptance records.
 
 ## 3. Prohibited responsibilities
@@ -27,102 +35,166 @@ The ledger must not:
 
 - become a source of product semantics or runtime behavior;
 - substitute for the compiler repository's migration contract;
-- manufacture or carry executable approval, grants, replay identity, custody, schema validity, or resource authority;
-- execute candidate compiler code merely to inspect migration metadata;
-- modify the compiler repository, governance repository, domains, registries, releases, or repository settings without separate authorization;
+- manufacture or carry executable approval, grants, replay identity, custody,
+  schema validity, or resource authority;
+- execute candidate compiler, governance, or archive code merely to inspect data;
+- modify another repository or external service without separate authorization;
 - make review equivalent to acceptance;
-- make a passing workflow equivalent to owner authorization; or
+- make passing checks equivalent to owner authorization;
+- derive authority from names, timestamps, ordering, comments, or matching hashes;
+  or
 - become necessary to build, install, run, or recover a released Bowfin toolchain.
 
-## 4. Exact identity binding
+## 4. Exact evidence identity
 
-Every phase evidence set must identify at least:
+Every current M0.1 evidence record must identify at least:
 
 | Field | Meaning |
 | --- | --- |
-| `record_class` | `migration_evidence` or `unaccepted_historical_snapshot` |
-| `source_repository` | Exact owner/repository name examined by current migration evidence |
-| `source_commit` | Exact candidate commit examined by current migration evidence |
-| `source_tree` | Exact candidate tree examined by current migration evidence |
-| `governing_contract_blob` | Exact contract content governing the examination |
-| `phase` | Migration phase or precondition |
-| `generator_identity` | Exact generator path and content identity or released version |
-| `input_digests` | Digests of compact source inputs |
-| `output_digests` | Digests of generated evidence |
-| `limitations` | Bounded surfaces not examined or not provable |
-| `review_status` | Proposed, reviewed, accepted, superseded, historical, or `UNACCEPTED_HISTORICAL_SNAPSHOT` |
+| `record_class` | Exactly `migration_evidence` |
+| `protocol_version` | Exact accepted protocol version |
+| `phase` | Exactly `M0.1` for this gate |
+| `source_repository` | Exact source owner/repository |
+| `source_commit` / `source_tree` | Exact fixed compiler candidate C |
+| `accepted_base_commit` / `accepted_base_tree` | Exact staging base |
+| `governing_contract` | Repository, commit, tree, path, and blob |
+| `tooling` | Ledger repository, accepted commit/tree, paths, and blobs |
+| `inputs` | Ledger commit/tree, exact paths/blobs, and aggregate digest |
+| `external_snapshots` | Exact retained observations and freshness policies |
+| `generated` | Index, summary, chunk, and aggregate identities |
+| `non_authority` | Explicit denials of executable or decision authority |
 
-For an unaccepted historical snapshot, the archival wrapper must additionally record the origin repository, pull request or other origin reference, origin commit, origin tree, original imported path set, byte sizes, and payload content identities. It must separately reproduce any source revision that the archived payload claimed to examine. An origin identity proves where the files came from; a claimed-source identity records what those files said. Neither establishes that the archived claim was correct.
+Required fields may not be inferred from directory names, branch names, issue
+numbers, comments, timestamps, or conversational context. Unknown mapping kinds,
+roles, or required status records fail closed.
 
-Required fields depend on `record_class`. Unknown fields may be retained, but required fields may not be inferred from filenames or conversational context.
+An unaccepted historical snapshot instead uses its archival wrapper and records
+origin repository/reference, origin commit/tree, imported path set, sizes, and
+payload identities. Origin identity and a payload's claimed-source identity remain
+separate and establish no semantic correctness.
 
-## 5. Two-sided acceptance anchor
+## 5. Acyclic C/E/D/P chain
 
-The binding sequence is intentionally asymmetric:
+The controlling sequence is:
 
-1. A source candidate is fixed at an exact commit and tree.
-2. The ledger generates and commits evidence for that exact source identity.
-3. An independent reviewer verifies the source identity, ledger identity, digests, coverage, and limitations.
-4. Greg decides whether to accept the source candidate.
-5. The source PR's acceptance record links the exact ledger commit and tree.
+1. **C:** one compiler candidate is fixed at an exact commit and tree, including
+   any accepted minimal compiler-side anchor.
+2. **E:** one ledger evidence package identifies C, the accepted base, governing
+   contract, accepted protocol/tooling, compact inputs, required snapshots, and
+   generated outputs.
+3. **D:** later preserved review and owner-decision records identify the exact C
+   and E dispositions.
+4. **P:** a later receipt identifies actual source and ledger merge commits, trees,
+   parents, targets, and correspondence to C, E, and D.
 
-This avoids a circular self-hash: the source candidate need not contain the identity of evidence that could not exist until after the source candidate was fixed. GitHub comments are part of the acceptance record but not part of the source tree.
+E cannot identify its own future commit. C cannot be modified after E is generated
+to embed E. P proves post-merge correspondence; it does not replace C or E.
+Publication of P is itself represented without requiring P to contain its own
+future storage identity.
 
-A later source change invalidates evidence bound to the earlier tree unless the evidence explicitly proves that the changed surface is outside its bounded claim.
+Every change to C, the accepted base, governing contract, protocol/tooling,
+compact inputs, or a required external/visual snapshot invalidates the applicable
+binding and requires a new package and renewed disposition. Equal generated bytes
+or counts do not create a drift exception.
 
-## 6. Authority and failure behavior
+Source and evidence integrations use ordinary merge commits. Pre-merge test-merge
+SHAs are not post-merge proof. Introduced ancestry must reject prohibited bulk
+compiler evidence even if later deleted from the final tree.
 
-Evidence can block acceptance when it is missing, stale, inconsistent, ambiguous, or outside its claimed coverage. Evidence cannot cause acceptance.
+## 6. Decision records
 
-Ledger unavailability during migration blocks any gate that requires its evidence. Ledger unavailability after release must not prevent building, installing, running, inspecting, or recovering Bowfin.
+GitHub comments and chat messages are publication venues, not immutable storage.
+Every decisive review, owner decision, correction, revocation, and integration
+record is preserved append-only outside the immutable evidence package it
+describes.
 
-Greg remains the sole merger. If that assumption changes or automated merging is introduced, migration work stops until the governing contract establishes an independently reviewed control.
+Each record retains the complete body, source URL/identifier when available,
+stated author and publisher context, capture time/method, body digest, applicable
+C/E/D/P identities, and verification limitations. A copy plus digest does not
+authenticate authority by itself; process corroboration remains required.
 
-## 7. Immutability and correction
+Structural validity, independent-review disposition, Greg's acceptance/rejection,
+integration status, and next-phase authorization are separate states. Missing,
+conflicting, superseded, or unverifiable records fail closed. Latest comment wins,
+newest timestamp wins, and author-name string matching are prohibited.
 
-Once an evidence identity is cited in an accepted source record, or an unaccepted historical snapshot is merged for preservation:
+## 7. Authority and failure behavior
 
-- its commit and tree are immutable historical facts;
-- archived payload bytes remain unchanged;
-- corrections use new commits and explicitly superseding wrapper records;
-- history is not force-rewritten to make an old claim appear correct; and
-- original bytes and digests remain inspectable regardless of acceptance status.
+Evidence may block acceptance when missing, stale, inconsistent, ambiguous, or
+outside coverage. Evidence cannot cause acceptance.
 
-## 8. Unaccepted historical snapshots and M0.1
+Ledger unavailability during migration blocks only gates requiring ledger
+evidence. It must not prevent normal compiler build, check, verify, run, failure
+recovery, or accepted production operation.
 
-An `UNACCEPTED_HISTORICAL_SNAPSHOT` is a preservation class, not a migration-evidence status that can satisfy an acceptance gate. It exists so rejected or superseded work can remain inspectable without being repaired, adopted, or presented as current.
+Greg remains the sole merger. If that assumption changes or automated merging is
+introduced, migration work stops until the governing contract establishes an
+independently reviewed control.
 
-A separately authorized archival import must:
+## 8. Immutability and correction
 
-1. preserve the original payload byte-for-byte under an archival path;
-2. place all new classification, provenance, limitations, reproduction results, and correction notes in a wrapper outside that payload;
-3. record the origin repository, pull request or origin reference, commit, tree, original path set, byte sizes, and content identities;
-4. distinguish those origin identities from any source revision the payload itself claimed to examine;
-5. verify copy integrity and declared completeness of the imported payload;
-6. record reproduction and semantic-validation status separately as `unattempted`, `succeeded`, `failed`, or `limited` with bounded observations;
-7. keep archived scripts, validators, instructions, and workflow files inert unless later execution or reuse is separately authorized and reviewed; and
-8. protect the original bytes even if later analysis disproves an embedded claim.
+Once evidence is cited by an accepted record, or an unaccepted snapshot is merged:
 
-Successful reproduction is not required to preserve a correctly identified historical object. Conversely, matching bytes or successful reproduction does not establish semantic correctness, completeness, owner acceptance, or authority.
+- commit and tree identities remain historical facts;
+- canonical evidence and archived payload bytes remain unchanged;
+- corrections and revocations are new append-only records;
+- history is not rewritten to make an old claim appear correct; and
+- original bytes and digests remain inspectable regardless of disposition.
 
-Merging such an archive means only that Greg permits the identified object to be retained. It does not accept M0.1, approve the original architecture or tooling, validate recorded completeness claims, appoint an archived generator or validator as current, satisfy a compiler migration gate, or authorize M1 or any later work.
+## 9. Unaccepted historical snapshots
 
-The closed first M0.1 attempt in `gregkrsak/klyxr` demonstrated that a complete materialized snapshot can be internally consistent while still being unsuitable for the product repository. Its large tables may be preserved under this archival class, but they are not accepted merely by relocation.
+`UNACCEPTED_HISTORICAL_SNAPSHOT` is a preservation class, never a status capable of
+satisfying a migration gate. Its payload remains byte-for-byte under
+`archive/unaccepted/**`; all new provenance, limitations, reproduction results,
+and corrections remain outside the payload.
 
-A replacement M0.1 design must separately distinguish:
+Archived scripts, validators, instructions, schemas, fixtures, and workflows are
+inert and permanently ineligible as current tooling or dependencies. A new path,
+copy, import, or matching digest cannot promote them. Successful copy or
+reproduction establishes neither semantic correctness nor acceptance.
 
-- compact, reviewed sources of truth;
-- deterministic generation and validation logic;
-- generated evidence worth retaining;
-- transient output that can be reproduced on demand; and
-- the minimal source-repository acceptance anchor.
+The closed first M0.1 attempt may remain preserved, but it cannot supply current
+classifications, schemas, fixtures, tools, completeness claims, or acceptance
+evidence.
 
-Neither this foundation nor a historical import authorizes replacement M0.1 work.
+## 10. M0.1 v2 preparation and execution gate
 
-## 9. Recognition and retirement
+The accepted compiler contract now recognizes this ledger's Rule-to-Occurrence
+architecture. Greg separately authorized preparation of the protocol specification
+and tooling. Preparation permits a draft PR containing schemas, limits, source,
+synthetic fixtures, and tests.
 
-Before this ledger can satisfy a compiler-repository migration gate, the governing migration contract must be amended through its own reviewed and frozen process to define this repository's role, exact binding, authority limit, and lifecycle.
+Unreviewed candidate tooling is not executed. An independent reviewer first
+examines the exact revision statically. Greg may then authorize isolated synthetic
+self-test execution of that same revision. Production compact inputs and evidence
+generation require another later authorization after tooling acceptance.
 
-A separately authorized unaccepted-historical-snapshot import may occur before that recognition because preservation alone satisfies no compiler gate and authorizes no migration work.
+No protocol review, test result, tooling merge, or ledger record accepts M0.1 or
+authorizes M1.
 
-After migration state R8, archive this repository read-only unless a later accepted decision defines a continuing role. Archival preserves accepted evidence and unaccepted historical snapshots without changing their status; it grants no continuing authority.
+## 11. External and visual surfaces
+
+Every relevant surface is inspected, demonstrably not applicable, explicitly
+limited, or unavailable. Failure or inaccessibility is not not-applicable.
+
+External acquisition is separate from deterministic generation. Each required
+surface class has a reviewed freshness policy with a justified observation window,
+named invalidating events, bounded point-in-time treatment, or a reviewed
+combination. Eligibility is evaluated before owner acceptance and immediately
+before integration and fails closed even when snapshot bytes are unchanged.
+
+Visual evidence binds exact blobs and records scope, method, reviewer, regions,
+whole-image inspection, and limitations. Listed regions never substitute for
+complete inspection.
+
+## 12. Retention, recovery, transfer, and retirement
+
+Canonical generated occurrences are bounded, uncompressed JSONL with an
+authenticated index. Compression is transport only; expiring workflow artifacts,
+caches, attachments, and object-store URLs are never sole evidence.
+
+Accepted protocol, inputs, evidence, decisions, and receipts remain reachable in
+Git plus a documented backup/recovery path. Repository transfer records old and
+new identities without rewriting history. After R8, archive this repository
+read-only unless a later accepted decision defines a continuing role. Retirement
+does not erase or reclassify evidence or archives.

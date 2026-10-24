@@ -1,0 +1,20 @@
+{
+  "aggregate": {
+    "descriptors": [
+      {
+        "byte_count": 123,
+        "first_key": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "last_key": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "path": "occurrences/0000.jsonl",
+        "row_count": 4,
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    ],
+    "expected_sha256": "b7b627e436de89a590050a4a3f74490a3c1eee2f25d0ef9d5ef2be1c9f2e1090"
+  },
+  "canonical_json": {
+    "expected_utf8_hex": "7b2261223a5b332c325d2c227a223a317d0a",
+    "value": {"a": [3, 2], "z": 1}
+  },
+  "protocol_version": "m0.1-v2-fixture"
+}
