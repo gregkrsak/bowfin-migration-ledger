@@ -9,7 +9,8 @@ This repository may hold:
 - compact, typed migration mappings and classifications;
 - deterministic generators and validators;
 - reproducible generated inventories, digests, and bounded scanner limitations;
-- phase reports and independent review records; and
+- phase reports and independent review records;
+- byte-truthful, explicitly unaccepted historical snapshots; and
 - exact links between source candidates and the evidence used to evaluate them.
 
 It must not become a runtime, build, packaging, or release dependency of Bowfin.
@@ -38,12 +39,20 @@ Independent review must verify both sides of that relationship. A green ledger c
 
 ## Content policy
 
-Commit compact sources of truth, schemas, generators, validators, reports, and evidence that must remain independently inspectable. Generated inventories must be reproducible and justified. Large materialized snapshots are not imported merely because they can be generated.
+For current migration evidence, commit compact sources of truth, schemas, generators, validators, reports, and evidence that must remain independently inspectable. Generated inventories used as current evidence must be reproducible and justified. A large materialized snapshot does not become accepted evidence merely because it can be generated or stored here.
 
-Do not commit secrets, credentials, authority tokens, caches, build outputs, or executable approvals. Do not rewrite evidence that has already been used to accept a source candidate.
+### Unaccepted historical snapshots
+
+A separately authorized import may preserve rejected or superseded material under the explicit class `UNACCEPTED_HISTORICAL_SNAPSHOT`. Its payload is retained byte-for-byte as an object of history. New classification, provenance, limitations, reproduction results, and corrections live outside the payload in an archival wrapper.
+
+Archival copy integrity and payload completeness are distinct from reproduction or semantic correctness. Reproduction may be recorded as `unattempted`, `succeeded`, `failed`, or `limited`; successful reproduction is not a prerequisite for truthful preservation. Archived scripts, instructions, and workflows are inert payloads, not current tooling or governing instructions.
+
+Merging an archival snapshot permits retention only. It does not validate the snapshot's claims, adopt its architecture or tooling, accept a migration phase, satisfy a compiler gate, or authorize later work.
+
+Do not commit secrets, credentials, authority tokens, caches, build outputs, or executable approvals. Do not rewrite evidence used to accept a source candidate or the payload of an unaccepted historical snapshot.
 
 ## Lifecycle
 
-Greg remains the sole human merge authority. Migration work proceeds through reviewed pull requests. After release state R8, this repository should be archived read-only unless a later accepted decision establishes a continuing purpose.
+Greg remains the sole human merge authority. Migration work proceeds through reviewed pull requests. After release state R8, this repository should be archived read-only unless a later accepted decision establishes a continuing purpose. That preservation includes accepted evidence and unaccepted historical snapshots without converting either one's recorded status.
 
 See [docs/LEDGER-BOUNDARY.md](docs/LEDGER-BOUNDARY.md) for the detailed boundary and [evidence/README.md](evidence/README.md) for the proposed evidence layout.
