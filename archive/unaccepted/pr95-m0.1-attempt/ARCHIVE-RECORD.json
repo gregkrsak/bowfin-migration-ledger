@@ -1,0 +1,290 @@
+{
+  "authority": {
+    "architecture_adopted": false,
+    "compiler_gate_satisfied": false,
+    "executable_authority_created": false,
+    "later_work_authorized": false,
+    "m0_1_accepted": false,
+    "preservation_only": true,
+    "tooling_adopted": false
+  },
+  "preservation_records": {
+    "authorization": {
+      "authorizer": "Greg Krsak",
+      "record_url": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/2#issuecomment-6385732756",
+      "scope": "Retention-only preservation of the exact PR #95 historical payload and the narrow external-wrapper provenance repair required by BML-A01, with the payload subtree unchanged.",
+      "payload_subtree": "78a089b0373f7d870a9d3831556a5e0ea2a51ad9",
+      "merge_authorized": false
+    },
+    "independent_review": {
+      "reviewer": "Sarah",
+      "role": "Independent Adversarial Reviewer",
+      "record_url": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/2#issuecomment-6385732992",
+      "reviewed_head": "f3f0ca149cbc5f7bec5a7b1901c35d2466942c01",
+      "reviewed_tree": "7bd6d5df45dcea690f6458f6c12f57703bacae5f",
+      "disposition": "REPAIR REQUIRED",
+      "blocking_findings": [
+        "BML-A01"
+      ],
+      "non_blocking_observations": [
+        "BML-A02"
+      ],
+      "follow_up": {
+        "status": "pending",
+        "location": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/2",
+        "note": "The wrapper repair changes the ledger head, tree, and wrapper blob and requires focused independent confirmation against the repaired identities."
+      }
+    }
+  },
+  "claimed_source": {
+    "commit": "37cb00d5cc01804e46446809fd325322c0c3f05f",
+    "governing_contract_blob": "2d03f764b3fb516bc8d18c4e32a26c5c06a4d3fa",
+    "governing_contract_path": "docs/migration/BOWFIN-NAME-MIGRATION-PLAN.md",
+    "integration_branch": "bowfin-migration-staging",
+    "note": "These are claims preserved from the archived attempt, not newly accepted conclusions.",
+    "repository": "gregkrsak/klyxr",
+    "tree": "d817671d87760f62a603d2de2f696fe49f0a24ac"
+  },
+  "files": [
+    {
+      "content_identities": {
+        "git_blob_sha1": "13ef235872f49740d016e07cdc07f9461d1286a3",
+        "sha256": "347302bfa4023561bfaa24d36a4f4c585c03187534c4f967bde3a6d3dcbb1cf3"
+      },
+      "destination_path": "archive/unaccepted/pr95-m0.1-attempt/payload/.github/workflows/docs.yml",
+      "mode": "100644",
+      "pr_status": "modified",
+      "size_bytes": 1239,
+      "source_path": ".github/workflows/docs.yml"
+    },
+    {
+      "content_identities": {
+        "git_blob_sha1": "6ec9b37cb8d0010fd70e42252ed5aee45bc9ad94",
+        "sha256": "416b18b58f9eeb5ac38ee11680eb6ca8a6c1c3b5a73bb265f6c8bdfc109b3c99"
+      },
+      "destination_path": "archive/unaccepted/pr95-m0.1-attempt/payload/docs/migration/readiness/README.md",
+      "mode": "100644",
+      "pr_status": "added",
+      "size_bytes": 5976,
+      "source_path": "docs/migration/readiness/README.md"
+    },
+    {
+      "content_identities": {
+        "git_blob_sha1": "74e196c8bf6ef90def22156299b30252782b1c23",
+        "sha256": "6a5707a701aeda9abaf3191dea89c1e0cfc769257d1e7dd9d9a45d75e5037f9a"
+      },
+      "destination_path": "archive/unaccepted/pr95-m0.1-attempt/payload/docs/migration/readiness/allowlist.json",
+      "mode": "100644",
+      "pr_status": "added",
+      "size_bytes": 5504057,
+      "source_path": "docs/migration/readiness/allowlist.json"
+    },
+    {
+      "content_identities": {
+        "git_blob_sha1": "9b70144b4c9a3c8677e4c6971148eb08729c8492",
+        "sha256": "3d04c9661a7b76c163e8f241520f35d46dee2fdabd4db3d9dbce3f60780835e4"
+      },
+      "destination_path": "archive/unaccepted/pr95-m0.1-attempt/payload/docs/migration/readiness/consumers.json",
+      "mode": "100644",
+      "pr_status": "added",
+      "size_bytes": 6933,
+      "source_path": "docs/migration/readiness/consumers.json"
+    },
+    {
+      "content_identities": {
+        "git_blob_sha1": "cd1224681af174e69533b7550621ae510248029a",
+        "sha256": "1c1d018c10b78dd899309b243e687252531bcee10260521c05f3f5c1ab7d0bde"
+      },
+      "destination_path": "archive/unaccepted/pr95-m0.1-attempt/payload/docs/migration/readiness/denylist.json",
+      "mode": "100644",
+      "pr_status": "added",
+      "size_bytes": 90857,
+      "source_path": "docs/migration/readiness/denylist.json"
+    },
+    {
+      "content_identities": {
+        "git_blob_sha1": "9afc0276f60e7dc110b1a767fc4dd866baa0bced",
+        "sha256": "34630c7383f8990559e6e3544f0e8fecc8bcaf3a5fc3bde62a9bb5df693694c8"
+      },
+      "destination_path": "archive/unaccepted/pr95-m0.1-attempt/payload/docs/migration/readiness/digests.json",
+      "mode": "100644",
+      "pr_status": "added",
+      "size_bytes": 850,
+      "source_path": "docs/migration/readiness/digests.json"
+    },
+    {
+      "content_identities": {
+        "git_blob_sha1": "0de0d3d39d911cb0090df41c172552e4986ef232",
+        "sha256": "5189beb62030090a7cee5b0f8e03c13224e6a0721207d776cb0799a2fa883459"
+      },
+      "destination_path": "archive/unaccepted/pr95-m0.1-attempt/payload/docs/migration/readiness/external.json",
+      "mode": "100644",
+      "pr_status": "added",
+      "size_bytes": 76393,
+      "source_path": "docs/migration/readiness/external.json"
+    },
+    {
+      "content_identities": {
+        "git_blob_sha1": "df7f5949b0615555d575fab2d4b45eb33694783c",
+        "sha256": "6202a58dc2ba3ddb66e456322aac2ab8774f9d2ea2bde2383ba41984796148ae"
+      },
+      "destination_path": "archive/unaccepted/pr95-m0.1-attempt/payload/docs/migration/readiness/inventory.json",
+      "mode": "100644",
+      "pr_status": "added",
+      "size_bytes": 14703694,
+      "source_path": "docs/migration/readiness/inventory.json"
+    },
+    {
+      "content_identities": {
+        "git_blob_sha1": "d074276922ef6d94501f1f11212c4cda50930eda",
+        "sha256": "c2350374fc339544a2a469bcc9ca8672c7c4f13577406d613524e9b01501c520"
+      },
+      "destination_path": "archive/unaccepted/pr95-m0.1-attempt/payload/docs/migration/readiness/manifest.json",
+      "mode": "100644",
+      "pr_status": "added",
+      "size_bytes": 1234999,
+      "source_path": "docs/migration/readiness/manifest.json"
+    },
+    {
+      "content_identities": {
+        "git_blob_sha1": "9dc1bcb43cf0f2f337be63c9935de76b3a3b8693",
+        "sha256": "219db0c00fce74f119768f9da104ab040a86f05e396fda1dad1d9dd2a3eeb558"
+      },
+      "destination_path": "archive/unaccepted/pr95-m0.1-attempt/payload/docs/migration/readiness/pr-evidence.json",
+      "mode": "100644",
+      "pr_status": "added",
+      "size_bytes": 523,
+      "source_path": "docs/migration/readiness/pr-evidence.json"
+    },
+    {
+      "content_identities": {
+        "git_blob_sha1": "a3659e68c11e2883f56db6c6081ef1edbe776508",
+        "sha256": "3e2bce71e79da3f6d85ee530a90bcdde2a09c945bbfc3efe1e966947f6f3c279"
+      },
+      "destination_path": "archive/unaccepted/pr95-m0.1-attempt/payload/docs/migration/readiness/summary.json",
+      "mode": "100644",
+      "pr_status": "added",
+      "size_bytes": 942,
+      "source_path": "docs/migration/readiness/summary.json"
+    },
+    {
+      "content_identities": {
+        "git_blob_sha1": "df1e1bcb76abde18a1617cfb25867414e0342cdb",
+        "sha256": "4301871c47d65add0d34a507d27db1fd5e183e9d69799203e5552b53831f23fc"
+      },
+      "destination_path": "archive/unaccepted/pr95-m0.1-attempt/payload/docs/migration/readiness/supplemental.json",
+      "mode": "100644",
+      "pr_status": "added",
+      "size_bytes": 10048,
+      "source_path": "docs/migration/readiness/supplemental.json"
+    },
+    {
+      "content_identities": {
+        "git_blob_sha1": "375a87cde8937c8d8c5a584ff15a44a90f405389",
+        "sha256": "53f970839316cbca297b67fc7161eb2959c0c48ac810234da66eee23bafbfa38"
+      },
+      "destination_path": "archive/unaccepted/pr95-m0.1-attempt/payload/docs/migration/readiness/visual.json",
+      "mode": "100644",
+      "pr_status": "added",
+      "size_bytes": 2143,
+      "source_path": "docs/migration/readiness/visual.json"
+    },
+    {
+      "content_identities": {
+        "git_blob_sha1": "d23bc3349d8117cbd33a47b906d7b8d57ecae380",
+        "sha256": "f7d0d46cf994ec714e0a7654da6a83d450fad6f7a6e6a76b458be0f20c36f90b"
+      },
+      "destination_path": "archive/unaccepted/pr95-m0.1-attempt/payload/scripts/test-bowfin-readiness.py",
+      "mode": "100644",
+      "pr_status": "added",
+      "size_bytes": 9039,
+      "source_path": "scripts/test-bowfin-readiness.py"
+    },
+    {
+      "content_identities": {
+        "git_blob_sha1": "cdf5b5aeb407dec92dae1f75185be695f613b46b",
+        "sha256": "932a5d67f583369d9ee50319a3beda08335f7edc30895732dd193f0a0c8cf0f6"
+      },
+      "destination_path": "archive/unaccepted/pr95-m0.1-attempt/payload/scripts/verify-bowfin-readiness.py",
+      "mode": "100644",
+      "pr_status": "added",
+      "size_bytes": 25204,
+      "source_path": "scripts/verify-bowfin-readiness.py"
+    }
+  ],
+  "import": {
+    "copy_integrity": {
+      "method": "Each checked-out source file matched its declared Git blob SHA-1 before an exact byte copy; fresh SHA-256 identities were then recorded.",
+      "status": "succeeded"
+    },
+    "destination_repository": "gregkrsak/bowfin-migration-ledger",
+    "foundation_main_commit": "c6b7aeef30d09570087e2dfa032ebe643571fc34",
+    "foundation_main_tree": "ee5fefb44e2216883bcc9cd7d35b44ec90279867",
+    "import_completeness": {
+      "method": "The exact base-to-head changed-path set matched all 15 declared PR paths, and all top-level PR comments matched the two declared comment IDs.",
+      "status": "succeeded"
+    },
+    "payload_root": "archive/unaccepted/pr95-m0.1-attempt/payload",
+    "preserved_comment_bytes": 33475,
+    "preserved_top_level_comments": 2,
+    "source_changed_file_bytes": 21672897,
+    "source_changed_files": 15
+  },
+  "origin": {
+    "architectural_disposition_url": "https://github.com/gregkrsak/klyxr/pull/95#issuecomment-6380205247",
+    "base_branch": "bowfin-migration-staging",
+    "base_commit": "37cb00d5cc01804e46446809fd325322c0c3f05f",
+    "base_tree": "d817671d87760f62a603d2de2f696fe49f0a24ac",
+    "changed_file_count": 15,
+    "head_branch": "bowfin-m0-pre-m1-readiness",
+    "head_commit": "2e652681bf207e8ba5a4ac43f8df04a5e9653b79",
+    "head_tree": "07cf2820e28ba7b3834aaee2fcec933a565dc200",
+    "implementation_report_url": "https://github.com/gregkrsak/klyxr/pull/95#issuecomment-6379466221",
+    "merged": false,
+    "pull_request": 95,
+    "pull_request_url": "https://github.com/gregkrsak/klyxr/pull/95",
+    "repository": "gregkrsak/klyxr",
+    "state": "closed",
+    "top_level_comment_count": 2
+  },
+  "record_class": "unaccepted_historical_snapshot",
+  "record_version": 1,
+  "reproduction": {
+    "note": "Archived generators, validators, and workflows were not executed.",
+    "status": "unattempted"
+  },
+  "review_status": "UNACCEPTED_HISTORICAL_SNAPSHOT",
+  "semantic_validation": {
+    "note": "No completeness, correctness, architecture, or migration-gate claim was revalidated.",
+    "status": "unattempted"
+  },
+  "snapshot_id": "pr95-m0.1-attempt",
+  "top_level_comments": [
+    {
+      "author": "gregkrsak",
+      "comment_id": 6379466221,
+      "content_identities": {
+        "git_blob_sha1": "f285c4fc274357b93f371b0fc877071c05e11ab9",
+        "sha256": "6b9befcee7b02dec6cbd9c96a9e5c0d88c1e99916cf8fac149a1755d81ea0354"
+      },
+      "created_at": "2026-10-24T03:45:54Z",
+      "destination_path": "archive/unaccepted/pr95-m0.1-attempt/payload/github-comments/6379466221.md",
+      "size_bytes": 32429,
+      "source_url": "https://github.com/gregkrsak/klyxr/pull/95#issuecomment-6379466221",
+      "updated_at": "2026-10-24T03:45:54Z"
+    },
+    {
+      "author": "gregkrsak",
+      "comment_id": 6380205247,
+      "content_identities": {
+        "git_blob_sha1": "408e46e56f51b4176549fcb26b7472b623f1cb94",
+        "sha256": "12032d92b33ec794b5cb4993828970252f0b1e73e1eae954d966e37202377fb2"
+      },
+      "created_at": "2026-10-24T05:08:40Z",
+      "destination_path": "archive/unaccepted/pr95-m0.1-attempt/payload/github-comments/6380205247.md",
+      "size_bytes": 1046,
+      "source_url": "https://github.com/gregkrsak/klyxr/pull/95#issuecomment-6380205247",
+      "updated_at": "2026-10-24T05:08:40Z"
+    }
+  ]
+}
