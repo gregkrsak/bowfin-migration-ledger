@@ -1,5 +1,13 @@
 {
   "mutations": [
+    {"expected_code": "E_BINDING_CONTENT", "mutation_id": "transient-compiler-content", "test_method": "test_compiler_intermediate_content_and_decision_preservation"},
+    {"expected_code": "E_BINDING_CONTENT", "mutation_id": "decision-overwrites-evidence", "test_method": "test_compiler_intermediate_content_and_decision_preservation"},
+    {"expected_code": "E_BINDING_CONTENT", "mutation_id": "unbound-index-digest", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"},
+    {"expected_code": "E_REVIEW_DECISION", "mutation_id": "numeric-review-boolean", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"},
+    {"expected_code": "E_OWNER_DECISION", "mutation_id": "numeric-owner-boolean", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"},
+    {"expected_code": "E_RECOVERY_RECORD", "mutation_id": "numeric-recovery-boolean", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"},
+    {"expected_code": "E_RECOVERY_BUNDLE", "mutation_id": "wrong-kind-after-visit", "test_method": "test_recovery_wrong_kind_after_prior_visit"},
+    {"expected_code": "E_DECISION_RECORD", "mutation_id": "symlink-bound-record", "test_method": "test_opaque_symlink_inventory_not_bound_record"},
     {"expected_code": "E_JSON_DUPLICATE_KEY", "mutation_id": "duplicate-json-key", "test_method": "test_duplicate_json_key"},
     {"expected_code": "E_JSON_NFC", "mutation_id": "non-nfc-string", "test_method": "test_non_nfc_string"},
     {"expected_code": "E_MAPPING_INJECTIVE", "mutation_id": "retained-replaced-noninjective", "test_method": "test_non_injective_mapping_including_retain"},

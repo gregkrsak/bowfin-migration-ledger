@@ -385,6 +385,39 @@ work. An existing destination rejects.
 
 ## 16. Retention, transfer, recovery, and R8
 
+### Integration content constraints (P12/P21–P24 repair)
+
+The binding command takes repeated `--expected-source-change-path` arguments.
+Their exact set must be independently reviewed against the compiler content
+policy for the exact C base and final head; copying a candidate-supplied list is
+not independent review. Omission means an empty change set, not unrestricted
+permission. The set must equal the actual base-to-final changed paths. In every
+introduced C tree, other paths retain their base objects and modes. An approved
+path may contain only its base or reviewed-final object/mode (including absence).
+Transient third states reject, even when later deleted. This conservative policy
+may require a newly prepared clean candidate; it never authorizes history rewrite.
+It does not mechanically determine whether approved final content is appropriate.
+
+E carries an `index_record` with canonical bytes, Git blob identity, and SHA-256.
+Its path is `evidence/m0.1/<C-commit>/generated/index.json`; its authenticated
+SHA-256 must equal `E.index_sha256`. This binds index bytes, not package semantic
+validity, which remains the separate evidence-verification obligation.
+
+Each review, owner-decision, and later recovery commit must preserve its entire
+parent tree and add exactly its bound regular-file record under `decisions/`.
+The path must be new and outside the protected evidence package. No deletion,
+replacement, mode change, or unrelated addition is allowed. Boolean declarations
+are checked by exact type before body equality; JSON zero/one cannot substitute.
+
+Opaque full-history inventories and recovery graphs allow Git symlink mode
+`120000` as a blob reference only. Active materialized views still prohibit it;
+bound JSON records must be regular files. Every recovery edge checks presence and
+expected kind before the visited-object shortcut. An unreadable listed object
+(`E_FILE_READ`) is normalized to `E_RECOVERY_BUNDLE`; other filesystem safety and
+resource diagnostics retain their original codes.
+
+These additions are proposed repairs under static review, not executed evidence.
+
 Accepted protocol, inputs, canonical uncompressed JSONL, index, summary, reports,
 decisions, and receipts remain in reachable Git history. Compression is transport
 only; workflow artifacts and external object URLs are never sole evidence.

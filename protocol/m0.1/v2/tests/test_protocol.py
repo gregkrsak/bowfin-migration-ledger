@@ -335,10 +335,16 @@ class ProtocolTests(unittest.TestCase):
         family = [{
             "family_id": "ked-family", "kind": "ascii_digit_suffix", "literal": "KED-",
             "namespace": "engineering_decision",
-            "unit_kinds": ["path_component", "raw_text", "structured_key", "structured_value"],
+            "unit_kinds": ["path_component", "embedded_identity", "structured_key", "structured_value"],
         }]
         audited = audit_scan.discover(files, family, "fixture/source", "1" * 40, self.limits)
         self.assertEqual(set(keys), {row["occurrence_key"] for row in audited})
+        self.assertEqual(6, len(rows))
+        self.assertEqual({
+            ("path_component", "KED-001"), ("path_component", "KED-002"),
+            ("embedded_identity", "KED-001"), ("embedded_identity", "KED-002"),
+            ("structured_key", "KED-001"), ("structured_value", "KED-002"),
+        }, {(row["unit_kind"], row["original"]) for row in rows})
         self.assertNotIn(
             b"match_index",
             b"".join(lib.canonical_json_bytes(row["locator"], self.limits, trailing_lf=False) for row in rows),
@@ -830,10 +836,12 @@ class ProtocolTests(unittest.TestCase):
 
         ledger_base_data = b"ledger base\n"
         evidence_data = b'{"index":"bound"}\n'
+        package_prefix = f"evidence/m0.1/{source_head['commit']}"
+        index_reference = self.bound_record(package_prefix + "/generated/index.json", evidence_data)
         ledger_base_entries = [self.tree_entry("README.md", ledger_base_data)]
         evidence_entries = [
             *ledger_base_entries,
-            self.tree_entry("evidence/m0.1/index.json", evidence_data),
+            self.tree_entry(index_reference["path"], evidence_data),
         ]
         ledger_base = self.commit_evidence(
             "fixture/ledger", "main", ledger_base_entries, [], "ledger base"
@@ -935,7 +943,7 @@ class ProtocolTests(unittest.TestCase):
             },
         }
         recovery_data = lib.canonical_json_bytes(recovery_body, self.limits)
-        recovery_reference = self.bound_record("evidence/recovery.json", recovery_data)
+        recovery_reference = self.bound_record("decisions/recovery.json", recovery_data)
         recovery_entries = [
             *owner_entries,
             self.tree_entry(recovery_reference["path"], recovery_data),
@@ -947,7 +955,7 @@ class ProtocolTests(unittest.TestCase):
         record = {
             "record_class": "integration_binding", "protocol_version": "m0.1-v2", "phase": "M0.1", "sequence": ["C", "E", "D", "P"],
             "C": {"base": source_base, "introduced_commits": [source_head], "reviewed": source_head},
-            "E": {"base": ledger_base, "introduced_commits": [evidence_head], "reviewed": evidence_head, "source_candidate_commit": source_head["commit"], "source_candidate_tree": source_head["tree"], "index_sha256": "7" * 64},
+            "E": {"base": ledger_base, "introduced_commits": [evidence_head], "reviewed": evidence_head, "source_candidate_commit": source_head["commit"], "source_candidate_tree": source_head["tree"], "index_sha256": lib.sha256_hex(evidence_data), "index_record": index_reference},
             "D": {"review": review, "owner_decision": owner, "source_candidate_commit": source_head["commit"], "evidence_commit": evidence_head["commit"], "review_record": review_reference, "owner_decision_record": owner_reference},
             "P": {"source_merge": source_merge, "ledger_merge": ledger_merge, "source_head": source_head["commit"], "ledger_head": owner["commit"]},
             "recovery": {"repository": "fixture/ledger", "backup_sha256": backup_sha256, "retained_refs": ["refs/heads/main"], "tested_at": "2026-10-24T12:00:00Z", "restored_commit": evidence_head["commit"], "restored_tree": evidence_head["tree"], "recovery_commit": recovery_commit, "recovery_record": recovery_reference},
@@ -958,10 +966,50 @@ class ProtocolTests(unittest.TestCase):
             "ledger_repository": "fixture/ledger", "ledger_target_branch": "main",
             "ledger_merge_commit": ledger_merge["commit"],
             "recovery_ref": "refs/heads/main",
+            "source_change_paths": ["src/candidate.bow"],
         }
         path = self.workspace / "binding.json"
         self.write_json(path, record)
         verify.verify_binding_record(path, bundle, expected, self.limits)
+
+        wrong_index = copy.deepcopy(record)
+        wrong_index["E"]["index_sha256"] = "7" * 64
+        self.write_json(path, wrong_index)
+        self.assert_code("E_BINDING_CONTENT", verify.verify_binding_record,
+                         path, bundle, expected, self.limits)
+
+        # Rehash each numeric-Boolean body and its containing commit so rejection
+        # tests semantic type checking, not a stale digest or tree.
+        for section, body, reference, parent, field, code in (
+            ("review", review_body, review_reference, evidence_head, "owner_acceptance", "E_REVIEW_DECISION"),
+            ("owner_decision", owner_body, owner_reference, review, "merge_authorized", "E_OWNER_DECISION"),
+            ("recovery", recovery_body, recovery_reference, ledger_merge, "acceptance", "E_RECOVERY_RECORD"),
+        ):
+            with self.subTest(numeric_boolean=section):
+                bad_body = copy.deepcopy(body)
+                if field == "merge_authorized":
+                    bad_body[field] = 1
+                else:
+                    bad_body["non_authority"][field] = 0
+                data = lib.canonical_json_bytes(bad_body, self.limits)
+                ref = self.bound_record(reference["path"], data)
+                commit = self.commit_evidence("fixture/ledger", "main",
+                    [*parent["tree_entries"], self.tree_entry(ref["path"], data)],
+                    [parent["commit"]], "numeric Boolean")
+                bad = copy.deepcopy(record)
+                if section == "recovery":
+                    bad["recovery"]["recovery_commit"] = commit
+                    bad["recovery"]["recovery_record"] = ref
+                else:
+                    bad["D"][section] = commit
+                    bad["D"][section + "_record"] = ref
+                    if section == "review":
+                        bad["D"]["owner_decision"] = self.commit_evidence(
+                            "fixture/ledger", "decisions", owner_entries,
+                            [commit["commit"]], "owner follows numeric review")
+                self.write_json(path, bad)
+                self.assert_code(code, verify.verify_binding_record,
+                                 path, bundle, expected, self.limits)
 
         changed = copy.deepcopy(record)
         changed["C"]["base"]["branch"] = "prod"
@@ -1028,6 +1076,82 @@ class ProtocolTests(unittest.TestCase):
             "E_OWNER_DECISION", verify.verify_binding_record,
             path, bundle, altered_expected, self.limits,
         )
+
+    def test_compiler_intermediate_content_and_decision_preservation(self) -> None:
+        base = self.commit_evidence("fixture/source", "staging", [], [], "base")
+        final_entries = [self.tree_entry("anchor.json", b"approved\n")]
+        intermediate = self.commit_evidence("fixture/source", "candidate",
+            [self.tree_entry("bulk.jsonl", b"prohibited\n")], [base["commit"]], "bulk")
+        final = self.commit_evidence("fixture/source", "candidate", final_entries,
+            [intermediate["commit"]], "remove bulk")
+        chain = verify._introduced_chain(base, final, [intermediate, final], "C", self.limits)
+        self.assert_code("E_BINDING_CONTENT", verify._compiler_content_chain,
+                         base, final, chain, ["anchor.json"], self.limits)
+        # The allowed path cannot hide a third, transient object either.
+        transient = self.commit_evidence("fixture/source", "candidate",
+            [self.tree_entry("anchor.json", b"unapproved\n")], [base["commit"]], "third state")
+        self.assert_code("E_BINDING_CONTENT", verify._compiler_content_chain,
+                         base, final, [transient], ["anchor.json"], self.limits)
+        verify._compiler_content_chain(base, final, [final], ["anchor.json"], self.limits)
+        self.assert_code("E_BINDING_CONTENT", verify._compiler_content_chain,
+                         base, final, [final], [], self.limits)
+
+        prefix = "evidence/m0.1/" + "a" * 40
+        protected = self.tree_entry(prefix + "/generated/index.json", b"{}\n")
+        parent = {"tree_entries": [protected]}
+        data = b'{"review":"synthetic"}\n'
+        ref = self.bound_record("decisions/review.json", data)
+        addition = self.tree_entry(ref["path"], data)
+        verify._record_addition(parent, {"tree_entries": [protected, addition]}, ref, prefix)
+        for entries in ([addition], [dict(protected, blob_sha1="f" * 40), addition],
+                        [protected, addition, self.tree_entry("extra.txt", b"extra")]):
+            self.assert_code("E_BINDING_CONTENT", verify._record_addition,
+                             parent, {"tree_entries": entries}, ref, prefix)
+        overwritten = self.bound_record(protected["path"], data)
+        self.assert_code("E_BINDING_CONTENT", verify._record_addition, parent,
+                         {"tree_entries": [self.tree_entry(protected["path"], data)]},
+                         overwritten, prefix)
+
+    def test_opaque_symlink_inventory_not_bound_record(self) -> None:
+        data = b"{}\n"
+        entry = dict(self.tree_entry("record.json", data), mode="120000")
+        self.assertEqual([entry], verify._tree_inventory([entry], "opaque", self.limits))
+        raw_tree = b"120000 record.json\0" + bytes.fromhex(entry["blob_sha1"])
+        self.assertEqual([("blob", entry["blob_sha1"])],
+                         verify._git_tree_references(raw_tree, "fixture", self.limits))
+        self.assert_code("E_DECISION_RECORD", verify._bound_json_record,
+                         self.bound_record("record.json", data),
+                         {"tree_entries": [entry]}, "record", self.limits)
+        self.assertNotIn("120000", lib.FILE_MODES)
+
+    def test_recovery_wrong_kind_after_prior_visit(self) -> None:
+        # B is a real commit object, referenced first as a parent and then as a
+        # regular-file blob. No hash collision or broken object digest is used.
+        base = self.commit_evidence("fixture/ledger", "main", [], [], "B")
+        entries = [{"path": "wrong-kind", "mode": "100644", "blob_sha1": base["commit"]}]
+        head = self.commit_evidence("fixture/ledger", "main", entries, [base["commit"]], "E")
+        objects = {}
+        for commit in (base, head):
+            objects[commit["commit"]] = ("commit", base64.b64decode(commit["commit_object_base64"]))
+            _, trees = lib.git_tree_objects(commit["tree_entries"], self.limits)
+            objects.update({identity: ("tree", data) for identity, data in trees.items()})
+        root = self.workspace / "wrong-kind-bundle"
+        (root / "objects").mkdir(parents=True)
+        descriptors = []
+        for identity, (kind, data) in sorted(objects.items()):
+            relative = f"objects/{identity}"
+            (root / relative).write_bytes(data)
+            descriptors.append({"sha1": identity, "kind": kind, "path": relative,
+                                "sha256": lib.sha256_hex(data), "byte_count": len(data)})
+        manifest = {"record_class": "git_recovery_bundle", "protocol_version": "m0.1-v2",
+                    "repository": "fixture/ledger", "refs": [{"name": "refs/heads/main", "commit": head["commit"]}],
+                    "objects": descriptors}
+        raw = lib.canonical_json_bytes(manifest, self.limits)
+        (root / "manifest.json").write_bytes(raw)
+        recovery = {"backup_sha256": lib.sha256_hex(raw), "retained_refs": ["refs/heads/main"]}
+        self.assert_code("E_RECOVERY_BUNDLE", verify._verify_recovery_bundle,
+                         root, recovery, "fixture/ledger", "refs/heads/main", head,
+                         [base, head], self.limits)
 
     def test_mutation_manifest_maps_to_real_tests(self) -> None:
         manifest = json.loads((FIXTURES / "mutations.json").read_text(encoding="utf-8"))

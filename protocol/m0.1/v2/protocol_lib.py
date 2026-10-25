@@ -35,6 +35,8 @@ UNIT_KINDS = frozenset(
 )
 ROLES = frozenset({"live", "compatibility", "historical"})
 FILE_MODES = frozenset({"100644", "100755"})
+# Opaque Git history may describe symlinks; active exports still use FILE_MODES.
+GIT_BLOB_MODES = FILE_MODES | {"120000"}
 TREE_ENTRY_MODES = frozenset({"40000", "100644", "100755", "120000", "160000"})
 
 

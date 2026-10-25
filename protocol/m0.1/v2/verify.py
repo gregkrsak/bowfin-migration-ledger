@@ -1417,7 +1417,7 @@ def _tree_inventory(
         if prior is not None and encoded <= prior:
             lib.fail("E_COMMIT_TREE", f"{label} is not strictly path ordered")
         prior = encoded
-        if entry["mode"] not in lib.FILE_MODES:
+        if entry["mode"] not in lib.GIT_BLOB_MODES:
             lib.fail("E_COMMIT_TREE", f"unsupported file mode in {item_label}")
         lib.require_sha1(entry["blob_sha1"], f"{item_label}.blob_sha1")
         entries.append(dict(entry))
@@ -1449,7 +1449,8 @@ def _bound_json_record(
     ):
         lib.fail("E_DECISION_RECORD", f"{label} byte identity mismatch")
     entries = {entry["path"]: entry for entry in commit["tree_entries"]}
-    if path not in entries or entries[path]["blob_sha1"] != value["blob_sha1"]:
+    if (path not in entries or entries[path]["blob_sha1"] != value["blob_sha1"]
+            or entries[path]["mode"] not in lib.FILE_MODES):
         lib.fail("E_DECISION_RECORD", f"{label} is not in its authenticated commit tree")
     document = canonical_bytes(
         data, limits, label, limits["max_input_file_bytes"]
@@ -1457,6 +1458,63 @@ def _bound_json_record(
     if not isinstance(document, dict):
         lib.fail("E_DECISION_RECORD", f"{label} content must be an object")
     return document, value
+
+
+def _inventory_map(commit: dict[str, Any]) -> dict[str, tuple[str, str]]:
+    """Compare authenticated content and modes, not just ancestry labels."""
+    return {item["path"]: (item["mode"], item["blob_sha1"])
+            for item in commit["tree_entries"]}
+
+
+def _compiler_content_chain(base, reviewed, chain, allowed_paths, limits):
+    """Every intermediate tree contains only base or reviewed-final objects.
+
+    The caller supplies the exact changed-path set independently after reviewing
+    the final content against the compiler content policy. This is not a content
+    classifier: a candidate-supplied allowlist is not an independent approval.
+    """
+    if not isinstance(allowed_paths, list) or len(allowed_paths) > limits["max_source_files"]:
+        lib.fail("E_BINDING_CONTENT", "expected source paths must be a bounded array")
+    allowed = {lib.validate_relpath(path, limits).as_posix() for path in allowed_paths}
+    if len(allowed) != len(allowed_paths):
+        lib.fail("E_BINDING_CONTENT", "expected source paths must be unique")
+    before, final = _inventory_map(base), _inventory_map(reviewed)
+    changed = {path for path in before.keys() | final.keys()
+               if before.get(path) != final.get(path)}
+    if changed != allowed:
+        lib.fail("E_BINDING_CONTENT", "final changed paths differ from independent policy")
+    for commit in chain:
+        current = _inventory_map(commit)
+        for path in before.keys() | current.keys() | final.keys():
+            permitted = (before.get(path), final.get(path)) if path in allowed else (before.get(path),)
+            if current.get(path) not in permitted:
+                lib.fail("E_BINDING_CONTENT", "introduced compiler content is outside approved states")
+
+
+def _record_addition(parent, child, reference, package_prefix):
+    """Preserve the entire parent tree and append exactly one decision record."""
+    before, after = _inventory_map(parent), _inventory_map(child)
+    path = reference["path"]
+    if (not path.startswith("decisions/") or path == package_prefix
+            or path.startswith(package_prefix + "/") or path in before):
+        lib.fail("E_BINDING_CONTENT", "record must be new and outside the evidence package")
+    addition = after.get(path)
+    if addition is None or addition[0] not in lib.FILE_MODES or addition[1] != reference["blob_sha1"]:
+        lib.fail("E_BINDING_CONTENT", "record addition is not a regular bound blob")
+    if after != {**before, path: addition}:
+        lib.fail("E_BINDING_CONTENT", "decision successor modifies unrelated or protected content")
+
+
+def _strict_body_booleans(body, expected, code):
+    """JSON numbers cannot stand in for Boolean authority declarations."""
+    for key, value in expected.items():
+        actual = body.get(key)
+        if isinstance(value, bool) and actual is not value:
+            lib.fail(code, "authority declaration must have exact Boolean type")
+        if isinstance(value, dict):
+            if not isinstance(actual, dict):
+                lib.fail(code, "authority declarations must be an object")
+            _strict_body_booleans(actual, value, code)
 
 
 def _introduced_chain(
@@ -1502,7 +1560,7 @@ def _git_tree_references(data: bytes, label: str, limits: dict[str, int]) -> lis
             name = data[space + 1:terminator].decode("utf-8", "strict")
         except UnicodeError as error:
             lib.fail("E_RECOVERY_BUNDLE", f"invalid tree entry in {label}: {error}")
-        if mode not in lib.FILE_MODES | {"40000"}:
+        if mode not in lib.GIT_BLOB_MODES | {"40000"}:
             lib.fail("E_RECOVERY_BUNDLE", f"unsupported tree mode in {label}")
         lib._validate_tree_component(name, limits, f"{label}.name")
         sort_key = name.encode("utf-8") + (b"/" if mode == "40000" else b"")
@@ -1608,7 +1666,12 @@ def _verify_recovery_bundle(
         total += size
         if total > limits["max_total_source_bytes"]:
             lib.fail("E_RECOVERY_BUNDLE", "recovery bundle exceeds total-byte bound")
-        data = lib.read_bounded_file(root / expected_path, limits["max_source_file_bytes"])
+        try:
+            data = lib.read_bounded_file(root / expected_path, limits["max_source_file_bytes"])
+        except lib.ProtocolError as error:
+            if error.code != "E_FILE_READ":
+                raise
+            lib.fail("E_RECOVERY_BUNDLE", f"listed recovery object cannot be read: {identity}")
         if (
             len(data) != size
             or lib.sha256_hex(data) != descriptor["sha256"]
@@ -1630,12 +1693,12 @@ def _verify_recovery_bundle(
     visited: set[str] = set()
     while pending:
         expected_kind, identity = pending.pop()
-        if identity in visited:
-            continue
-        visited.add(identity)
         item = objects.get(identity)
         if item is None or item[0] != expected_kind:
             lib.fail("E_RECOVERY_BUNDLE", f"missing reachable {expected_kind}: {identity}")
+        if identity in visited:
+            continue
+        visited.add(identity)
         kind, data = item
         if kind == "commit":
             pending.extend(_git_commit_references(data, identity))
@@ -1646,20 +1709,20 @@ def _verify_recovery_bundle(
 def verify_binding_record(
     path: Path,
     recovery_bundle_root: Path,
-    expected_integration: dict[str, str],
+    expected_integration: dict[str, Any],
     limits: dict[str, int],
 ) -> None:
     expected_fields = {
         "source_repository", "source_target_branch", "source_merge_commit",
         "ledger_repository", "ledger_target_branch", "ledger_merge_commit",
-        "recovery_ref",
+        "recovery_ref", "source_change_paths",
     }
     if not isinstance(expected_integration, dict):
         lib.fail("E_BINDING_TARGET", "expected integration values must be an object")
     lib.require_keys(
         expected_integration, expected_fields, set(), "expected-integration"
     )
-    for field in expected_fields - {"source_merge_commit", "ledger_merge_commit"}:
+    for field in expected_fields - {"source_merge_commit", "ledger_merge_commit", "source_change_paths"}:
         _nonempty_string(expected_integration[field], f"expected-integration.{field}")
     for field in ("source_merge_commit", "ledger_merge_commit"):
         lib.require_sha1(expected_integration[field], f"expected-integration.{field}")
@@ -1679,7 +1742,7 @@ def verify_binding_record(
 
     for section, fields in (
         ("C", {"base", "introduced_commits", "reviewed"}),
-        ("E", {"base", "introduced_commits", "reviewed", "source_candidate_commit", "source_candidate_tree", "index_sha256"}),
+        ("E", {"base", "introduced_commits", "reviewed", "source_candidate_commit", "source_candidate_tree", "index_sha256", "index_record"}),
         ("D", {"review", "owner_decision", "source_candidate_commit", "evidence_commit", "review_record", "owner_decision_record"}),
         ("P", {"source_merge", "ledger_merge", "source_head", "ledger_head"}),
     ):
@@ -1715,6 +1778,15 @@ def verify_binding_record(
         E_base, E_reviewed, record["E"]["introduced_commits"],
         "E.introduced_commits", limits,
     )
+    _compiler_content_chain(C_base, C_reviewed, C_chain,
+                            expected_integration["source_change_paths"], limits)
+    package_prefix = f"evidence/m0.1/{C_reviewed['commit']}"
+    _index_body, index_reference = _bound_json_record(
+        record["E"]["index_record"], E_reviewed, "E.index_record", limits
+    )
+    if (index_reference["path"] != package_prefix + "/generated/index.json"
+            or index_reference["sha256"] != record["E"]["index_sha256"]):
+        lib.fail("E_BINDING_CONTENT", "E index digest/path is not bound to its actual bytes")
     if record["E"]["source_candidate_commit"] != C_reviewed["commit"] or record["E"]["source_candidate_tree"] != C_reviewed["tree"]:
         lib.fail("E_BINDING_CORRESPONDENCE", "E does not bind reviewed C")
     if (
@@ -1740,6 +1812,8 @@ def verify_binding_record(
         "disposition": "ready_for_owner_decision",
         "non_authority": {"owner_acceptance": False, "merge_permission": False},
     }
+    _record_addition(E_reviewed, D_review, review_reference, package_prefix)
+    _strict_body_booleans(review_body, expected_review, "E_REVIEW_DECISION")
     if review_body != expected_review:
         lib.fail("E_REVIEW_DECISION", "independent review body has incorrect meaning")
     owner_body, _owner_reference = _bound_json_record(
@@ -1760,6 +1834,8 @@ def verify_binding_record(
         "disposition": "accepted_for_integration",
         "merge_authorized": True,
     }
+    _record_addition(D_review, D_owner, _owner_reference, package_prefix)
+    _strict_body_booleans(owner_body, expected_owner, "E_OWNER_DECISION")
     if owner_body != expected_owner:
         lib.fail("E_OWNER_DECISION", "owner decision body has incorrect meaning")
 
@@ -1837,6 +1913,8 @@ def verify_binding_record(
             "acceptance": False, "merge_permission": False, "next_phase": False,
         },
     }
+    _record_addition(ledger_merge, recovery_commit, _recovery_reference, package_prefix)
+    _strict_body_booleans(recovery_body, expected_recovery, "E_RECOVERY_RECORD")
     if recovery_body != expected_recovery:
         lib.fail("E_RECOVERY_RECORD", "recovery evidence body has incorrect meaning")
     _verify_recovery_bundle(
@@ -1892,6 +1970,7 @@ def parse_args() -> argparse.Namespace:
     binding.add_argument("--expected-ledger-target-branch", required=True)
     binding.add_argument("--expected-ledger-merge-commit", required=True)
     binding.add_argument("--expected-recovery-ref", required=True)
+    binding.add_argument("--expected-source-change-path", action="append", default=[])
     freshness = subcommands.add_parser("freshness")
     freshness.add_argument("--external-surfaces", required=True, type=Path)
     freshness.add_argument("--surface-register", required=True, type=Path)
@@ -1951,6 +2030,7 @@ def main() -> int:
             "ledger_target_branch": args.expected_ledger_target_branch,
             "ledger_merge_commit": args.expected_ledger_merge_commit,
             "recovery_ref": args.expected_recovery_ref,
+            "source_change_paths": args.expected_source_change_path,
         }
         verify_binding_record(
             args.record, args.recovery_bundle, expected_integration, limits

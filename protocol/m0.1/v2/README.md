@@ -132,3 +132,14 @@ tooling and other non-source dependency classes.
 
 `<new-package-path>` must not exist. The generator creates it exclusively and
 writes `publication.json` last; a pre-created empty directory is not accepted.
+
+## Current focused repair boundary
+
+P12/P15/P21–P24 repairs bind intermediate compiler content, actual E index bytes,
+append-only decision successors, every recovery edge's object kind, and strict
+Boolean types. Binding verification now requires independently reviewed source
+change paths (`--expected-source-change-path`, repeated; empty means no changes).
+See PROTOCOL.md §16 for the exact conservative policy and evidence limits.
+The candidate and its new controls have not been executed; independent static
+review and separately authorized bounded execution remain outstanding.
+
