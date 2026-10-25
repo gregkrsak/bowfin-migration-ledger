@@ -2,7 +2,8 @@
 
 **Status:** Accepted descriptive-ledger foundation, subordinate to the accepted
 migration contract in `gregkrsak/klyxr`. This repository cannot amend or replace
-that contract. Proposed M0.1 v2 tooling remains unaccepted.
+that contract. The exact M0.1 v2 protocol/tooling revision merged by ledger PR #3
+is accepted; production inputs, migration evidence, M0.1, and M1 remain unaccepted.
 
 ## 1. Controlling question
 
@@ -209,6 +210,12 @@ Unreviewed candidate tooling is not executed. An independent reviewer first
 examines the exact revision statically. Greg may then authorize isolated synthetic
 self-test execution of that same revision. Production compact inputs and evidence
 generation require another later authorization after tooling acceptance.
+
+That protocol/tooling sequence completed for reviewed head
+`0b81e183df466890a779f1bbd777c6c864835a3b`, tree
+`c3b7438fbb20ee1debcc8e00490449975f9c2084`, integrated by ordinary merge commit
+`8228246b221ee2c7571e5302a1357e3cfba27787`. Its durable review, owner-decision,
+and merge record is preserved under `decisions/m0.1/`.
 
 No protocol review, test result, tooling merge, or ledger record accepts M0.1 or
 authorizes M1.

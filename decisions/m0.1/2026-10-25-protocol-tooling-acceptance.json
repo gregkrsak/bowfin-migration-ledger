@@ -1,0 +1,94 @@
+{
+  "accepted_scope": [
+    "the exact M0.1 v2 protocol specification",
+    "the exact M0.1 v2 schemas and fixed limits",
+    "the exact deterministic generator, independent auditor, verifier, and shared protocol library",
+    "the exact synthetic fixtures and tests"
+  ],
+  "capture": {
+    "captured_at": "2026-10-25T20:35:42Z",
+    "captured_by": "Miles",
+    "method": "verbatim review preservation and owner-decision transcription from the active ChatGPT project conversation",
+    "verification_limit": "Copied bodies and digests do not authenticate human identity or authority by themselves; Greg's sole-owner process role, the exact pre-merge confirmation, and the verified human merge provide the governing process context."
+  },
+  "closeout_authorization": {
+    "authorizer": "Greg Krsak",
+    "source_body": "Ok, let's do that.",
+    "source_body_sha256": "7b5a7fa35096df8612ca1a9451ba01010bb4f375910135f0a184801a64b1685d",
+    "source_record_id": "active ChatGPT project conversation turn",
+    "source_url": null
+  },
+  "excluded_scope": [
+    "production compact-input construction",
+    "scanner execution against the compiler repository",
+    "migration-evidence generation",
+    "M0.1 acceptance or completion",
+    "M1 or later-phase authorization",
+    "compiler or governance repository modification",
+    "release, publication, repository rename, domain cutover, or external writes"
+  ],
+  "execution_evidence": {
+    "corrective_supplement_url": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/3#issuecomment-6402498996",
+    "interpreter": "/usr/bin/python3.12 (Python 3.12.3)",
+    "original_report_url": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/3#issuecomment-6402165361",
+    "result": "40 of 40 named synthetic tests passed with LAUNCH_EXIT=0",
+    "scope_limit": "One bounded synthetic run on the recorded interpreter; not production-input, cross-platform, hostile-code-sandbox, or migration-acceptance evidence."
+  },
+  "integration": {
+    "base_commit_before_merge": "4ccfb4d004773adacbbd36a8a8807fbc7583d54a",
+    "candidate_branch": "m01-v2-protocol-tooling",
+    "method": "ordinary_merge_commit",
+    "merge_commit": "8228246b221ee2c7571e5302a1357e3cfba27787",
+    "pull_request": 3,
+    "repository": "gregkrsak/bowfin-migration-ledger",
+    "result_tree": "c3b7438fbb20ee1debcc8e00490449975f9c2084",
+    "target_branch": "main",
+    "tree_verification": "The reviewed head-to-merge comparison is one commit ahead with zero changed files, so the ordinary merge retains the reviewed tree.",
+    "verified_merged": true
+  },
+  "m0_1_effect": {
+    "evidence_accepted": false,
+    "m0_1_accepted": false,
+    "m0_1_complete": false,
+    "m1_authorized": false,
+    "protocol_tooling_accepted": true,
+    "production_execution_authorized": false,
+    "production_inputs_authorized": false
+  },
+  "owner_decision": {
+    "decision": "accepted_and_merged",
+    "owner": "Greg Krsak",
+    "process_context": "Greg performed the ordinary merge immediately after exact repository, PR, branch, head, tree, target, readiness, mergeability, and scope confirmation.",
+    "source_body": "Merged",
+    "source_body_sha256": "bd0a06202c440a9ee86f50165aa66886259d89c3d219e2ef47a759cde6a38c00",
+    "source_record_id": "active ChatGPT project conversation turn",
+    "source_url": null
+  },
+  "phase": "M0.1",
+  "record_class": "protocol_tooling_acceptance",
+  "record_version": 1,
+  "review": {
+    "body_blob_sha1": "989b4c3020a9d77e27034310eb12d1007342d337",
+    "body_byte_count": 17956,
+    "body_path": "decisions/m0.1/reviews/2026-10-25-protocol-tooling-final-review.md",
+    "body_sha256": "26d69659d11d625d06f05d27a3ea8fe499d6f501714b95b64c8ba2702d4a4c5e",
+    "disposition": "NO BLOCKING FINDINGS IDENTIFIED — BML-EX01 RESOLVED.",
+    "publication_context": "Sarah's complete report was supplied by Greg in the active ChatGPT project conversation and had not been posted to GitHub.",
+    "recommendation": "This exact revision is ready for Greg's separate protocol-acceptance and merge decision.",
+    "source_record_id": "Pasted text(20261025-202703).txt",
+    "source_url": null,
+    "stated_reviewer": "Sarah"
+  },
+  "subject": {
+    "accepted_base_commit": "4ccfb4d004773adacbbd36a8a8807fbc7583d54a",
+    "candidate_branch": "m01-v2-protocol-tooling",
+    "protocol_path": "protocol/m0.1/v2",
+    "protocol_subtree": "e0293933add0ac558e666da3aad02b77ac9ae969",
+    "pull_request": 3,
+    "repository": "gregkrsak/bowfin-migration-ledger",
+    "reviewed_head": "0b81e183df466890a779f1bbd777c6c864835a3b",
+    "reviewed_tree": "c3b7438fbb20ee1debcc8e00490449975f9c2084",
+    "sole_parent": "7464c8358973ea99c9fbb2cdbee11e4094429abb",
+    "target_branch": "main"
+  }
+}

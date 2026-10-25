@@ -1,8 +1,8 @@
 # Bowfin Migration Ledger
 
-**Status:** Accepted descriptive-ledger foundation. M0.1 v2 protocol and tooling
-remain proposed until exact-revision independent review, bounded test execution,
-owner acceptance, and ordinary merge. This repository grants no product,
+**Status:** Accepted descriptive-ledger foundation and accepted M0.1 v2
+protocol/tooling revision. Production compact inputs, migration evidence, M0.1,
+and M1 remain separately gated and unaccepted. This repository grants no product,
 execution, release, approval, replay, custody, resource, or merge authority.
 
 ## Purpose
@@ -58,19 +58,20 @@ Any change to the source candidate, accepted base, governing contract, accepted
 tooling, compact inputs, or required external/visual snapshot invalidates the
 corresponding evidence binding. There is no informal relevant-drift exception.
 
-## Current M0.1 v2 preparation boundary
+## Accepted M0.1 v2 protocol/tooling boundary
 
-Greg separately authorized preparation of the protocol specification and tooling
-after Amendment 2 merged. That authorization permits a branch and draft PR for:
+The exact M0.1 v2 protocol/tooling revision received independent static review,
+bounded synthetic execution, focused independent confirmation, Greg's acceptance,
+and ordinary merge through PR #3. The accepted content is the reviewed head
+`0b81e183df466890a779f1bbd777c6c864835a3b`, tree
+`c3b7438fbb20ee1debcc8e00490449975f9c2084`, integrated by merge commit
+`8228246b221ee2c7571e5302a1357e3cfba27787`.
 
-- protocol text and schemas;
-- deterministic generator, independent auditor, and verifier candidates;
-- fixed limits and canonicalization rules; and
-- synthetic fixtures and tests.
-
-It does not authorize execution of unreviewed candidate tooling, production
-classification inputs, migration evidence generation, M0.1 acceptance, M1, or
-merge. See `decisions/m0.1/2026-10-24-protocol-preparation-authorization.json`.
+This acceptance makes that exact protocol/tooling revision eligible as a current
+M0.1 dependency. It does not authorize production classification inputs, scanner
+execution against the compiler repository, migration evidence generation, M0.1
+acceptance, M1, or later work. See the preparation authorization and protocol-
+tooling acceptance records under `decisions/m0.1/`.
 
 ## Content policy
 
