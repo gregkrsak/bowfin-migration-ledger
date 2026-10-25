@@ -30,12 +30,16 @@ python3 -I generate.py \
   --source-repository <owner/repository> \
   --source-commit <40-hex-commit> \
   --source-tree <40-hex-tree> \
+  --source-view-prefix <repository-relative-prefix-or-empty-string> \
+  --source-view-tree <40-hex-tree> \
   --input-root <read-only-input-snapshot> \
   --input-export <authenticated-input-export.json> \
   --input-repository <owner/repository> \
   --input-commit <40-hex-commit> \
   --input-tree <40-hex-tree> \
-  --output <empty-directory>
+  --input-view-prefix <repository-relative-prefix> \
+  --input-view-tree <40-hex-tree> \
+  --output <new-package-path>
 
 python3 -I audit_scan.py \
   --source-root <read-only-snapshot> \
@@ -43,11 +47,15 @@ python3 -I audit_scan.py \
   --source-repository <owner/repository> \
   --source-commit <40-hex-commit> \
   --source-tree <40-hex-tree> \
+  --source-view-prefix <repository-relative-prefix-or-empty-string> \
+  --source-view-tree <40-hex-tree> \
   --input-root <read-only-input-snapshot> \
   --input-export <authenticated-input-export.json> \
   --input-repository <owner/repository> \
   --input-commit <40-hex-commit> \
   --input-tree <40-hex-tree> \
+  --input-view-prefix <repository-relative-prefix> \
+  --input-view-tree <40-hex-tree> \
   --output <new-audit-result.json>
 
 python3 -I verify.py package \
@@ -67,3 +75,6 @@ python3 -I tests/test_protocol.py
 
 Production inputs, evidence generation, workflow activation, and phase acceptance
 remain separately gated.
+
+`<new-package-path>` must not exist. The generator creates it exclusively and
+writes `publication.json` last; a pre-created empty directory is not accepted.

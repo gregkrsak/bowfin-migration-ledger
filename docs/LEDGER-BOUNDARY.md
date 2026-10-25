@@ -59,17 +59,22 @@ Every current M0.1 evidence record must identify at least:
 | `governing_contract` | Repository, commit, tree, path, and blob |
 | `tooling` | Ledger repository, accepted commit/tree, paths, and blobs |
 | `inputs` | Exact eight-file set, aggregate digest, and authenticated export |
-| `generated` | Index, summary, chunk, and aggregate identities |
+| `generated` | Manifest, index, summary, publication-marker, chunk, and aggregate identities |
 | `non_authority` | Explicit denials of executable or decision authority |
 
 Required fields may not be inferred from directory names, branch names, issue
 numbers, comments, timestamps, or conversational context. Unknown mapping kinds,
 roles, or required status records fail closed.
 
-Authenticated exports carry raw commit objects and complete ordered path, mode,
-blob-SHA-1, SHA-256, and byte-count inventories. The verifier reconstructs each
-tree and compares every actual snapshot path, mode, and byte. A manifest that
-only names a commit or hashes itself does not prove correspondence.
+Authenticated exports carry raw commit objects, repository-root trees, explicit
+eligible-view prefixes and trees, and complete root-to-view Git tree proofs. Each
+proof node supplies all direct entries required to reconstruct that tree. Opaque
+siblings—including the preserved archive—remain authenticated object identities
+without becoming readable or eligible dependencies. The selected view carries a
+complete ordered path, mode, blob-SHA-1, SHA-256, and byte-count inventory; the
+verifier reconstructs its subtree and compares every materialized path, mode, and
+byte. A manifest that only names a commit, names a subtree, or hashes itself does
+not prove correspondence.
 
 An unaccepted historical snapshot instead uses its archival wrapper and records
 origin repository/reference, origin commit/tree, imported path set, sizes, and
@@ -198,8 +203,10 @@ complete inspection.
 ## 12. Retention, recovery, transfer, and retirement
 
 Canonical generated occurrences are bounded, uncompressed JSONL with an
-authenticated index. Compression is transport only; expiring workflow artifacts,
-caches, attachments, and object-store URLs are never sole evidence.
+authenticated index and a last-written completion marker. Missing markers and
+packages that exceed their cumulative read budget fail closed. Compression is
+transport only; expiring workflow artifacts, caches, attachments, and object-store
+URLs are never sole evidence.
 
 Accepted protocol, inputs, evidence, decisions, and receipts remain reachable in
 Git plus a documented backup/recovery path. Repository transfer records old and

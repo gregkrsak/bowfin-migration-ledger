@@ -168,14 +168,38 @@ def validate_rules(
     return result
 
 
-def _literal_positions(text: str, needle: str) -> Iterator[int]:
-    position = 0
-    while position <= len(text):
-        found = text.find(needle, position)
-        if found < 0:
-            return
-        yield found
-        position = found + 1
+def _literal_positions(text: str, needle: str, budget: Any) -> Iterator[int]:
+    """Yield overlapping literal matches with every comparison charged."""
+    if not needle:
+        return
+    table = [0] * len(needle)
+    prefix = 0
+    cursor = 1
+    while cursor < len(needle):
+        budget.charge(1)
+        if needle[cursor] == needle[prefix]:
+            prefix += 1
+            table[cursor] = prefix
+            cursor += 1
+        elif prefix:
+            prefix = table[prefix - 1]
+        else:
+            cursor += 1
+    matched = 0
+    for index, character in enumerate(text):
+        while matched:
+            budget.charge(1)
+            if character == needle[matched]:
+                break
+            matched = table[matched - 1]
+        if not matched:
+            budget.charge(1)
+            if character != needle[0]:
+                continue
+        matched += 1
+        if matched == len(needle):
+            yield index - len(needle) + 1
+            matched = table[matched - 1]
 
 
 def _byte_offsets(text: str) -> list[int]:
@@ -274,7 +298,7 @@ def discover(
                 budget.charge(len(component))
                 offsets = _byte_offsets(component)
                 component_bytes = component.encode("utf-8")
-                for position in _literal_positions(component, original):
+                for position in _literal_positions(component, original, budget):
                     start, end = offsets[position], offsets[position + len(original)]
                     locator = {
                         "component_index": component_index,
@@ -289,7 +313,7 @@ def discover(
                     )
             if text is not None and text_offsets is not None:
                 budget.charge(len(text))
-                for position in _literal_positions(text, original):
+                for position in _literal_positions(text, original, budget):
                     start, end = text_offsets[position], text_offsets[position + len(original)]
                     locator = {"byte_start": start, "byte_end": end}
                     append(
@@ -311,7 +335,7 @@ def discover(
                     for mapping in mappings:
                         original = mapping["original"]
                         budget.charge(len(value))
-                        for position in _literal_positions(value, original):
+                        for position in _literal_positions(value, original, budget):
                             start, end = offsets[position], offsets[position + len(original)]
                             locator = {
                                 "json_pointer": pointer,
@@ -400,6 +424,8 @@ def _identity_arguments(parser: argparse.ArgumentParser, prefix: str) -> None:
     parser.add_argument(f"--{prefix}-repository", required=True)
     parser.add_argument(f"--{prefix}-commit", required=True)
     parser.add_argument(f"--{prefix}-tree", required=True)
+    parser.add_argument(f"--{prefix}-view-prefix", required=True)
+    parser.add_argument(f"--{prefix}-view-tree", required=True)
     parser.add_argument(f"--{prefix}-fixture", action="store_true")
 
 
@@ -418,11 +444,13 @@ def main() -> int:
     limits = lib.load_limits(Path(__file__).resolve().with_name("limits.json"))
     _source_export, files = lib.verify_git_export(
         args.source_root, args.source_export, limits, args.source_repository,
-        args.source_commit, args.source_tree, args.source_fixture,
+        args.source_commit, args.source_tree, args.source_view_prefix,
+        args.source_view_tree, args.source_fixture,
     )
     _input_export, input_files = lib.verify_git_export(
         args.input_root, args.input_export, limits, args.input_repository,
-        args.input_commit, args.input_tree, args.input_fixture,
+        args.input_commit, args.input_tree, args.input_view_prefix,
+        args.input_view_tree, args.input_fixture,
     )
     inputs = dict(input_files)
     required_inputs = {"mappings.json", "classification-rules.json"}

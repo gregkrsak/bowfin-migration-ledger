@@ -18,6 +18,7 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -97,6 +98,7 @@ class ProtocolTests(unittest.TestCase):
             "commit_object_base64": base64.b64encode(raw_commit).decode("ascii"),
             "fixture": fixture,
             "eligibility": "synthetic_fixture" if fixture else "current_accepted_dependency",
+            "view_prefix": "", "view_tree": tree, "tree_proof": [],
             "entries": entries,
         }
         path = root.parent / f"{root.name}-export.json"
@@ -122,8 +124,8 @@ class ProtocolTests(unittest.TestCase):
             self.write_json(inputs / relative, document)
         source_export_path, source_export = self.make_export(source, "fixture/source")
         input_export_path, input_export = self.make_export(inputs, "fixture/inputs")
-        _, source_files = lib.verify_git_export(source, source_export_path, self.limits, "fixture/source", source_export["commit"], source_export["tree"], True)
-        _, input_files = lib.verify_git_export(inputs, input_export_path, self.limits, "fixture/inputs", input_export["commit"], input_export["tree"], True)
+        _, source_files = lib.verify_git_export(source, source_export_path, self.limits, "fixture/source", source_export["commit"], source_export["tree"], "", source_export["tree"], True)
+        _, input_files = lib.verify_git_export(inputs, input_export_path, self.limits, "fixture/inputs", input_export["commit"], input_export["tree"], "", input_export["tree"], True)
         compact = dict(input_files)
         mappings = generate.validate_mappings(lib.strict_json_bytes(compact["mappings.json"], self.limits, "mappings"), self.limits)
         rules = generate.validate_rules(lib.strict_json_bytes(compact["classification-rules.json"], self.limits, "rules"), mappings, self.limits)
@@ -182,19 +184,95 @@ class ProtocolTests(unittest.TestCase):
         document = copy.deepcopy(built["source_export"])
         document["tree"] = "0" * 40
         self.write_json(built["source_export_path"], document)
-        self.assert_code("E_EXPORT_IDENTITY", lib.verify_git_export, built["source"], built["source_export_path"], self.limits, "fixture/source", document["commit"], built["source_export"]["tree"], True)
+        self.assert_code("E_EXPORT_IDENTITY", lib.verify_git_export, built["source"], built["source_export_path"], self.limits, "fixture/source", document["commit"], built["source_export"]["tree"], "", built["source_export"]["tree"], True)
 
     def test_authenticated_export_rejects_stale_bytes_mode_and_extra_path(self) -> None:
         built = self.build_valid("stale")
         (built["source"] / "notes.txt").write_text("changed", encoding="utf-8")
-        self.assert_code("E_EXPORT_CONTENT", lib.verify_git_export, built["source"], built["source_export_path"], self.limits, "fixture/source", built["source_export"]["commit"], built["source_export"]["tree"], True)
+        self.assert_code("E_EXPORT_CONTENT", lib.verify_git_export, built["source"], built["source_export_path"], self.limits, "fixture/source", built["source_export"]["commit"], built["source_export"]["tree"], "", built["source_export"]["tree"], True)
         built = self.build_valid("extra")
         (built["source"] / "extra.txt").write_text("extra", encoding="utf-8")
-        self.assert_code("E_EXPORT_PATH_SET", lib.verify_git_export, built["source"], built["source_export_path"], self.limits, "fixture/source", built["source_export"]["commit"], built["source_export"]["tree"], True)
+        self.assert_code("E_EXPORT_PATH_SET", lib.verify_git_export, built["source"], built["source_export_path"], self.limits, "fixture/source", built["source_export"]["commit"], built["source_export"]["tree"], "", built["source_export"]["tree"], True)
 
     def test_export_eligibility_separates_fixture_and_production(self) -> None:
         built = self.build_valid("eligibility")
-        self.assert_code("E_EXPORT_IDENTITY", lib.verify_git_export, built["source"], built["source_export_path"], self.limits, "fixture/source", built["source_export"]["commit"], built["source_export"]["tree"], False)
+        self.assert_code("E_EXPORT_IDENTITY", lib.verify_git_export, built["source"], built["source_export_path"], self.limits, "fixture/source", built["source_export"]["commit"], built["source_export"]["tree"], "", built["source_export"]["tree"], False)
+
+    def test_authenticated_subtree_view_keeps_archive_opaque_and_ineligible(self) -> None:
+        repository_root = self.workspace / "view-repository"
+        (repository_root / "protocol" / "current").mkdir(parents=True)
+        (repository_root / "archive" / "unaccepted").mkdir(parents=True)
+        (repository_root / "protocol" / "current" / "current.txt").write_bytes(b"current\n")
+        (repository_root / "archive" / "unaccepted" / "history.txt").write_bytes(b"history\n")
+        raw_commit = (
+            b"tree 8f3fbf9033050d4197f49028cfb71f6011e6e2fa\n"
+            b"author Fixture <fixture@example.invalid> 0 +0000\n"
+            b"committer Fixture <fixture@example.invalid> 0 +0000\n\nfixture\n"
+        )
+        root_entries = [
+            {"name": "archive", "mode": "40000", "object_sha1": "3674c867dc467b680453fc818c722be2ba29bb7b"},
+            {"name": "protocol", "mode": "40000", "object_sha1": "902a1f92d2e1dfdddc0cfc2f53233c5350998838"},
+        ]
+        document = {
+            "record_class": "authenticated_git_export", "protocol_version": "m0.1-v2",
+            "repository": "fixture/ledger", "commit": "22a9ff4c7ecaa9f0d5f6c330784870154739a066",
+            "tree": "8f3fbf9033050d4197f49028cfb71f6011e6e2fa",
+            "commit_object_base64": base64.b64encode(raw_commit).decode("ascii"),
+            "fixture": True, "eligibility": "synthetic_fixture",
+            "view_prefix": "protocol/current",
+            "view_tree": "1601c399f9105099ffe3731c4481be60af8be50f",
+            "tree_proof": [
+                {"tree": "8f3fbf9033050d4197f49028cfb71f6011e6e2fa", "entries": root_entries},
+                {"tree": "902a1f92d2e1dfdddc0cfc2f53233c5350998838", "entries": [
+                    {"name": "current", "mode": "40000", "object_sha1": "1601c399f9105099ffe3731c4481be60af8be50f"},
+                ]},
+            ],
+            "entries": [{
+                "path": "current.txt", "mode": "100644",
+                "blob_sha1": "5b9023a315ae79fd8cbe9e8c3a6f8053f0ed3ddb",
+                "sha256": "48aa6cae8c70abdb28631d22b316e6d9f9d0768ec2911de7090e248b2afe6ca1",
+                "byte_count": 8,
+            }],
+        }
+        export_path = self.workspace / "eligible-view-export.json"
+        self.write_json(export_path, document)
+        _export, files = lib.verify_git_export(
+            repository_root, export_path, self.limits, "fixture/ledger",
+            document["commit"], document["tree"], document["view_prefix"],
+            document["view_tree"], True,
+        )
+        self.assertEqual([("current.txt", b"current\n")], files)
+
+        tampered = copy.deepcopy(document)
+        tampered["tree_proof"][0]["entries"][0]["object_sha1"] = "0" * 40
+        self.write_json(export_path, tampered)
+        self.assert_code(
+            "E_EXPORT_PROOF", lib.verify_git_export, repository_root, export_path,
+            self.limits, "fixture/ledger", document["commit"], document["tree"],
+            document["view_prefix"], document["view_tree"], True,
+        )
+
+        archive = copy.deepcopy(document)
+        archive["view_prefix"] = "archive/unaccepted"
+        archive["view_tree"] = "7e5de99c9e33b5f58940b9dfabe98337bc43aa1e"
+        archive["tree_proof"] = [
+            {"tree": document["tree"], "entries": root_entries},
+            {"tree": "3674c867dc467b680453fc818c722be2ba29bb7b", "entries": [
+                {"name": "unaccepted", "mode": "40000", "object_sha1": archive["view_tree"]},
+            ]},
+        ]
+        archive["entries"] = [{
+            "path": "history.txt", "mode": "100644",
+            "blob_sha1": "c375d5ba0db809e5bb4953d9665c341b38208914",
+            "sha256": "834e1cc36168f216747fbf3b8de6cc700e64700276b25a3563233b2df000fdfb",
+            "byte_count": 8,
+        }]
+        self.write_json(export_path, archive)
+        self.assert_code(
+            "E_ARCHIVE_DEPENDENCY", lib.verify_git_export, repository_root,
+            export_path, self.limits, "fixture/ledger", document["commit"],
+            document["tree"], archive["view_prefix"], archive["view_tree"], True,
+        )
 
     def test_intrinsic_locators_distinguish_multiple_identities(self) -> None:
         mapping_document = {"protocol_version": "m0.1-v2", "mappings": [
@@ -225,7 +303,7 @@ class ProtocolTests(unittest.TestCase):
         built = self.build_valid("stale-count")
         rules = copy.deepcopy(built["rules"])
         rules[0]["expected_count"] += 1
-        files = lib.verify_git_export(built["source"], built["source_export_path"], self.limits, "fixture/source", built["source_export"]["commit"], built["source_export"]["tree"], True)[1]
+        files = lib.verify_git_export(built["source"], built["source_export_path"], self.limits, "fixture/source", built["source_export"]["commit"], built["source_export"]["tree"], "", built["source_export"]["tree"], True)[1]
         candidates = generate.discover(files, built["mappings"], "fixture/source", built["source_export"]["tree"], self.limits)
         self.assert_code("E_EXPECTED_COUNT", generate.classify, candidates, built["mappings"], rules, self.limits)
 
@@ -267,6 +345,76 @@ class ProtocolTests(unittest.TestCase):
         target.mkdir()
         (parent / "link").symlink_to(target, target_is_directory=True)
         self.assert_code("E_SYMLINK", lib.write_exclusive_document, parent / "link" / "out.json", {"x": 1}, self.limits, 1000)
+
+    def test_competing_package_creator_is_never_deleted(self) -> None:
+        output = self.workspace / "contended-package"
+        original_mkdir = Path.mkdir
+
+        def competing_mkdir(path: Path, *args: Any, **kwargs: Any) -> None:
+            original_mkdir(path, *args, **kwargs)
+            (path / "competitor-owned.txt").write_text("preserve me", encoding="utf-8")
+            raise FileExistsError("simulated competing creator")
+
+        with mock.patch.object(Path, "mkdir", new=competing_mkdir):
+            self.assert_code("E_OUTPUT_CREATE", lib.write_package, [], [], output, self.limits)
+        self.assertEqual("preserve me", (output / "competitor-owned.txt").read_text(encoding="utf-8"))
+
+    def test_interrupted_document_write_removes_only_owned_partial(self) -> None:
+        output = self.workspace / "partial.json"
+        with mock.patch.object(os, "write", side_effect=OSError("simulated interruption")):
+            self.assert_code("E_OUTPUT_WRITE", lib._write_exclusive, output, b"partial")
+        self.assertFalse(output.exists())
+
+    def test_interrupted_package_never_publishes_completion_marker(self) -> None:
+        output = self.workspace / "interrupted-package"
+        original_write = lib._write_exclusive
+
+        def interrupt_before_index(path: Path, data: bytes) -> None:
+            if path.name == "index.json":
+                lib.fail("E_OUTPUT_WRITE", "simulated package interruption")
+            original_write(path, data)
+
+        with mock.patch.object(lib, "_write_exclusive", side_effect=interrupt_before_index):
+            self.assert_code("E_OUTPUT_WRITE", lib.write_package, [], [], output, self.limits)
+        self.assertTrue(output.is_dir())
+        self.assertFalse((output / "publication.json").exists())
+
+    def test_fifo_is_rejected_before_blocking_open(self) -> None:
+        if not hasattr(os, "mkfifo"):
+            self.skipTest("FIFO creation unavailable")
+        fifo = self.workspace / "input.fifo"
+        os.mkfifo(fifo)
+        self.assert_code("E_SPECIAL_FILE", lib.read_bounded_file, fifo, 1024)
+
+    def test_missing_publication_marker_rejects_partial_package(self) -> None:
+        built = self.build_valid("missing-publication")
+        (built["package"] / "publication.json").unlink()
+        self.assert_code(
+            "E_PACKAGE_FILES", verify.verify_package, built["package"],
+            "fixture/source", built["source_export"]["tree"], self.limits,
+        )
+
+    def test_cumulative_package_budget_rejects_before_next_read(self) -> None:
+        built = self.build_valid("package-budget")
+        publication_size = (built["package"] / "publication.json").stat().st_size
+        index_size = (built["package"] / "index.json").stat().st_size
+        limits = dict(self.limits)
+        limits["max_generated_bytes"] = publication_size + index_size - 1
+        self.assert_code(
+            "E_GENERATED_SIZE", verify.verify_package, built["package"],
+            "fixture/source", built["source_export"]["tree"], limits,
+        )
+
+    def test_auditor_high_work_no_match_stops_at_budget(self) -> None:
+        limits = dict(self.limits)
+        limits["max_processing_steps"] = 16
+        budget = audit_scan.lib.WorkBudget(limits)
+        family = {
+            "kind": "ascii_casefold_literal", "literal": "A" * 64 + "B",
+        }
+        with self.assertRaises(audit_scan.lib.ProtocolError) as caught:
+            list(audit_scan._matches("A" * 4096, family, budget))
+        self.assertEqual("E_PROCESSING_STEPS", caught.exception.code)
 
     def test_archive_and_dot_path_reject(self) -> None:
         self.assert_code("E_ARCHIVE_DEPENDENCY", lib.validate_relpath, "archive/unaccepted/data", self.limits)
@@ -325,18 +473,19 @@ class ProtocolTests(unittest.TestCase):
         index_data = (built["package"] / "index.json").read_bytes()
         summary_data = (built["package"] / "summary.json").read_bytes()
         manifest_data = (built["package"] / "scan-manifest.json").read_bytes()
+        publication_data = (built["package"] / "publication.json").read_bytes()
         index = lib.strict_json_bytes(index_data, self.limits, "index")
         input_entries = {entry["path"]: entry for entry in input_export["entries"]}
         descriptor = [input_entries[path] for path in sorted(verify.PRODUCTION_INPUT_PATHS)]
         contract_entry = roots["contract"][2]["entries"][0]
         record = {
             "record_class": "migration_evidence", "protocol_version": "m0.1-v2", "phase": "M0.1",
-            "source": {"repository": "fixture/source", "commit": source_export["commit"], "tree": source_export["tree"], "export_sha256": lib.export_digest(source_export, self.limits)},
-            "accepted_base": {"repository": "fixture/source", "commit": roots["base"][2]["commit"], "tree": roots["base"][2]["tree"], "export_sha256": lib.export_digest(roots["base"][2], self.limits)},
-            "governing_contract": {"repository": "fixture/source", "commit": roots["contract"][2]["commit"], "tree": roots["contract"][2]["tree"], "path": "contract.md", "blob": contract_entry["blob_sha1"], "export_sha256": lib.export_digest(roots["contract"][2], self.limits)},
-            "tooling": {"repository": "fixture/ledger", "commit": roots["tooling"][2]["commit"], "tree": roots["tooling"][2]["tree"], "required_paths": ["tool.py"], "export_sha256": lib.export_digest(roots["tooling"][2], self.limits)},
-            "inputs": {"repository": "fixture/inputs", "commit": input_export["commit"], "tree": input_export["tree"], "required_paths": sorted(verify.PRODUCTION_INPUT_PATHS), "export_sha256": lib.export_digest(input_export, self.limits), "aggregate_sha256": lib.sha256_hex(lib.canonical_json_bytes(descriptor, self.limits, trailing_lf=False))},
-            "generated": {"scan_manifest_sha256": lib.sha256_hex(manifest_data), "index_sha256": lib.sha256_hex(index_data), "summary_sha256": lib.sha256_hex(summary_data), "aggregate_sha256": index["aggregate_sha256"]},
+            "source": {"repository": "fixture/source", "commit": source_export["commit"], "tree": source_export["tree"], "view_prefix": "", "view_tree": source_export["tree"], "export_sha256": lib.export_digest(source_export, self.limits)},
+            "accepted_base": {"repository": "fixture/source", "commit": roots["base"][2]["commit"], "tree": roots["base"][2]["tree"], "view_prefix": "", "view_tree": roots["base"][2]["tree"], "export_sha256": lib.export_digest(roots["base"][2], self.limits)},
+            "governing_contract": {"repository": "fixture/source", "commit": roots["contract"][2]["commit"], "tree": roots["contract"][2]["tree"], "view_prefix": "", "view_tree": roots["contract"][2]["tree"], "path": "contract.md", "blob": contract_entry["blob_sha1"], "export_sha256": lib.export_digest(roots["contract"][2], self.limits)},
+            "tooling": {"repository": "fixture/ledger", "commit": roots["tooling"][2]["commit"], "tree": roots["tooling"][2]["tree"], "view_prefix": "", "view_tree": roots["tooling"][2]["tree"], "required_paths": ["tool.py"], "export_sha256": lib.export_digest(roots["tooling"][2], self.limits)},
+            "inputs": {"repository": "fixture/inputs", "commit": input_export["commit"], "tree": input_export["tree"], "view_prefix": "", "view_tree": input_export["tree"], "required_paths": sorted(verify.PRODUCTION_INPUT_PATHS), "export_sha256": lib.export_digest(input_export, self.limits), "aggregate_sha256": lib.sha256_hex(lib.canonical_json_bytes(descriptor, self.limits, trailing_lf=False))},
+            "generated": {"scan_manifest_sha256": lib.sha256_hex(manifest_data), "index_sha256": lib.sha256_hex(index_data), "summary_sha256": lib.sha256_hex(summary_data), "publication_sha256": lib.sha256_hex(publication_data), "aggregate_sha256": index["aggregate_sha256"]},
             "non_authority": {"execution": False, "approval": False, "custody": False, "replay_admission": False, "semantic_acceptance": False, "merge_permission": False, "release": False, "cutover": False, "next_phase": False},
         }
         record_path = built["case"] / "record.json"

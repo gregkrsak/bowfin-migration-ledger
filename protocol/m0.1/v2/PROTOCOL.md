@@ -67,18 +67,30 @@ regular expressions supplied by inputs, or general query languages. They require
 read-only authenticated snapshots and write only to paths that do not yet exist
 beneath a pre-existing, non-symlink output directory.
 
-Source snapshots must be ordinary directories containing regular files and
-directories only. Symlinks, special files, `.git`, and any path equal to or beneath
-`archive/unaccepted` are rejected. Paths are relative POSIX UTF-8 strings; absolute
-paths, `.`/`..`, backslashes, NUL, and non-NFC spellings reject.
+Filesystem snapshots are rooted at the repository root, but only one explicitly
+selected eligible view is traversed or read. That view must contain ordinary
+directories and regular files only. Symlinks, special files, `.git`, and any
+selected prefix or materialized path equal to or beneath `archive/unaccepted` are
+rejected. Paths are relative POSIX UTF-8 strings; absolute paths, `.`/`..`,
+backslashes, NUL, and non-NFC spellings reject.
 
 Every source, accepted-base, contract, tooling, and compact-input snapshot is
 accompanied by an `authenticated_git_export`. It carries the raw Git commit
-object and complete ordered path/mode/blob-SHA-1/SHA-256/byte-count set.
-Verification reconstructs the Git tree, authenticates the commit object,
-enumerates the filesystem independently, and requires exact mode and byte
-equality. `synthetic_fixture` and `current_accepted_dependency` eligibility
-classes are explicit and never interchangeable.
+object, repository-root tree, explicit `view_prefix` and `view_tree`, and a
+complete root-to-view proof. Each proof node contains the complete ordered direct
+entries of that Git tree, so the verifier reconstructs every tree on the path
+from the commit root to the selected subtree. Siblings are authenticated only as
+opaque mode/object identities; their bytes are neither supplied nor read.
+
+The export then carries the selected view's complete ordered recursive
+path/mode/blob-SHA-1/SHA-256/byte-count set. Verification reconstructs the view
+tree, enumerates only that filesystem subtree independently, and requires exact
+mode and byte equality. The expected prefix and view tree are independently
+supplied alongside the repository commit and root tree. Selecting
+`archive/unaccepted` is forbidden even when its opaque tree identity legitimately
+appears in an ancestor proof. `synthetic_fixture` and
+`current_accepted_dependency` eligibility classes are explicit and never
+interchangeable.
 
 ## 5. Normative files
 
@@ -240,6 +252,12 @@ namespace, role, phase, and unit kind; it contains no occurrence rows.
 The verifier independently reconstructs the unique greedy chunk partition and
 rejects a byte-valid, fully rehashed alternative partition.
 
+`publication.json` is the package's completion marker. It binds the exact
+`scan-manifest.json`, `index.json`, and `summary.json` digests and is created only
+after every other package file has been written and synchronized. A package
+without that exact marker is incomplete and rejects; the presence of a directory
+alone is never publication.
+
 ## 11. Freshness eligibility
 
 Every required external-surface class uses one of:
@@ -284,6 +302,13 @@ Shared primitive defects remain a common-mode risk and must be disclosed in revi
 Synthetic expectations therefore include literal precomputed keys/digests and
 mutation cases that do not ask the candidate generator to define its own oracle.
 
+Literal discovery uses separately implemented linear-time matchers in the
+generator and auditor. Their prefix construction, character comparisons, match
+materialization, digit-suffix traversal, offset construction, and structured
+traversal are charged to the processing budget. Package verification charges the
+cumulative serialized-byte budget before each document or chunk read; it never
+first materializes an over-budget package and rejects afterward.
+
 ## 14. Rejection behavior
 
 The tools return zero only for a satisfied command. Failures return nonzero and a
@@ -293,10 +318,22 @@ matched occurrences, expected-count mismatch, key-set mismatch, digest mismatch,
 bad ordering/chunking, stale freshness, path escape, symlink/special file, archive
 dependency, excessive size/depth/count, and output overwrite.
 
-The package destination must not exist. Individual documents use exclusive,
-no-follow creation beneath an already-existing non-symlink parent. Row, chunk,
-aggregate, and processing budgets are charged before or during work. An existing
-destination rejects.
+The package destination must not exist. Creation ownership begins only after the
+exclusive directory creation succeeds. A losing concurrent invocation never
+removes or modifies the winner's destination. A failed package write deliberately
+does not recursively clean its directory, because pathname-based cleanup could
+race with replacement by another process. Individual failed documents remove only
+the exact regular-file identity they created. `publication.json` is written last,
+so abandoned or externally interrupted directories cannot validate as complete
+packages and must be inspected before human removal.
+
+Individual documents use exclusive, no-follow creation beneath an
+already-existing non-symlink parent. Bounded reads inspect the named path before
+opening it, reject non-regular files, use no-follow and nonblocking flags where
+available, and verify that the opened descriptor is the inspected file. A FIFO
+therefore rejects before an operation that could wait for a writer. Row, chunk,
+aggregate, generated-byte, and processing budgets are charged before or during
+work. An existing destination rejects.
 
 ## 15. Retention, transfer, recovery, and R8
 
@@ -332,6 +369,9 @@ case variants; structured keys/values; overlapping identities; equal-count but
 different-key substitution; stale rules; missing/extra/reordered/tampered chunks;
 oversized rows; depth/count limits; symlinks/path escape; archive roots; unchanged
 bytes with expired freshness; invalidating events; and C/E/D/P finite-sequence and
-recovery-record shape.
+recovery-record shape. It also covers competing package creation, interrupted
+single-document writes, FIFO inputs, missing completion markers, cumulative
+package-byte exhaustion before the next read, and adversarial no-match discovery
+that exhausts the comparison budget.
 
 No test execution is authorized by the existence of these files.

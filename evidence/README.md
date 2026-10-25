@@ -28,6 +28,7 @@ evidence/m0.1/<source-commit>/
     scan-manifest.json
     index.json
     summary.json
+    publication.json
     occurrences/
       0000.jsonl
       ...
@@ -44,9 +45,14 @@ generated package. It also denies execution, approval, custody, replay,
 semantic-acceptance, merge, release, cutover, and next-phase authority.
 
 Each dependency is supplied as an authenticated Git export containing its raw
-commit object and complete path/mode/blob/content inventory. Verification
-reconstructs the nominated tree and compares it against a separately supplied
-filesystem snapshot. A self-hash or named path list is not correspondence proof.
+commit object, repository-root tree, explicit eligible-view prefix and tree, and
+a complete root-to-view Git tree proof. The proof authenticates opaque sibling
+objects without reading or making them eligible. The selected view then carries
+its complete path/mode/blob/content inventory, which is reconstructed and compared
+against that exact subtree of a separately supplied filesystem snapshot. A
+self-hash, named path list, or unproved subtree label is not correspondence proof.
+`archive/unaccepted/**` may appear only as opaque proof metadata and may never be
+selected or materialized as a current dependency.
 
 ## Package rules
 
@@ -55,6 +61,8 @@ filesystem snapshot. A self-hash or named path list is not correspondence proof.
 - `scan-manifest.json` authenticates every scanned source path, byte count,
   SHA-256, UTF-8 status, and structured-scan status.
 - `index.json` authenticates the scan manifest and every occurrence chunk.
+- `publication.json` is written last and binds the manifest, index, and summary;
+  its absence makes the package incomplete.
 - The independent audit records its own complete scan manifest and must agree
   with the generator's exact manifest digest before occurrence keys reconcile.
 - A binary/non-UTF-8 file or malformed JSON file does not silently disappear.
@@ -67,6 +75,8 @@ filesystem snapshot. A self-hash or named path list is not correspondence proof.
   exactly match the not-applicable subset.
 - The verifier reconstructs canonical greedy chunk boundaries; a fully rehashed
   alternative partition is not equivalent evidence.
+- Aggregate package bytes are charged before each read, and a package that would
+  cross the generated-byte limit rejects before the next file is opened.
 
 ## Decisions and authority
 

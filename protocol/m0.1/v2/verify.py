@@ -39,9 +39,13 @@ PRODUCTION_INPUT_PATHS = {
 def canonical_document(path: Path, limits: dict[str, int], maximum: int | None = None) -> Any:
     bound = limits["max_input_file_bytes"] if maximum is None else maximum
     data = lib.read_bounded_file(path, bound)
-    value = lib.strict_json_bytes(data, limits, str(path), bound)
+    return canonical_bytes(data, limits, str(path), bound)
+
+
+def canonical_bytes(data: bytes, limits: dict[str, int], label: str, maximum: int) -> Any:
+    value = lib.strict_json_bytes(data, limits, label, maximum)
     if data != lib.canonical_json_bytes(value, limits):
-        lib.fail("E_CANONICAL_JSON", f"noncanonical JSON document: {path}")
+        lib.fail("E_CANONICAL_JSON", f"noncanonical JSON document: {label}")
     return value
 
 
@@ -429,9 +433,10 @@ def validate_scan_manifest(document: Any, limits: dict[str, int]) -> dict[str, d
     return result
 
 
-def _canonical_chunks(rows: list[dict[str, Any]], limits: dict[str, int]) -> list[bytes]:
-    chunks: list[bytes] = []
+def _canonical_chunk_descriptors(rows: list[dict[str, Any]], limits: dict[str, int]) -> list[dict[str, Any]]:
+    descriptors: list[dict[str, Any]] = []
     current: list[bytes] = []
+    current_keys: list[str] = []
     current_size = 0
     for row in rows:
         encoded = lib.canonical_json_bytes(row, limits)
@@ -441,13 +446,24 @@ def _canonical_chunks(rows: list[dict[str, Any]], limits: dict[str, int]) -> lis
             len(current) >= limits["max_rows_per_chunk"]
             or current_size + len(encoded) > limits["max_chunk_bytes"]
         ):
-            chunks.append(b"".join(current))
-            current, current_size = [], 0
+            data = b"".join(current)
+            descriptors.append({
+                "sha256": lib.sha256_hex(data), "byte_count": len(data),
+                "row_count": len(current_keys), "first_key": current_keys[0],
+                "last_key": current_keys[-1],
+            })
+            current, current_keys, current_size = [], [], 0
         current.append(encoded)
+        current_keys.append(row["occurrence_key"])
         current_size += len(encoded)
     if current:
-        chunks.append(b"".join(current))
-    return chunks
+        data = b"".join(current)
+        descriptors.append({
+            "sha256": lib.sha256_hex(data), "byte_count": len(data),
+            "row_count": len(current_keys), "first_key": current_keys[0],
+            "last_key": current_keys[-1],
+        })
+    return descriptors
 
 
 def verify_package(
@@ -459,7 +475,53 @@ def verify_package(
     lib.assert_no_symlink_ancestors(package)
     if package.is_symlink() or not package.is_dir():
         lib.fail("E_PACKAGE", "package must be a non-symlink directory")
-    index = canonical_document(package / "index.json", limits)
+    expected_root = {
+        "occurrences", "index.json", "summary.json", "scan-manifest.json",
+        "publication.json",
+    }
+    actual_root: set[str] = set()
+    for child in package.iterdir():
+        actual_root.add(child.name)
+        if len(actual_root) > len(expected_root):
+            lib.fail("E_PACKAGE_FILES", "package root contains too many entries")
+    if actual_root != expected_root:
+        lib.fail("E_PACKAGE_FILES", f"unexpected package entries: {sorted(actual_root ^ expected_root)}")
+
+    total_generated = 0
+
+    def read_part(relative: str, per_file_limit: int) -> bytes:
+        nonlocal total_generated
+        path = package / relative
+        try:
+            size = path.lstat().st_size
+        except OSError as error:
+            lib.fail("E_FILE_READ", f"cannot inspect package part {relative}: {error}")
+        if size > per_file_limit:
+            lib.fail("E_FILE_SIZE", f"package part exceeds its limit: {relative}")
+        if total_generated > limits["max_generated_bytes"] - size:
+            lib.fail("E_GENERATED_SIZE", f"package budget exceeded before reading {relative}")
+        data = lib.read_bounded_file(path, min(per_file_limit, limits["max_generated_bytes"] - total_generated))
+        total_generated += len(data)
+        return data
+
+    publication_data = read_part("publication.json", limits["max_input_file_bytes"])
+    publication = canonical_bytes(
+        publication_data, limits, "publication.json", limits["max_input_file_bytes"]
+    )
+    publication_fields = {
+        "protocol_version", "status", "scan_manifest_sha256", "index_sha256",
+        "summary_sha256",
+    }
+    if not isinstance(publication, dict):
+        lib.fail("E_PUBLICATION", "publication marker must be an object")
+    lib.require_keys(publication, publication_fields, set(), "publication")
+    if publication["protocol_version"] != lib.PROTOCOL_VERSION or publication["status"] != "complete":
+        lib.fail("E_PUBLICATION", "package is not completely published")
+    for field in ("scan_manifest_sha256", "index_sha256", "summary_sha256"):
+        lib.require_sha256(publication[field], f"publication.{field}")
+
+    index_data = read_part("index.json", limits["max_input_file_bytes"])
+    index = canonical_bytes(index_data, limits, "index.json", limits["max_input_file_bytes"])
     required_index = {
         "protocol_version", "aggregate_sha256", "scan_manifest_sha256",
         "total_rows", "total_bytes", "chunks",
@@ -472,15 +534,20 @@ def verify_package(
     if len(index["chunks"]) > limits["max_chunks"]:
         lib.fail("E_CHUNK_COUNT", "max_chunks exceeded")
 
-    manifest_document = canonical_document(package / "scan-manifest.json", limits, limits["max_export_bytes"])
+    manifest_data = read_part("scan-manifest.json", limits["max_export_bytes"])
+    manifest_document = canonical_bytes(
+        manifest_data, limits, "scan-manifest.json", limits["max_export_bytes"]
+    )
     manifest = validate_scan_manifest(manifest_document, limits)
-    manifest_bytes = lib.canonical_json_bytes(manifest_document, limits)
+    manifest_bytes = manifest_data
 
     occurrence_directory = package / "occurrences"
     if occurrence_directory.is_symlink() or not occurrence_directory.is_dir():
         lib.fail("E_CHUNK_DIR", "occurrences must be a non-symlink directory")
     actual_names: list[str] = []
     for child in occurrence_directory.iterdir():
+        if len(actual_names) >= limits["max_chunks"]:
+            lib.fail("E_CHUNK_COUNT", "occurrence directory exceeds max_chunks")
         if child.is_symlink() or not child.is_file():
             lib.fail("E_CHUNK_FILE", f"invalid chunk entry: {child}")
         actual_names.append(child.name)
@@ -491,15 +558,12 @@ def verify_package(
 
     rows: list[dict[str, Any]] = []
     descriptors: list[dict[str, Any]] = []
-    actual_chunk_bytes: list[bytes] = []
     previous_key: str | None = None
-    total_generated = len(manifest_bytes)
     for number, claimed in enumerate(index["chunks"]):
         if not isinstance(claimed, dict):
             lib.fail("E_CHUNK_DESCRIPTOR", "chunk descriptor must be an object")
         expected_path = f"occurrences/{number:04d}.jsonl"
-        data = lib.read_bounded_file(package / expected_path, limits["max_chunk_bytes"])
-        total_generated += len(data)
+        data = read_part(expected_path, limits["max_chunk_bytes"])
         if not data or not data.endswith(b"\n"):
             lib.fail("E_CHUNK_NEWLINE", f"invalid chunk newline: {expected_path}")
         chunk_rows: list[dict[str, Any]] = []
@@ -539,10 +603,13 @@ def verify_package(
         if claimed != descriptor:
             lib.fail("E_CHUNK_DESCRIPTOR", f"descriptor mismatch: {expected_path}")
         descriptors.append(descriptor)
-        actual_chunk_bytes.append(data)
 
-    expected_chunk_bytes = _canonical_chunks(rows, limits)
-    if actual_chunk_bytes != expected_chunk_bytes:
+    expected_descriptors = _canonical_chunk_descriptors(rows, limits)
+    actual_boundaries = [
+        {key: descriptor[key] for key in ("sha256", "byte_count", "row_count", "first_key", "last_key")}
+        for descriptor in descriptors
+    ]
+    if actual_boundaries != expected_descriptors:
         lib.fail("E_CHUNK_BOUNDARY", "chunks do not use canonical greedy boundaries")
     expected_index = {
         "protocol_version": lib.PROTOCOL_VERSION,
@@ -554,16 +621,19 @@ def verify_package(
     }
     if index != expected_index:
         lib.fail("E_INDEX", "index totals or digests do not match")
-    summary = canonical_document(package / "summary.json", limits)
+    summary_data = read_part("summary.json", limits["max_input_file_bytes"])
+    summary = canonical_bytes(summary_data, limits, "summary.json", limits["max_input_file_bytes"])
     if summary != lib.summary_for(rows):
         lib.fail("E_SUMMARY", "summary does not match rows")
-    total_generated += (package / "index.json").stat().st_size + (package / "summary.json").stat().st_size
-    if total_generated > limits["max_generated_bytes"]:
-        lib.fail("E_GENERATED_SIZE", "package exceeds max_generated_bytes")
-    expected_root = {"occurrences", "index.json", "summary.json", "scan-manifest.json"}
-    actual_root = {child.name for child in package.iterdir()}
-    if actual_root != expected_root:
-        lib.fail("E_PACKAGE_FILES", f"unexpected package entries: {sorted(actual_root ^ expected_root)}")
+    expected_publication = {
+        "protocol_version": lib.PROTOCOL_VERSION,
+        "status": "complete",
+        "scan_manifest_sha256": lib.sha256_hex(manifest_data),
+        "index_sha256": lib.sha256_hex(index_data),
+        "summary_sha256": lib.sha256_hex(summary_data),
+    }
+    if publication != expected_publication:
+        lib.fail("E_PUBLICATION", "publication marker does not bind package documents")
     return rows
 
 
@@ -796,11 +866,25 @@ def verify_evidence_binding(
     lib.require_keys(record, required, set(), "evidence-record")
     if record["record_class"] != "migration_evidence" or record["protocol_version"] != lib.PROTOCOL_VERSION or record["phase"] != "M0.1":
         lib.fail("E_RECORD_CLASS", "invalid evidence record class, version, or phase")
-    source_fields = {"repository", "commit", "tree", "export_sha256"}
-    contract_fields = {"repository", "commit", "tree", "path", "blob", "export_sha256"}
-    tooling_fields = {"repository", "commit", "tree", "required_paths", "export_sha256"}
-    input_fields = {"repository", "commit", "tree", "required_paths", "export_sha256", "aggregate_sha256"}
-    generated_fields = {"scan_manifest_sha256", "index_sha256", "summary_sha256", "aggregate_sha256"}
+    source_fields = {
+        "repository", "commit", "tree", "view_prefix", "view_tree", "export_sha256",
+    }
+    contract_fields = {
+        "repository", "commit", "tree", "view_prefix", "view_tree",
+        "path", "blob", "export_sha256",
+    }
+    tooling_fields = {
+        "repository", "commit", "tree", "view_prefix", "view_tree",
+        "required_paths", "export_sha256",
+    }
+    input_fields = {
+        "repository", "commit", "tree", "view_prefix", "view_tree",
+        "required_paths", "export_sha256", "aggregate_sha256",
+    }
+    generated_fields = {
+        "scan_manifest_sha256", "index_sha256", "summary_sha256",
+        "publication_sha256", "aggregate_sha256",
+    }
     for field, fields in (
         ("source", source_fields), ("accepted_base", source_fields),
         ("governing_contract", contract_fields), ("tooling", tooling_fields),
@@ -824,7 +908,7 @@ def verify_evidence_binding(
         section = record[field]
         document, files = lib.verify_git_export(
             root, export_path, limits, section["repository"], section["commit"],
-            section["tree"], False,
+            section["tree"], section["view_prefix"], section["view_tree"], False,
         )
         exported_files[field] = dict(files)
         entries[field] = document["entries"]
@@ -862,11 +946,13 @@ def verify_evidence_binding(
     index_data = lib.read_bounded_file(package / "index.json", limits["max_input_file_bytes"])
     summary_data = lib.read_bounded_file(package / "summary.json", limits["max_input_file_bytes"])
     manifest_data = lib.read_bounded_file(package / "scan-manifest.json", limits["max_export_bytes"])
+    publication_data = lib.read_bounded_file(package / "publication.json", limits["max_input_file_bytes"])
     index = lib.strict_json_bytes(index_data, limits, "index.json")
     expected_generated = {
         "scan_manifest_sha256": lib.sha256_hex(manifest_data),
         "index_sha256": lib.sha256_hex(index_data),
         "summary_sha256": lib.sha256_hex(summary_data),
+        "publication_sha256": lib.sha256_hex(publication_data),
         "aggregate_sha256": index["aggregate_sha256"],
     }
     if record["generated"] != expected_generated:

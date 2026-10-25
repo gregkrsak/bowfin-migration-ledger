@@ -73,29 +73,62 @@ def _ascii_lower(character: str) -> str:
     return chr(ord(character) + 32) if "A" <= character <= "Z" else character
 
 
+def _kmp_positions(value: str, literal: str, fold_ascii: bool, budget: Any) -> Iterator[int]:
+    """Yield overlapping matches with linear, comparison-level accounting."""
+    def equal(left: str, right: str) -> bool:
+        if fold_ascii:
+            return _ascii_lower(left) == _ascii_lower(right)
+        return left == right
+
+    table = [0] * len(literal)
+    budget.charge(len(literal))
+    prefix = 0
+    cursor = 1
+    while cursor < len(literal):
+        budget.charge(1)
+        if equal(literal[cursor], literal[prefix]):
+            prefix += 1
+            table[cursor] = prefix
+            cursor += 1
+        elif prefix:
+            prefix = table[prefix - 1]
+        else:
+            cursor += 1
+    matched = 0
+    for index, character in enumerate(value):
+        while matched:
+            budget.charge(1)
+            if equal(character, literal[matched]):
+                break
+            matched = table[matched - 1]
+        if not matched:
+            budget.charge(1)
+            if not equal(character, literal[0]):
+                continue
+        matched += 1
+        if matched == len(literal):
+            yield index - len(literal) + 1
+            matched = table[matched - 1]
+
+
 def _matches(value: str, family: dict[str, Any], budget: Any) -> Iterator[tuple[int, int, str]]:
     literal = family["literal"]
     kind = family["kind"]
-    budget.charge(len(value))
     width = len(literal)
+    positions = _kmp_positions(value, literal, kind == "ascii_casefold_literal", budget)
     if kind == "ascii_digit_suffix":
-        for start in range(0, max(0, len(value) - width + 1)):
-            if value[start : start + width] != literal:
-                continue
+        for start in positions:
             cursor = start + width
             while cursor < len(value) and "0" <= value[cursor] <= "9":
+                budget.charge(1)
                 cursor += 1
             if cursor > start + width:
+                budget.charge(cursor - start)
                 yield (start, cursor, value[start:cursor])
         return
-    for start in range(0, max(0, len(value) - width + 1)):
-        segment = value[start : start + width]
-        if kind == "ascii_casefold_literal":
-            equal = all(_ascii_lower(left) == _ascii_lower(right) for left, right in zip(segment, literal))
-        else:
-            equal = segment == literal
-        if equal:
-            yield (start, start + width, segment)
+    for start in positions:
+        budget.charge(width)
+        yield (start, start + width, value[start : start + width])
 
 
 def _offsets(value: str) -> list[int]:
@@ -165,6 +198,8 @@ def discover(
             text = data.decode("utf-8", "strict")
         except UnicodeDecodeError:
             text = None
+        if text is not None:
+            budget.charge(len(text))
         text_offsets = _offsets(text) if text is not None else None
         for family in families:
             if "path_component" not in family["unit_kinds"]:
@@ -184,6 +219,7 @@ def discover(
                     add(path, "path_component", locator, family["namespace"], component[start:], family["family_id"])
             else:
                 for component_index, component in enumerate(components):
+                    budget.charge(len(component))
                     offsets = _offsets(component)
                     for start, end, original in _matches(component, family, budget):
                         locator = {
@@ -209,6 +245,7 @@ def discover(
                 parsed = None
             if parsed is not None:
                 for unit_kind, pointer, value in _structured_units(parsed):
+                    budget.charge(1 + len(pointer) + len(value))
                     offsets = _offsets(value)
                     for family in families:
                         if unit_kind not in family["unit_kinds"]:
@@ -229,6 +266,8 @@ def _identity_arguments(parser: argparse.ArgumentParser, prefix: str) -> None:
     parser.add_argument(f"--{prefix}-repository", required=True)
     parser.add_argument(f"--{prefix}-commit", required=True)
     parser.add_argument(f"--{prefix}-tree", required=True)
+    parser.add_argument(f"--{prefix}-view-prefix", required=True)
+    parser.add_argument(f"--{prefix}-view-tree", required=True)
     parser.add_argument(f"--{prefix}-fixture", action="store_true")
 
 
@@ -247,11 +286,13 @@ def main() -> int:
     limits = lib.load_limits(Path(__file__).resolve().with_name("limits.json"))
     source_export, files = lib.verify_git_export(
         args.source_root, args.source_export, limits, args.source_repository,
-        args.source_commit, args.source_tree, args.source_fixture,
+        args.source_commit, args.source_tree, args.source_view_prefix,
+        args.source_view_tree, args.source_fixture,
     )
     input_export, input_files = lib.verify_git_export(
         args.input_root, args.input_export, limits, args.input_repository,
-        args.input_commit, args.input_tree, args.input_fixture,
+        args.input_commit, args.input_tree, args.input_view_prefix,
+        args.input_view_tree, args.input_fixture,
     )
     inputs = dict(input_files)
     if "audit-policy.json" not in inputs:

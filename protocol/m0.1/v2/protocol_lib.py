@@ -13,7 +13,6 @@ import base64
 import hashlib
 import json
 import os
-import shutil
 import stat
 import unicodedata
 from collections import Counter
@@ -36,6 +35,7 @@ UNIT_KINDS = frozenset(
 )
 ROLES = frozenset({"live", "compatibility", "historical"})
 FILE_MODES = frozenset({"100644", "100755"})
+TREE_ENTRY_MODES = frozenset({"40000", "100644", "100755", "120000", "160000"})
 
 
 class ProtocolError(Exception):
@@ -237,6 +237,30 @@ def validate_relpath(raw: Any, limits: dict[str, int]) -> PurePosixPath:
     return PurePosixPath(*components)
 
 
+def validate_view_prefix(raw: Any, limits: dict[str, int]) -> tuple[str, ...]:
+    """Validate an eligible repository subtree prefix.
+
+    The empty string names the repository root. Nonempty prefixes use the same
+    fail-closed spelling and archive-exclusion rules as materialized paths.
+    """
+    if raw == "":
+        return ()
+    return validate_relpath(raw, limits).parts
+
+
+def _validate_tree_component(raw: Any, limits: dict[str, int], label: str) -> str:
+    """Validate an opaque Git-tree entry name without making it eligible."""
+    if not isinstance(raw, str) or raw in {"", ".", ".."} or "/" in raw or "\x00" in raw:
+        fail("E_EXPORT_PROOF", f"invalid {label}")
+    if any(0xD800 <= ord(char) <= 0xDFFF for char in raw):
+        fail("E_EXPORT_PROOF", f"invalid UTF-8 in {label}")
+    if unicodedata.normalize("NFC", raw) != raw:
+        fail("E_EXPORT_PROOF", f"non-NFC {label}")
+    if len(raw.encode("utf-8")) > limits["max_path_bytes"]:
+        fail("E_EXPORT_PROOF", f"oversized {label}")
+    return raw
+
+
 def assert_no_symlink_ancestors(path: Path) -> None:
     absolute = path.absolute()
     current = Path(absolute.anchor)
@@ -255,13 +279,29 @@ def assert_no_symlink_ancestors(path: Path) -> None:
 def read_bounded_file(path: Path, maximum: int) -> bytes:
     assert_no_symlink_ancestors(path)
     try:
-        descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        named = path.lstat()
+    except OSError as error:
+        fail("E_FILE_READ", f"cannot inspect {path}: {error}")
+    if not stat.S_ISREG(named.st_mode):
+        fail("E_SPECIAL_FILE", f"not a regular file: {path}")
+    if named.st_size > maximum:
+        fail("E_FILE_SIZE", f"{path} exceeds {maximum} bytes")
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+        | getattr(os, "O_CLOEXEC", 0)
+    )
+    try:
+        descriptor = os.open(path, flags)
     except OSError as error:
         fail("E_FILE_READ", f"cannot open {path}: {error}")
     try:
         before = os.fstat(descriptor)
         if not stat.S_ISREG(before.st_mode):
             fail("E_SPECIAL_FILE", f"not a regular file: {path}")
+        if (before.st_dev, before.st_ino) != (named.st_dev, named.st_ino):
+            fail("E_FILE_CHANGED", f"file identity changed before reading: {path}")
         if before.st_size > maximum:
             fail("E_FILE_SIZE", f"{path} exceeds {maximum} bytes")
         chunks: list[bytes] = []
@@ -361,17 +401,84 @@ def _git_tree_sha(entries: list[dict[str, Any]], limits: dict[str, int]) -> str:
     return build(root)
 
 
+def _git_direct_tree_sha(entries: list[dict[str, Any]]) -> str:
+    records: list[bytes] = []
+    for entry in entries:
+        records.append(
+            entry["mode"].encode("ascii")
+            + b" "
+            + entry["name"].encode("utf-8")
+            + b"\0"
+            + bytes.fromhex(entry["object_sha1"])
+        )
+    return git_object_sha1("tree", b"".join(records))
+
+
+def _validate_tree_proof(
+    proof: Any,
+    prefix_components: tuple[str, ...],
+    root_tree: str,
+    view_tree: str,
+    limits: dict[str, int],
+) -> None:
+    if not isinstance(proof, list) or len(proof) != len(prefix_components):
+        fail("E_EXPORT_PROOF", "tree proof length does not match view prefix")
+    current_tree = root_tree
+    for depth, node in enumerate(proof):
+        label = f"tree_proof[{depth}]"
+        if not isinstance(node, dict):
+            fail("E_EXPORT_PROOF", f"{label} must be an object")
+        require_keys(node, {"tree", "entries"}, set(), label)
+        require_sha1(node["tree"], f"{label}.tree")
+        if node["tree"] != current_tree:
+            fail("E_EXPORT_PROOF", f"{label} does not continue the root-to-view chain")
+        direct_entries = node["entries"]
+        if not isinstance(direct_entries, list) or len(direct_entries) > limits["max_source_files"]:
+            fail("E_EXPORT_PROOF", f"invalid {label}.entries")
+        prior_sort_key: bytes | None = None
+        names: set[str] = set()
+        selected: dict[str, Any] | None = None
+        for index, entry in enumerate(direct_entries):
+            entry_label = f"{label}.entries[{index}]"
+            if not isinstance(entry, dict):
+                fail("E_EXPORT_PROOF", f"{entry_label} must be an object")
+            require_keys(entry, {"name", "mode", "object_sha1"}, set(), entry_label)
+            name = _validate_tree_component(entry["name"], limits, f"{entry_label}.name")
+            if name in names:
+                fail("E_EXPORT_PROOF", f"duplicate name in {label}: {name}")
+            names.add(name)
+            if entry["mode"] not in TREE_ENTRY_MODES:
+                fail("E_EXPORT_PROOF", f"unsupported mode in {entry_label}")
+            require_sha1(entry["object_sha1"], f"{entry_label}.object_sha1")
+            sort_key = name.encode("utf-8") + (b"/" if entry["mode"] == "40000" else b"")
+            if prior_sort_key is not None and sort_key <= prior_sort_key:
+                fail("E_EXPORT_PROOF", f"entries are not in canonical Git order: {label}")
+            prior_sort_key = sort_key
+            if name == prefix_components[depth]:
+                selected = entry
+        if _git_direct_tree_sha(direct_entries) != current_tree:
+            fail("E_EXPORT_PROOF", f"{label} does not reconstruct its nominated tree")
+        if selected is None or selected["mode"] != "40000":
+            fail("E_EXPORT_PROOF", f"view component is not a proved subtree: {prefix_components[depth]}")
+        current_tree = selected["object_sha1"]
+    if current_tree != view_tree:
+        fail("E_EXPORT_PROOF", "tree proof does not terminate at the nominated view tree")
+
+
 def validate_export_document(
     document: Any,
     limits: dict[str, int],
     expected_repository: str,
     expected_commit: str,
     expected_tree: str,
+    expected_view_prefix: str,
+    expected_view_tree: str,
     expected_fixture: bool,
 ) -> list[dict[str, Any]]:
     required = {
         "record_class", "protocol_version", "repository", "commit", "tree",
-        "commit_object_base64", "fixture", "eligibility", "entries",
+        "commit_object_base64", "fixture", "eligibility", "view_prefix",
+        "view_tree", "tree_proof", "entries",
     }
     if not isinstance(document, dict):
         fail("E_EXPORT", "Git export must be an object")
@@ -382,6 +489,8 @@ def validate_export_document(
         document["repository"] != expected_repository
         or document["commit"] != expected_commit
         or document["tree"] != expected_tree
+        or document["view_prefix"] != expected_view_prefix
+        or document["view_tree"] != expected_view_tree
         or document["fixture"] is not expected_fixture
     ):
         fail("E_EXPORT_IDENTITY", "Git export does not match independently expected identity")
@@ -390,6 +499,8 @@ def validate_export_document(
         fail("E_EXPORT_ELIGIBILITY", "Git export has the wrong eligibility class")
     require_sha1(document["commit"], "export commit")
     require_sha1(document["tree"], "export tree")
+    require_sha1(document["view_tree"], "export view tree")
+    prefix_components = validate_view_prefix(document["view_prefix"], limits)
     try:
         commit_bytes = base64.b64decode(document["commit_object_base64"], validate=True)
     except (ValueError, TypeError) as error:
@@ -399,6 +510,10 @@ def validate_export_document(
     first_header = commit_bytes.split(b"\n", 1)[0]
     if first_header != b"tree " + document["tree"].encode("ascii"):
         fail("E_EXPORT_COMMIT", "commit object does not name the exported tree")
+    _validate_tree_proof(
+        document["tree_proof"], prefix_components, document["tree"],
+        document["view_tree"], limits,
+    )
     entries = document["entries"]
     if not isinstance(entries, list) or len(entries) > limits["max_source_files"]:
         fail("E_EXPORT_ENTRIES", "invalid export entry count")
@@ -424,8 +539,8 @@ def validate_export_document(
         total += entry["byte_count"]
         if total > limits["max_total_source_bytes"]:
             fail("E_EXPORT_SIZE", "export exceeds max_total_source_bytes")
-    if _git_tree_sha(entries, limits) != document["tree"]:
-        fail("E_EXPORT_TREE", "export entries do not reconstruct the nominated Git tree")
+    if _git_tree_sha(entries, limits) != document["view_tree"]:
+        fail("E_EXPORT_TREE", "materialized entries do not reconstruct the nominated view tree")
     return entries
 
 
@@ -447,7 +562,12 @@ def _enumerate_root(root: Path, limits: dict[str, int]) -> dict[str, str]:
             fail("E_SOURCE_DIRECTORIES", "directory count exceeds max_source_files")
         try:
             with os.scandir(directory) as iterator:
-                children = sorted(iterator, key=lambda item: item.name.encode("utf-8", "surrogateescape"))
+                children = []
+                for child in iterator:
+                    if len(children) >= limits["max_source_files"]:
+                        fail("E_SOURCE_FILES", f"directory entry count exceeds max_source_files: {directory}")
+                    children.append(child)
+                children.sort(key=lambda item: item.name.encode("utf-8", "surrogateescape"))
         except OSError as error:
             fail("E_SOURCE_TRAVERSAL", f"cannot enumerate {directory}: {error}")
         for child in children:
@@ -479,6 +599,8 @@ def verify_git_export(
     expected_repository: str,
     expected_commit: str,
     expected_tree: str,
+    expected_view_prefix: str,
+    expected_view_tree: str,
     expected_fixture: bool,
 ) -> tuple[dict[str, Any], list[tuple[str, bytes]]]:
     document = strict_json_file(export_path, limits, limits["max_export_bytes"])
@@ -488,9 +610,13 @@ def verify_git_export(
         expected_repository,
         expected_commit,
         expected_tree,
+        expected_view_prefix,
+        expected_view_tree,
         expected_fixture,
     )
-    actual_paths = _enumerate_root(root, limits)
+    prefix_components = validate_view_prefix(document["view_prefix"], limits)
+    view_root = root.joinpath(*prefix_components) if prefix_components else root
+    actual_paths = _enumerate_root(view_root, limits)
     expected_paths = {entry["path"]: entry["mode"] for entry in entries}
     if actual_paths != expected_paths:
         missing = sorted(set(expected_paths) - set(actual_paths))[:20]
@@ -498,7 +624,7 @@ def verify_git_export(
         fail("E_EXPORT_PATH_SET", f"missing={missing} extra={extra}")
     files: list[tuple[str, bytes]] = []
     for entry in entries:
-        path = root.joinpath(*entry["path"].split("/"))
+        path = view_root.joinpath(*entry["path"].split("/"))
         data = read_bounded_file(path, limits["max_source_file_bytes"])
         if (
             len(data) != entry["byte_count"]
@@ -634,15 +760,41 @@ def _write_exclusive(path: Path, data: bytes) -> None:
     except OSError as error:
         fail("E_OUTPUT_CREATE", f"cannot exclusively create {path}: {error}")
     try:
+        identity = os.fstat(descriptor)
+    except OSError as error:
+        os.close(descriptor)
+        fail("E_OUTPUT_WRITE", f"cannot inspect created output {path}: {error}")
+    succeeded = False
+    try:
         view = memoryview(data)
         while view:
-            written = os.write(descriptor, view)
+            try:
+                written = os.write(descriptor, view)
+            except OSError as error:
+                fail("E_OUTPUT_WRITE", f"cannot write {path}: {error}")
             if written <= 0:
                 fail("E_OUTPUT_WRITE", f"short write to {path}")
             view = view[written:]
-        os.fsync(descriptor)
+        try:
+            os.fsync(descriptor)
+        except OSError as error:
+            fail("E_OUTPUT_WRITE", f"cannot synchronize {path}: {error}")
+        succeeded = True
     finally:
-        os.close(descriptor)
+        try:
+            os.close(descriptor)
+        finally:
+            if not succeeded:
+                try:
+                    current = path.lstat()
+                    if (
+                        stat.S_ISREG(current.st_mode)
+                        and not stat.S_ISLNK(current.st_mode)
+                        and (current.st_dev, current.st_ino) == (identity.st_dev, identity.st_ino)
+                    ):
+                        path.unlink()
+                except OSError:
+                    pass
 
 
 def write_exclusive_document(path: Path, value: Any, limits: dict[str, int], maximum: int) -> None:
@@ -736,21 +888,43 @@ def write_package(
     }
     index_bytes = canonical_json_bytes(index, limits)
     summary_bytes = canonical_json_bytes(summary_for(sorted_rows), limits)
-    total = total_encoded + len(manifest_bytes) + len(index_bytes) + len(summary_bytes)
+    publication_bytes = canonical_json_bytes(
+        {
+            "protocol_version": PROTOCOL_VERSION,
+            "status": "complete",
+            "scan_manifest_sha256": sha256_hex(manifest_bytes),
+            "index_sha256": sha256_hex(index_bytes),
+            "summary_sha256": sha256_hex(summary_bytes),
+        },
+        limits,
+    )
+    total = (
+        total_encoded + len(manifest_bytes) + len(index_bytes)
+        + len(summary_bytes) + len(publication_bytes)
+    )
     if total > limits["max_generated_bytes"]:
         fail("E_GENERATED_SIZE", "max_generated_bytes exceeded before publication")
 
     try:
         output.mkdir(mode=0o755)
+    except OSError as error:
+        fail("E_OUTPUT_CREATE", f"cannot exclusively create package directory {output}: {error}")
+    try:
+        created = output.lstat()
+    except OSError as error:
+        fail("E_OUTPUT_CREATE", f"cannot inspect created package directory {output}: {error}")
+    if not stat.S_ISDIR(created.st_mode) or stat.S_ISLNK(created.st_mode):
+        fail("E_OUTPUT_CREATE", "created package output is not a directory")
+    try:
         (output / "occurrences").mkdir(mode=0o755)
-        for descriptor, (data, _keys) in zip(descriptors, chunks):
-            _write_exclusive(output / descriptor["path"], data)
-        _write_exclusive(output / "scan-manifest.json", manifest_bytes)
-        _write_exclusive(output / "index.json", index_bytes)
-        _write_exclusive(output / "summary.json", summary_bytes)
-    except BaseException:
-        shutil.rmtree(output, ignore_errors=True)
-        raise
+    except OSError as error:
+        fail("E_OUTPUT_CREATE", f"cannot create occurrence directory: {error}")
+    for descriptor, (data, _keys) in zip(descriptors, chunks):
+        _write_exclusive(output / descriptor["path"], data)
+    _write_exclusive(output / "scan-manifest.json", manifest_bytes)
+    _write_exclusive(output / "index.json", index_bytes)
+    _write_exclusive(output / "summary.json", summary_bytes)
+    _write_exclusive(output / "publication.json", publication_bytes)
 
 
 def parse_utc(value: Any, label: str) -> datetime:
