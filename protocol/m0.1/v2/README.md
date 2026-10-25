@@ -30,8 +30,8 @@ python3 -I generate.py \
   --source-repository <owner/repository> \
   --source-commit <40-hex-commit> \
   --source-tree <40-hex-tree> \
-  --source-view-prefix <repository-relative-prefix-or-empty-string> \
-  --source-view-tree <40-hex-tree> \
+  --source-view-prefix "" \
+  --source-view-tree <same-40-hex-source-root-tree> \
   --input-root <read-only-input-snapshot> \
   --input-export <authenticated-input-export.json> \
   --input-repository <owner/repository> \
@@ -47,8 +47,8 @@ python3 -I audit_scan.py \
   --source-repository <owner/repository> \
   --source-commit <40-hex-commit> \
   --source-tree <40-hex-tree> \
-  --source-view-prefix <repository-relative-prefix-or-empty-string> \
-  --source-view-tree <40-hex-tree> \
+  --source-view-prefix "" \
+  --source-view-tree <same-40-hex-source-root-tree> \
   --input-root <read-only-input-snapshot> \
   --input-export <authenticated-input-export.json> \
   --input-repository <owner/repository> \
@@ -117,6 +117,10 @@ python3 -I tests/test_protocol.py
 
 Production inputs, evidence generation, workflow activation, and phase acceptance
 remain separately gated.
+
+Compiler-source commands reject a nonempty source view prefix or a source view
+tree different from the repository-root tree. Selected views remain supported for
+tooling and other non-source dependency classes.
 
 `<new-package-path>` must not exist. The generator creates it exclusively and
 writes `publication.json` last; a pre-created empty directory is not accepted.

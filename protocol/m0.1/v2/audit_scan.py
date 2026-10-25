@@ -284,6 +284,9 @@ def main() -> int:
         lib.fail("E_RUNTIME_ISOLATION", "invoke with python3 -I")
     args = parse_args()
     limits = lib.load_limits(Path(__file__).resolve().with_name("limits.json"))
+    lib.require_root_source_view(
+        args.source_view_prefix, args.source_tree, args.source_view_tree
+    )
     source_export, files = lib.verify_git_export(
         args.source_root, args.source_export, limits, args.source_repository,
         args.source_commit, args.source_tree, args.source_view_prefix,

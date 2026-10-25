@@ -74,6 +74,11 @@ back to their exact mapping and uniquely matching rule; retained observation and
 applicability-review bytes are authenticated and their semantic relationships are
 checked. Coexistence of individually valid hashes is not evidence derivation.
 
+Compiler-source evidence must use the repository-root view, so source paths and
+occurrence identities remain repository-relative and unambiguous. Other dependency
+classes may retain authenticated selected views. Independent-audit binding hashes,
+parses, and reconciles one immutable read rather than reopening a pathname.
+
 Authenticated exports carry raw commit objects, repository-root trees, explicit
 eligible-view prefixes and trees, and complete root-to-view Git tree proofs. Each
 proof node supplies all direct entries required to reconstruct that tree. Opaque

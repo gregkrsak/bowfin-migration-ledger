@@ -67,8 +67,13 @@ regular expressions supplied by inputs, or general query languages. They require
 read-only authenticated snapshots and write only to paths that do not yet exist
 beneath a pre-existing, non-symlink output directory.
 
-Filesystem snapshots are rooted at the repository root, but only one explicitly
-selected eligible view is traversed or read. That view must contain ordinary
+Filesystem snapshots are rooted at the repository root. Compiler-source evidence
+must select the repository root itself: its view prefix is empty and its view tree
+equals the commit's root tree. This makes every manifest path, selector, row path,
+and occurrence key repository-relative and prevents distinct subtrees from sharing
+the same coordinates. Tooling, compact inputs, observations, reviews, accepted
+bases, and contracts may still use an explicitly selected eligible view. The
+selected view must contain ordinary
 directories and regular files only. Symlinks, special files, `.git`, and any
 selected prefix or materialized path equal to or beneath `archive/unaccepted` are
 rejected. Paths are relative POSIX UTF-8 strings; absolute paths, `.`/`..`,
@@ -308,8 +313,10 @@ historical relationship, rule ID, and per-rule population must agree with that
 rule. A self-consistent rehash after altering classification meaning rejects.
 
 The evidence record also binds the exact independent-audit bytes. Reconciliation
-checks their source, input-export, and scan-manifest identities and requires exact
-occurrence-key equality with the semantically bound package rows.
+parses the same single byte buffer whose SHA-256 is recorded; it never reopens the
+audit pathname for semantic validation. It checks source, input-export, and
+scan-manifest identities and requires exact occurrence-key equality with the
+semantically bound package rows.
 
 ## 13. Deterministic versus runtime provenance
 
@@ -337,7 +344,10 @@ generator and auditor. Their prefix construction, character comparisons, match
 materialization, digit-suffix traversal, offset construction, and structured
 traversal are charged to the processing budget. Package verification charges the
 cumulative serialized-byte budget before each document or chunk read; it never
-first materializes an over-budget package and rejects afterward.
+first materializes an over-budget package and rejects afterward. Classification-
+meaning verification indexes rules by mapping and unit kind, then charges index
+construction, lookups, selector checks, string comparisons, semantic comparisons,
+and population accounting before or during that work.
 
 ## 15. Rejection behavior
 
@@ -402,6 +412,8 @@ bytes with expired freshness; invalidating events; and C/E/D/P finite-sequence a
 recovery-record shape. It also covers competing package creation, interrupted
 single-document writes, FIFO inputs, missing completion markers, cumulative
 package-byte exhaustion before the next read, and adversarial no-match discovery
-that exhausts the comparison budget.
+that exhausts the comparison budget. Additional controls cover a single immutable
+audit read, classification-meaning budget exhaustion, numeric substitution for
+Boolean review fields, and rejection of non-root compiler-source views.
 
 No test execution is authorized by the existence of these files.

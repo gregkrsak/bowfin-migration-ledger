@@ -248,6 +248,15 @@ def validate_view_prefix(raw: Any, limits: dict[str, int]) -> tuple[str, ...]:
     return validate_relpath(raw, limits).parts
 
 
+def require_root_source_view(view_prefix: Any, tree: Any, view_tree: Any) -> None:
+    """Require compiler-source evidence to use repository-root coordinates."""
+    if view_prefix != "" or view_tree != tree:
+        fail(
+            "E_SOURCE_VIEW",
+            "compiler source must use an empty view prefix and the repository-root tree",
+        )
+
+
 def _validate_tree_component(raw: Any, limits: dict[str, int], label: str) -> str:
     """Validate an opaque Git-tree entry name without making it eligible."""
     if not isinstance(raw, str) or raw in {"", ".", ".."} or "/" in raw or "\x00" in raw:

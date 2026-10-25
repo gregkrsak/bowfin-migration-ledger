@@ -400,6 +400,24 @@ def _validate_applicability_review_records(
         if not isinstance(review, dict):
             lib.fail("E_APPLICABILITY_REVIEW", f"review must be an object: {surface_id}")
         lib.require_keys(review, fields, set(), f"applicability-review:{surface_id}")
+        _validate_freshness_policy(
+            review["eligibility_policy"],
+            f"applicability-review:{surface_id}.eligibility_policy",
+        )
+        _string_array(
+            review["limitations"], f"applicability-review:{surface_id}.limitations"
+        )
+        non_authority = review["non_authority"]
+        if (
+            not isinstance(non_authority, dict)
+            or set(non_authority) != {"owner_acceptance", "merge_permission"}
+            or non_authority["owner_acceptance"] is not False
+            or non_authority["merge_permission"] is not False
+        ):
+            lib.fail(
+                "E_APPLICABILITY_REVIEW",
+                f"review non-authority fields must be Boolean false: {surface_id}",
+            )
         expected = {
             "record_class": "applicability_review",
             "protocol_version": lib.PROTOCOL_VERSION,
@@ -418,35 +436,71 @@ def _validate_applicability_review_records(
             lib.fail("E_APPLICABILITY_REVIEW", f"review meaning mismatch: {surface_id}")
 
 
-def _row_matches_selector(row: dict[str, Any], selector: dict[str, Any]) -> bool:
-    if row["mapping_id"] != selector["mapping_id"] or row["unit_kind"] != selector["unit_kind"]:
-        return False
+def _charge_comparison(budget: Any, left: Any, right: Any) -> None:
+    """Charge a conservative bound before one semantic value comparison."""
+    amount = 1
+    if isinstance(left, str):
+        amount += len(left)
+    if isinstance(right, str):
+        amount += len(right)
+    budget.charge(amount)
+
+
+def _row_matches_selector(
+    row: dict[str, Any], selector: dict[str, Any], budget: Any
+) -> bool:
     path = row["path"]
-    if "path_exact" in selector and path != selector["path_exact"]:
-        return False
-    if "path_prefix" in selector and not (
-        path == selector["path_prefix"] or path.startswith(selector["path_prefix"] + "/")
-    ):
-        return False
-    if "path_suffix" in selector and not path.endswith(selector["path_suffix"]):
-        return False
+    if "path_exact" in selector:
+        _charge_comparison(budget, path, selector["path_exact"])
+        if path != selector["path_exact"]:
+            return False
+    if "path_prefix" in selector:
+        prefix = selector["path_prefix"]
+        _charge_comparison(budget, path, prefix)
+        exact = path == prefix
+        if not exact:
+            _charge_comparison(budget, path, prefix + "/")
+            if not path.startswith(prefix + "/"):
+                return False
+    if "path_suffix" in selector:
+        _charge_comparison(budget, path, selector["path_suffix"])
+        if not path.endswith(selector["path_suffix"]):
+            return False
     pointer_prefix = selector.get("json_pointer_prefix")
     if pointer_prefix is not None:
         pointer = row["locator"].get("json_pointer")
-        if not isinstance(pointer, str) or not pointer.startswith(pointer_prefix):
+        budget.charge(1)
+        if not isinstance(pointer, str):
+            return False
+        _charge_comparison(budget, pointer, pointer_prefix)
+        if not pointer.startswith(pointer_prefix):
             return False
     return True
 
 
 def _validate_generated_meaning(
-    rows: list[dict[str, Any]], compact: dict[str, Any]
+    rows: list[dict[str, Any]], compact: dict[str, Any], limits: dict[str, int]
 ) -> None:
     """Bind every retained classification field to the reviewed compact inputs."""
     mappings = compact["documents"]["mappings.json"]["mappings"]
     rules = compact["documents"]["classification-rules.json"]["rules"]
-    mappings_by_id = {mapping["mapping_id"]: mapping for mapping in mappings}
-    rules_by_id = {rule["rule_id"]: rule for rule in rules}
-    counts = {rule["rule_id"]: 0 for rule in rules}
+    budget = lib.WorkBudget(limits)
+    mappings_by_id: dict[str, dict[str, Any]] = {}
+    for mapping in mappings:
+        budget.charge(1 + len(mapping["mapping_id"]))
+        mappings_by_id[mapping["mapping_id"]] = mapping
+    rules_by_id: dict[str, dict[str, Any]] = {}
+    rules_by_selector: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    counts: dict[str, int] = {}
+    for rule in rules:
+        selector = rule["selector"]
+        key = (selector["mapping_id"], selector["unit_kind"])
+        budget.charge(
+            3 + (2 * len(rule["rule_id"])) + (2 * len(key[0])) + (2 * len(key[1]))
+        )
+        rules_by_id[rule["rule_id"]] = rule
+        rules_by_selector.setdefault(key, []).append(rule)
+        counts[rule["rule_id"]] = 0
     semantic_fields = {
         "role": "role",
         "phase": "phase",
@@ -457,21 +511,39 @@ def _validate_generated_meaning(
         "historical_relationship": "historical_relationship",
     }
     for row in rows:
+        budget.charge(1 + len(row["mapping_id"]))
         mapping = mappings_by_id.get(row["mapping_id"])
-        if mapping is None or (
-            row["namespace"] != mapping["namespace"]
-            or row["original"] != mapping["original"]
-            or row["canonical"] != mapping["canonical"]
-        ):
+        if mapping is None:
             lib.fail("E_CLASSIFICATION_BINDING", f"row mapping meaning mismatch: {row['occurrence_key']}")
-        matching = [rule for rule in rules if _row_matches_selector(row, rule["selector"])]
+        for field in ("namespace", "original", "canonical"):
+            _charge_comparison(budget, row[field], mapping[field])
+            if row[field] != mapping[field]:
+                lib.fail("E_CLASSIFICATION_BINDING", f"row mapping meaning mismatch: {row['occurrence_key']}")
+        selector_key = (row["mapping_id"], row["unit_kind"])
+        budget.charge(1 + len(selector_key[0]) + len(selector_key[1]))
+        candidates = rules_by_selector.get(selector_key, [])
+        matching: list[dict[str, Any]] = []
+        for candidate in candidates:
+            budget.charge(1)
+            if _row_matches_selector(row, candidate["selector"], budget):
+                matching.append(candidate)
+                if len(matching) > 1:
+                    lib.fail("E_CLASSIFICATION_BINDING", f"row rule selection mismatch: {row['occurrence_key']}")
+        budget.charge(1 + len(row["rule_id"]))
         rule = rules_by_id.get(row["rule_id"])
-        if len(matching) != 1 or rule is None or matching[0]["rule_id"] != row["rule_id"]:
+        if len(matching) != 1 or rule is None:
             lib.fail("E_CLASSIFICATION_BINDING", f"row rule selection mismatch: {row['occurrence_key']}")
-        if any(row[row_field] != rule[rule_field] for row_field, rule_field in semantic_fields.items()):
-            lib.fail("E_CLASSIFICATION_BINDING", f"row rule meaning mismatch: {row['occurrence_key']}")
+        _charge_comparison(budget, matching[0]["rule_id"], row["rule_id"])
+        if matching[0]["rule_id"] != row["rule_id"]:
+            lib.fail("E_CLASSIFICATION_BINDING", f"row rule selection mismatch: {row['occurrence_key']}")
+        for row_field, rule_field in semantic_fields.items():
+            _charge_comparison(budget, row[row_field], rule[rule_field])
+            if row[row_field] != rule[rule_field]:
+                lib.fail("E_CLASSIFICATION_BINDING", f"row rule meaning mismatch: {row['occurrence_key']}")
+        budget.charge(1 + len(row["rule_id"]))
         counts[row["rule_id"]] += 1
     for rule in rules:
+        budget.charge(2 + len(rule["rule_id"]))
         if counts[rule["rule_id"]] != rule["expected_count"]:
             lib.fail("E_CLASSIFICATION_BINDING", f"rule population mismatch: {rule['rule_id']}")
 
@@ -805,7 +877,28 @@ def reconcile(
     input_export_sha256: str,
     scan_manifest_sha256: str,
 ) -> None:
-    audit = canonical_document(audit_path, limits, limits["max_audit_output_bytes"])
+    audit_data = lib.read_bounded_file(audit_path, limits["max_audit_output_bytes"])
+    reconcile_bytes(
+        rows, audit_data, limits, source_repository, source_commit, source_tree,
+        source_export_sha256, input_export_sha256, scan_manifest_sha256,
+    )
+
+
+def reconcile_bytes(
+    rows: list[dict[str, Any]],
+    audit_data: bytes,
+    limits: dict[str, int],
+    source_repository: str,
+    source_commit: str,
+    source_tree: str,
+    source_export_sha256: str,
+    input_export_sha256: str,
+    scan_manifest_sha256: str,
+) -> None:
+    """Reconcile one already-read immutable audit byte sequence."""
+    audit = canonical_bytes(
+        audit_data, limits, "independent-audit.json", limits["max_audit_output_bytes"]
+    )
     required = {
         "protocol_version", "source_repository", "source_commit", "source_tree",
         "source_export_sha256", "input_export_sha256", "scan_manifest_sha256",
@@ -1102,6 +1195,12 @@ def verify_evidence_binding(
             lib.fail("E_RECORD_FIELD", f"{field} must be an object")
         lib.require_keys(value, fields, set(), field)
 
+    lib.require_root_source_view(
+        record["source"]["view_prefix"],
+        record["source"]["tree"],
+        record["source"]["view_tree"],
+    )
+
     expected_tooling_fields = {
         "repository", "commit", "tree", "view_prefix", "view_tree", "export_sha256",
     }
@@ -1165,7 +1264,7 @@ def verify_evidence_binding(
     compact = validate_compact_input_files(exported_files["inputs"], limits)
 
     rows = verify_package(package, record["source"]["repository"], record["source"]["tree"], limits)
-    _validate_generated_meaning(rows, compact)
+    _validate_generated_meaning(rows, compact, limits)
     index_data = lib.read_bounded_file(package / "index.json", limits["max_input_file_bytes"])
     summary_data = lib.read_bounded_file(package / "summary.json", limits["max_input_file_bytes"])
     manifest_data = lib.read_bounded_file(package / "scan-manifest.json", limits["max_export_bytes"])
@@ -1193,8 +1292,8 @@ def verify_evidence_binding(
     )
     if manifest_document != lib.scan_manifest_document(authenticated_manifest):
         lib.fail("E_SOURCE_BINDING", "package scan manifest does not exactly cover authenticated source bytes")
-    reconcile(
-        rows, audit_path, limits, record["source"]["repository"],
+    reconcile_bytes(
+        rows, audit_data, limits, record["source"]["repository"],
         record["source"]["commit"], record["source"]["tree"],
         record["source"]["export_sha256"], record["inputs"]["export_sha256"],
         index["scan_manifest_sha256"],

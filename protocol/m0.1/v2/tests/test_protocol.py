@@ -520,6 +520,53 @@ class ProtocolTests(unittest.TestCase):
             verify.verify_freshness(*semantic_arguments)
         self.assertEqual("E_APPLICABILITY_REVIEW", caught.exception.code)
 
+        review["reviewer"] = "Sarah"
+        review["non_authority"] = {"owner_acceptance": 0, "merge_permission": 0}
+        numeric_reviews = self.workspace / "numeric-freshness-reviews"
+        numeric_reviews.mkdir()
+        self.write_json(numeric_reviews / "fixture-review.json", review)
+        numeric_export_path, numeric_export = self.make_export(
+            numeric_reviews, "fixture/reviews", False
+        )
+        numeric_entry = numeric_export["entries"][0]
+        decision["record_commit"] = numeric_export["commit"]
+        decision["record_tree"] = numeric_export["tree"]
+        decision["record_blob"] = numeric_entry["blob_sha1"]
+        decision["record_sha256"] = numeric_entry["sha256"]
+        self.write_json(decision_path, {"protocol_version": "m0.1-v2", "decisions": [decision]})
+        numeric_arguments = list(arguments)
+        numeric_arguments[8:15] = [
+            numeric_reviews, numeric_export_path, "fixture/reviews", numeric_export["commit"],
+            numeric_export["tree"], "", numeric_export["tree"],
+        ]
+        with self.assertRaises(verify.lib.ProtocolError) as caught:
+            verify.verify_freshness(*numeric_arguments)
+        self.assertEqual("E_APPLICABILITY_REVIEW", caught.exception.code)
+
+        review["non_authority"] = {"owner_acceptance": False, "merge_permission": False}
+        review["eligibility_policy"] = copy.deepcopy(surface["freshness_policy"])
+        review["eligibility_policy"]["point_in_time_only"] = 0
+        policy_reviews = self.workspace / "numeric-policy-reviews"
+        policy_reviews.mkdir()
+        self.write_json(policy_reviews / "fixture-review.json", review)
+        policy_export_path, policy_export = self.make_export(
+            policy_reviews, "fixture/reviews", False
+        )
+        policy_entry = policy_export["entries"][0]
+        decision["record_commit"] = policy_export["commit"]
+        decision["record_tree"] = policy_export["tree"]
+        decision["record_blob"] = policy_entry["blob_sha1"]
+        decision["record_sha256"] = policy_entry["sha256"]
+        self.write_json(decision_path, {"protocol_version": "m0.1-v2", "decisions": [decision]})
+        policy_arguments = list(arguments)
+        policy_arguments[8:15] = [
+            policy_reviews, policy_export_path, "fixture/reviews", policy_export["commit"],
+            policy_export["tree"], "", policy_export["tree"],
+        ]
+        with self.assertRaises(verify.lib.ProtocolError) as caught:
+            verify.verify_freshness(*policy_arguments)
+        self.assertEqual("E_FRESHNESS_POLICY", caught.exception.code)
+
     def test_generated_rows_are_bound_to_compact_meaning(self) -> None:
         built = self.build_valid("meaning-binding")
         rows = copy.deepcopy(built["rows"])
@@ -539,8 +586,27 @@ class ProtocolTests(unittest.TestCase):
             self.limits,
         )
         with self.assertRaises(verify.lib.ProtocolError) as caught:
-            verify._validate_generated_meaning(verified_rows, compact)
+            verify._validate_generated_meaning(verified_rows, compact, self.limits)
         self.assertEqual("E_CLASSIFICATION_BINDING", caught.exception.code)
+
+        constrained = dict(self.limits)
+        constrained["max_processing_steps"] = 1
+        self.assert_code(
+            "E_PROCESSING_STEPS",
+            verify._validate_generated_meaning,
+            built["rows"], compact, constrained,
+        )
+
+    def test_compiler_source_view_must_be_repository_root(self) -> None:
+        self.assert_code(
+            "E_SOURCE_VIEW", lib.require_root_source_view,
+            "nested", "1" * 40, "2" * 40,
+        )
+        self.assert_code(
+            "E_SOURCE_VIEW", lib.require_root_source_view,
+            "", "1" * 40, "2" * 40,
+        )
+        lib.require_root_source_view("", "1" * 40, "1" * 40)
 
     def test_manifest_binary_and_malformed_require_disposition(self) -> None:
         manifest = lib.scan_manifest([("binary.bin", b"\xff"), ("bad.json", b'{"x":')], self.limits)
@@ -626,7 +692,20 @@ class ProtocolTests(unittest.TestCase):
             reviews, review_export_path, built["inputs"], input_export_path,
             built["audit_path"], expected_tooling, self.limits,
         )
-        verify.verify_evidence_binding(*arguments)
+        original_read = verify.lib.read_bounded_file
+        audit_reads = 0
+
+        def one_audit_read(path: Path, maximum: int) -> bytes:
+            nonlocal audit_reads
+            if path == built["audit_path"]:
+                audit_reads += 1
+                if audit_reads > 1:
+                    raise AssertionError("evidence binding reopened the audit path")
+            return original_read(path, maximum)
+
+        with mock.patch.object(verify.lib, "read_bounded_file", side_effect=one_audit_read):
+            verify.verify_evidence_binding(*arguments)
+        self.assertEqual(1, audit_reads)
         wrong_tooling = list(arguments)
         wrong_tooling[17] = {**expected_tooling, "commit": "f" * 40}
         with self.assertRaises(verify.lib.ProtocolError) as caught:

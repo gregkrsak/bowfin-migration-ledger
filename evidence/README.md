@@ -84,8 +84,15 @@ selected or materialized as a current dependency.
   review body whose semantic fields are checked against the decision and subject.
 - Every generated row is checked against its exact mapping and unique matching
   rule, including retained classification meaning and expected per-rule count.
-- The evidence record binds the exact independent-audit bytes; source, input,
-  manifest, and occurrence-key reconciliation is repeated during evidence binding.
+- The evidence record binds the exact independent-audit bytes; the same single
+  read is hashed, parsed, and reconciled against source, input, manifest, and
+  occurrence-key identities.
+- Compiler-source evidence always selects the repository root. Its paths and
+  occurrence keys are therefore repository-relative; selected subviews remain
+  available for tooling, compact inputs, observations, reviews, and contracts.
+- Classification-meaning verification is indexed by mapping and unit kind and is
+  charged against the processing budget, including remaining selector and semantic
+  comparisons.
 - The verifier reconstructs canonical greedy chunk boundaries; a fully rehashed
   alternative partition is not equivalent evidence.
 - Aggregate package bytes are charged before each read, and a package that would
