@@ -142,7 +142,10 @@ def _validate_rules_document(document: Any, mapping_ids: set[str], limits: dict[
         "representative_context", "boundary_context", "producer", "consumer",
         "support_policy", "validation_test_id", "historical_relationship",
     }
-    allowed_selector = {"mapping_id", "unit_kind", "path_exact", "path_prefix", "path_suffix", "json_pointer_prefix"}
+    allowed_selector = {
+        "mapping_id", "unit_kind", "path_exact", "path_prefix", "path_suffix",
+        "json_pointer_prefix", "candidate_keys",
+    }
     for index, row in enumerate(rows):
         label = f"rules[{index}]"
         if not isinstance(row, dict):
@@ -158,26 +161,44 @@ def _validate_rules_document(document: Any, mapping_ids: set[str], limits: dict[
         if selector.get("mapping_id") not in mapping_ids or selector.get("unit_kind") not in lib.UNIT_KINDS:
             lib.fail("E_SELECTOR_UNIT", f"unknown mapping or unit kind: {label}")
         path_fields = [name for name in ("path_exact", "path_prefix", "path_suffix") if name in selector]
-        if len(path_fields) != 1:
-            lib.fail("E_SELECTOR_PATH", f"{label} requires exactly one path selector")
-        selected = selector[path_fields[0]]
-        if path_fields[0] == "path_suffix":
+        candidate_keys = selector.get("candidate_keys")
+        if len(path_fields) + (candidate_keys is not None) != 1:
+            lib.fail("E_SELECTOR_PATH", f"{label} requires exactly one path selector or candidate_keys")
+        if candidate_keys is not None:
             if (
-                not isinstance(selected, str)
-                or not selected
-                or selected.startswith("/")
-                or "\\" in selected
-                or "\x00" in selected
-                or any(0xD800 <= ord(char) <= 0xDFFF for char in selected)
-                or len(selected.encode("utf-8")) > limits["max_path_bytes"]
+                not isinstance(candidate_keys, list)
+                or not candidate_keys
+                or len(candidate_keys) > limits["max_occurrences"]
+                or any(not isinstance(key, str) for key in candidate_keys)
+                or len(candidate_keys) != len(set(candidate_keys))
             ):
-                lib.fail("E_SELECTOR_PATH", f"invalid path suffix: {label}")
+                lib.fail("E_SELECTOR_CANDIDATE", f"invalid candidate_keys: {label}")
+            for key in candidate_keys:
+                if not isinstance(key, str) or not key.startswith("sha256:"):
+                    lib.fail("E_SELECTOR_CANDIDATE", f"invalid candidate key: {label}")
+                lib.require_sha256(key[7:], f"{label}.candidate_keys")
         else:
-            lib.validate_relpath(selected, limits)
+            selected = selector[path_fields[0]]
+            if path_fields[0] == "path_suffix":
+                if (
+                    not isinstance(selected, str)
+                    or not selected
+                    or selected.startswith("/")
+                    or "\\" in selected
+                    or "\x00" in selected
+                    or any(0xD800 <= ord(char) <= 0xDFFF for char in selected)
+                    or len(selected.encode("utf-8")) > limits["max_path_bytes"]
+                ):
+                    lib.fail("E_SELECTOR_PATH", f"invalid path suffix: {label}")
+            else:
+                lib.validate_relpath(selected, limits)
         pointer = selector.get("json_pointer_prefix")
-        if pointer is not None and not isinstance(pointer, str):
+        if pointer is not None and (not isinstance(pointer, str) or candidate_keys is not None):
             lib.fail("E_SELECTOR_POINTER", f"invalid JSON Pointer prefix: {label}")
-        if row["role"] not in lib.ROLES or (row["role"] == "historical" and path_fields[0] != "path_exact"):
+        if (
+            row["role"] not in lib.ROLES
+            or (row["role"] == "historical" and candidate_keys is None and path_fields[0] != "path_exact")
+        ):
             lib.fail("E_RULE_ROLE", f"invalid role or broad historical rule: {label}")
         count = row["expected_count"]
         if not isinstance(count, int) or isinstance(count, bool) or not 0 <= count <= limits["max_occurrences"]:
@@ -209,7 +230,12 @@ def _validate_audit_document(document: Any, limits: dict[str, int]) -> None:
         label = f"families[{index}]"
         if not isinstance(row, dict):
             lib.fail("E_AUDIT_FAMILY", f"{label} must be an object")
-        lib.require_keys(row, {"family_id", "kind", "literal", "namespace", "unit_kinds"}, set(), label)
+        lib.require_keys(
+            row,
+            {"family_id", "kind", "literal", "namespace", "unit_kinds"},
+            {"candidate_keys"},
+            label,
+        )
         family_id = lib.require_identifier(row["family_id"], f"{label}.family_id")
         if family_id in ids or row["kind"] not in kinds:
             lib.fail("E_AUDIT_FAMILY", f"duplicate or invalid family: {label}")
@@ -223,6 +249,20 @@ def _validate_audit_document(document: Any, limits: dict[str, int]) -> None:
             lib.fail("E_AUDIT_ASCII", f"non-ASCII literal: {label}")
         if row["kind"] in {"source_suffix", "path_component"} and units != ["path_component"]:
             lib.fail("E_AUDIT_UNITS", f"path family must be path-only: {label}")
+        candidate_keys = row.get("candidate_keys")
+        if candidate_keys is not None:
+            if (
+                not isinstance(candidate_keys, list)
+                or not candidate_keys
+                or len(candidate_keys) > limits["max_occurrences"]
+                or any(not isinstance(key, str) for key in candidate_keys)
+                or len(candidate_keys) != len(set(candidate_keys))
+            ):
+                lib.fail("E_AUDIT_CANDIDATE_FILTER", f"invalid candidate_keys: {label}")
+            for key in candidate_keys:
+                if not isinstance(key, str) or not key.startswith("sha256:"):
+                    lib.fail("E_AUDIT_CANDIDATE_FILTER", f"invalid candidate key: {label}")
+                lib.require_sha256(key[7:], f"{label}.candidate_keys")
 
 
 def validate_compact_input_files(files: dict[str, bytes], limits: dict[str, int]) -> dict[str, Any]:
@@ -463,6 +503,13 @@ def _charge_comparison(budget: Any, left: Any, right: Any) -> None:
 def _row_matches_selector(
     row: dict[str, Any], selector: dict[str, Any], budget: Any
 ) -> bool:
+    candidate_keys = selector.get("candidate_keys")
+    if candidate_keys is not None:
+        for candidate_key in candidate_keys:
+            _charge_comparison(budget, row["candidate_key"], candidate_key)
+            if row["candidate_key"] == candidate_key:
+                return True
+        return False
     path = row["path"]
     if "path_exact" in selector:
         _charge_comparison(budget, path, selector["path_exact"])
@@ -591,7 +638,7 @@ def validate_locator(unit_kind: str, locator: Any) -> dict[str, Any]:
 
 def validate_occurrence(row: Any, limits: dict[str, int]) -> dict[str, Any]:
     required = {
-        "protocol_version", "occurrence_key", "path", "unit_kind", "locator",
+        "protocol_version", "candidate_key", "occurrence_key", "path", "unit_kind", "locator",
         "source_file_sha256", "original", "canonical", "namespace", "role", "phase",
         "producer", "consumer", "support_policy", "validation_test_id",
         "historical_relationship", "mapping_id", "rule_id", "context",
@@ -607,6 +654,10 @@ def validate_occurrence(row: Any, limits: dict[str, int]) -> dict[str, Any]:
     lib.validate_relpath(row["path"], limits)
     validate_locator(unit_kind, row["locator"])
     lib.require_sha256(row["source_file_sha256"], "source_file_sha256")
+    candidate_key = row["candidate_key"]
+    if not isinstance(candidate_key, str) or not candidate_key.startswith("sha256:"):
+        lib.fail("E_CANDIDATE_KEY", "invalid candidate key")
+    lib.require_sha256(candidate_key[7:], "candidate key")
     key = row["occurrence_key"]
     if not isinstance(key, str) or not key.startswith("sha256:"):
         lib.fail("E_OCCURRENCE_KEY", "invalid occurrence key")
@@ -822,6 +873,12 @@ def verify_package(
             )
             if row["occurrence_key"] != recomputed:
                 lib.fail("E_OCCURRENCE_KEY", f"key mismatch at {expected_path}:{row_number}")
+            recomputed_candidate = lib.candidate_key(
+                source_repository, source_tree, row["path"], row["unit_kind"],
+                row["locator"], row["original"], limits,
+            )
+            if row["candidate_key"] != recomputed_candidate:
+                lib.fail("E_CANDIDATE_KEY", f"candidate key mismatch at {expected_path}:{row_number}")
             key = row["occurrence_key"]
             if previous_key is not None and key <= previous_key:
                 lib.fail("E_ROW_ORDER", f"non-increasing key at {expected_path}:{row_number}")
@@ -946,7 +1003,7 @@ def reconcile_bytes(
             lib.fail("E_AUDIT_CANDIDATE", f"candidate {index} must be an object")
         lib.require_keys(
             candidate,
-            {"occurrence_key", "path", "unit_kind", "locator", "namespace", "original", "family_id"},
+            {"candidate_key", "occurrence_key", "path", "unit_kind", "locator", "namespace", "original", "family_id"},
             set(),
             f"candidate[{index}]",
         )
@@ -957,12 +1014,18 @@ def reconcile_bytes(
         lib.require_identifier(candidate["namespace"], "audit namespace")
         lib.require_identifier(candidate["family_id"], "audit family_id")
         _nonempty_string(candidate["original"], "audit original")
+        recomputed_candidate = lib.candidate_key(
+            source_repository, source_tree, path, candidate["unit_kind"],
+            candidate["locator"], candidate["original"], limits,
+        )
+        if candidate["candidate_key"] != recomputed_candidate:
+            lib.fail("E_AUDIT_CANDIDATE_KEY", "audit physical candidate key mismatch")
         recomputed = lib.occurrence_key(
             source_repository, source_tree, path, candidate["unit_kind"], candidate["locator"],
             candidate["namespace"], candidate["original"], limits,
         )
         if candidate["occurrence_key"] != recomputed:
-            lib.fail("E_AUDIT_KEY", "audit candidate key mismatch")
+            lib.fail("E_AUDIT_KEY", "audit semantic occurrence key mismatch")
         audit_keys.append(recomputed)
     if audit["candidate_count"] != len(audit_keys) or len(audit_keys) != len(set(audit_keys)):
         lib.fail("E_AUDIT_DUPLICATE", "audit candidate count or uniqueness mismatch")

@@ -714,6 +714,29 @@ def scan_manifest_digest(manifest: list[dict[str, Any]], limits: dict[str, int])
     return sha256_hex(canonical_json_bytes(scan_manifest_document(manifest), limits))
 
 
+def candidate_key(
+    source_repository: str,
+    source_tree: str,
+    path: str,
+    unit_kind: str,
+    locator: dict[str, Any],
+    original: str,
+    limits: dict[str, int],
+) -> str:
+    """Identify a discovered physical candidate without assigning semantic meaning."""
+    if unit_kind not in UNIT_KINDS:
+        fail("E_UNIT_KIND", f"unknown unit kind: {unit_kind}")
+    physical_unit_kind = (
+        "raw_text"
+        if unit_kind in {"raw_text", "embedded_identity", "machine_identifier"}
+        else unit_kind
+    )
+    identity = [
+        source_repository, source_tree, path, physical_unit_kind, locator, original,
+    ]
+    return "sha256:" + sha256_hex(canonical_json_bytes(identity, limits, trailing_lf=False))
+
+
 def occurrence_key(
     source_repository: str,
     source_tree: str,

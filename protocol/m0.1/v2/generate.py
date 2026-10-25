@@ -122,7 +122,7 @@ def validate_rules(
     }
     selector_allowed = {
         "mapping_id", "unit_kind", "path_exact", "path_prefix", "path_suffix",
-        "json_pointer_prefix",
+        "json_pointer_prefix", "candidate_keys",
     }
     for index, row in enumerate(rows):
         label = f"rules[{index}]"
@@ -143,20 +143,35 @@ def validate_rules(
         if selector.get("unit_kind") not in lib.UNIT_KINDS:
             lib.fail("E_SELECTOR_UNIT", f"{label} names unknown unit kind")
         path_fields = [name for name in ("path_exact", "path_prefix", "path_suffix") if name in selector]
-        if len(path_fields) != 1:
-            lib.fail("E_SELECTOR_PATH", f"{label} requires exactly one path selector")
-        selected = selector[path_fields[0]]
-        if path_fields[0] == "path_suffix":
-            _validate_path_suffix(selected, limits, f"{label}.path_suffix")
+        candidate_keys = selector.get("candidate_keys")
+        if len(path_fields) + (candidate_keys is not None) != 1:
+            lib.fail("E_SELECTOR_PATH", f"{label} requires exactly one path selector or candidate_keys")
+        if candidate_keys is not None:
+            if (
+                not isinstance(candidate_keys, list)
+                or not candidate_keys
+                or len(candidate_keys) > limits["max_occurrences"]
+                or any(not isinstance(key, str) for key in candidate_keys)
+                or len(candidate_keys) != len(set(candidate_keys))
+            ):
+                lib.fail("E_SELECTOR_CANDIDATE", f"{label}.candidate_keys must be nonempty and unique")
+            for key in candidate_keys:
+                if not isinstance(key, str) or not key.startswith("sha256:"):
+                    lib.fail("E_SELECTOR_CANDIDATE", f"{label}.candidate_keys contains an invalid key")
+                lib.require_sha256(key[7:], f"{label}.candidate_keys")
         else:
-            lib.validate_relpath(selected, limits)
+            selected = selector[path_fields[0]]
+            if path_fields[0] == "path_suffix":
+                _validate_path_suffix(selected, limits, f"{label}.path_suffix")
+            else:
+                lib.validate_relpath(selected, limits)
         pointer = selector.get("json_pointer_prefix")
-        if pointer is not None and not isinstance(pointer, str):
-            lib.fail("E_SELECTOR_POINTER", f"{label}.json_pointer_prefix must be a string")
+        if pointer is not None and (not isinstance(pointer, str) or candidate_keys is not None):
+            lib.fail("E_SELECTOR_POINTER", f"{label}.json_pointer_prefix requires a path selector")
         if row["role"] not in lib.ROLES:
             lib.fail("E_RULE_ROLE", f"{label} has unknown role")
-        if row["role"] == "historical" and path_fields[0] != "path_exact":
-            lib.fail("E_HISTORICAL_BROAD", f"{label} historical rule requires path_exact")
+        if row["role"] == "historical" and candidate_keys is None and path_fields[0] != "path_exact":
+            lib.fail("E_HISTORICAL_BROAD", f"{label} historical rule requires path_exact or candidate_keys")
         count = row["expected_count"]
         if not isinstance(count, int) or isinstance(count, bool) or count < 0 or count > limits["max_occurrences"]:
             lib.fail("E_RULE_COUNT", f"{label}.expected_count is invalid")
@@ -258,6 +273,9 @@ def _candidate(
     limits: dict[str, int],
 ) -> dict[str, Any]:
     return {
+        "candidate_key": lib.candidate_key(
+            source_repository, source_tree, path, unit_kind, locator, original, limits
+        ),
         "occurrence_key": lib.occurrence_key(
             source_repository, source_tree, path, unit_kind, locator, namespace, original, limits
         ),
@@ -376,6 +394,13 @@ def _selector_matches(
     _charge_comparison(budget, selector["unit_kind"], item["unit_kind"])
     if selector["unit_kind"] != item["unit_kind"]:
         return False
+    candidate_keys = selector.get("candidate_keys")
+    if candidate_keys is not None:
+        for candidate_key in candidate_keys:
+            _charge_comparison(budget, item["candidate_key"], candidate_key)
+            if item["candidate_key"] == candidate_key:
+                return True
+        return False
     path = item["path"]
     if "path_exact" in selector:
         _charge_comparison(budget, path, selector["path_exact"])
@@ -410,6 +435,7 @@ def classify(
     rules: list[dict[str, Any]],
     limits: dict[str, int],
 ) -> list[dict[str, Any]]:
+    """Choose exactly one semantic interpretation for each physical candidate."""
     budget = lib.WorkBudget(limits)
     mappings_by_id: dict[str, dict[str, Any]] = {}
     for item in mappings:
@@ -424,20 +450,35 @@ def classify(
     for rule in rules:
         budget.charge(1 + len(rule["rule_id"]))
         selected_counts[rule["rule_id"]] = 0
-    rows: list[dict[str, Any]] = []
+
+    groups: dict[str, list[dict[str, Any]]] = {}
+    physical_fields = (
+        "candidate_key", "path", "locator", "source_file_sha256", "original",
+        "context",
+    )
     for item in candidates:
-        budget.charge(1 + len(item["mapping_id"]) + len(item["unit_kind"]))
-        possible = rules_by_unit.get((item["mapping_id"], item["unit_kind"]), [])
-        matched = []
-        for rule in possible:
-            budget.charge(1)
-            if _selector_matches(rule["selector"], item, budget):
-                matched.append(rule)
+        key = item["candidate_key"]
+        budget.charge(1 + len(key))
+        group = groups.setdefault(key, [])
+        if group and any(group[0][field] != item[field] for field in physical_fields):
+            lib.fail("E_CANDIDATE_COLLISION", f"inconsistent physical candidate: {key}")
+        group.append(item)
+
+    rows: list[dict[str, Any]] = []
+    for candidate_key, interpretations in groups.items():
+        matched: list[tuple[dict[str, Any], dict[str, Any]]] = []
+        for item in interpretations:
+            budget.charge(1 + len(item["mapping_id"]) + len(item["unit_kind"]))
+            possible = rules_by_unit.get((item["mapping_id"], item["unit_kind"]), [])
+            for rule in possible:
+                budget.charge(1)
+                if _selector_matches(rule["selector"], item, budget):
+                    matched.append((item, rule))
+                    if len(matched) > 1:
+                        lib.fail("E_MULTIPLE_CLASSIFICATION", f"multiple classifications: {candidate_key}")
         if not matched:
-            lib.fail("E_UNCLASSIFIED", f"unclassified occurrence: {item['occurrence_key']}")
-        if len(matched) != 1:
-            lib.fail("E_MULTIPLE_CLASSIFICATION", f"multiple classifications: {item['occurrence_key']}")
-        rule = matched[0]
+            lib.fail("E_UNCLASSIFIED", f"unclassified physical candidate: {candidate_key}")
+        item, rule = matched[0]
         budget.charge(1 + len(rule["rule_id"]))
         selected_counts[rule["rule_id"]] += 1
         budget.charge(1 + len(item["mapping_id"]))
@@ -464,7 +505,6 @@ def classify(
         if actual != rule["expected_count"]:
             lib.fail("E_EXPECTED_COUNT", f"{rule['rule_id']} expected {rule['expected_count']} but selected {actual}")
     return rows
-
 
 def _identity_arguments(parser: argparse.ArgumentParser, prefix: str) -> None:
     parser.add_argument(f"--{prefix}-root", required=True, type=Path)

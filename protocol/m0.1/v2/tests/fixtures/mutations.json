@@ -50,13 +50,17 @@
     {"expected_code": "E_BINDING_TARGET", "mutation_id": "wrong-integration-target", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"},
     {"expected_code": "E_BINDING_ANCESTRY", "mutation_id": "hidden-introduced-parent", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"},
     {"expected_code": "E_OWNER_DECISION", "mutation_id": "owner-decision-meaning-drift", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"},
-    {"expected_code": "E_RECOVERY_BUNDLE", "mutation_id": "missing-recovery-object", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"}
+    {"expected_code": "E_RECOVERY_BUNDLE", "mutation_id": "missing-recovery-object", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"},
+    {"expected_code": "E_MULTIPLE_CLASSIFICATION", "mutation_id": "same-spelling-semantic-overlap", "test_method": "test_candidate_key_separates_physical_discovery_from_semantics"}
   ],
   "controls": [
     {"control_id": "single-read-audit-byte-binding", "test_method": "test_evidence_record_binds_actual_exports_and_generated_bytes"},
     {"control_id": "shared-protocol-error-identity", "test_method": "test_protocol_error_identity_is_shared"},
     {"control_id": "complete-occurrence-identity", "test_method": "test_intrinsic_locators_distinguish_multiple_identities"},
-    {"control_id": "fresh-fixture-per-mutation", "test_method": "test_missing_surface_and_unsupported_not_applicable"}
+    {"control_id": "fresh-fixture-per-mutation", "test_method": "test_missing_surface_and_unsupported_not_applicable"},
+    {"control_id": "physical-candidate-semantic-partition", "test_method": "test_candidate_key_separates_physical_discovery_from_semantics"},
+    {"control_id": "same-file-mixed-role-partition", "test_method": "test_exact_candidate_keys_split_roles_within_one_file"},
+    {"control_id": "independent-audit-candidate-filter", "test_method": "test_exact_candidate_keys_split_roles_within_one_file"}
   ],
   "protocol_version": "m0.1-v2-fixture"
 }

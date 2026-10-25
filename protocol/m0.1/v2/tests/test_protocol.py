@@ -350,6 +350,118 @@ class ProtocolTests(unittest.TestCase):
             b"".join(lib.canonical_json_bytes(row["locator"], self.limits, trailing_lf=False) for row in rows),
         )
 
+    def test_candidate_key_separates_physical_discovery_from_semantics(self) -> None:
+        mapping_document = {"protocol_version": "m0.1-v2", "mappings": [
+            {"mapping_id": "cli", "namespace": "cli_invocation", "original": "klyxr", "canonical": "bowfin", "policy": "compatibility"},
+            {"mapping_id": "brand", "namespace": "display_brand", "original": "klyxr", "canonical": "Bowfin", "policy": "replace"},
+        ]}
+        mappings = generate.validate_mappings(mapping_document, self.limits)
+        candidates = generate.discover(
+            [("mixed.txt", b"klyxr then klyxr")], mappings,
+            "fixture/source", "1" * 40, self.limits,
+        )
+        grouped: dict[str, list[dict[str, Any]]] = {}
+        for candidate in candidates:
+            grouped.setdefault(candidate["candidate_key"], []).append(candidate)
+        self.assertEqual(2, len(grouped))
+        self.assertEqual([2, 2], sorted(len(group) for group in grouped.values()))
+        keys = list(grouped)
+        rules_document = {"protocol_version": "m0.1-v2", "rules": [
+            {
+                "rule_id": "cli-first", "selector": {
+                    "mapping_id": "cli", "unit_kind": "raw_text",
+                    "candidate_keys": [keys[0]],
+                },
+                "expected_count": 1, "role": "compatibility", "phase": "M4",
+                "rationale": "The first physical occurrence is the legacy command.",
+                "representative_context": ["klyxr"], "boundary_context": ["command"],
+                "producer": "CLI parser", "consumer": "operator",
+                "support_policy": "retain until a later accepted BED removes it",
+                "validation_test_id": "synthetic:cli-first",
+                "historical_relationship": None,
+            },
+            {
+                "rule_id": "brand-second", "selector": {
+                    "mapping_id": "brand", "unit_kind": "raw_text",
+                    "candidate_keys": [keys[1]],
+                },
+                "expected_count": 1, "role": "live", "phase": "M1",
+                "rationale": "The second physical occurrence is display identity.",
+                "representative_context": ["klyxr"], "boundary_context": ["brand"],
+                "producer": "documentation", "consumer": "reader",
+                "support_policy": "replace in M1",
+                "validation_test_id": "synthetic:brand-second",
+                "historical_relationship": None,
+            },
+        ]}
+        rules = generate.validate_rules(rules_document, mappings, self.limits)
+        rows = generate.classify(candidates, mappings, rules, self.limits)
+        self.assertEqual({"cli", "brand"}, {row["mapping_id"] for row in rows})
+        self.assertEqual(2, len({row["candidate_key"] for row in rows}))
+
+        broad = copy.deepcopy(rules_document)
+        for rule in broad["rules"]:
+            rule["selector"].pop("candidate_keys")
+            rule["selector"]["path_exact"] = "mixed.txt"
+        broad_rules = generate.validate_rules(broad, mappings, self.limits)
+        self.assert_code(
+            "E_MULTIPLE_CLASSIFICATION", generate.classify,
+            candidates, mappings, broad_rules, self.limits,
+        )
+
+    def test_exact_candidate_keys_split_roles_within_one_file(self) -> None:
+        mapping_document = {"protocol_version": "m0.1-v2", "mappings": [
+            {"mapping_id": "brand", "namespace": "display_brand", "original": "Klyxr", "canonical": "Bowfin", "policy": "replace"},
+        ]}
+        mappings = generate.validate_mappings(mapping_document, self.limits)
+        candidates = generate.discover(
+            [("history.md", b"Klyxr then Klyxr")], mappings,
+            "fixture/source", "2" * 40, self.limits,
+        )
+        keys = [candidate["candidate_key"] for candidate in candidates]
+        rules_document = {"protocol_version": "m0.1-v2", "rules": [
+            {
+                "rule_id": "live", "selector": {"mapping_id": "brand", "unit_kind": "raw_text", "candidate_keys": [keys[0]]},
+                "expected_count": 1, "role": "live", "phase": "M1",
+                "rationale": "Live prose.", "representative_context": ["Klyxr"],
+                "boundary_context": ["live"], "producer": "docs", "consumer": "reader",
+                "support_policy": "replace", "validation_test_id": "synthetic:live",
+                "historical_relationship": None,
+            },
+            {
+                "rule_id": "historical", "selector": {"mapping_id": "brand", "unit_kind": "raw_text", "candidate_keys": [keys[1]]},
+                "expected_count": 1, "role": "historical", "phase": "M7",
+                "rationale": "Quoted history.", "representative_context": ["Klyxr"],
+                "boundary_context": ["history"], "producer": None, "consumer": None,
+                "support_policy": "retain as history", "validation_test_id": "synthetic:history",
+                "historical_relationship": "records the predecessor identity",
+            },
+        ]}
+        rules = generate.validate_rules(rules_document, mappings, self.limits)
+        rows = generate.classify(candidates, mappings, rules, self.limits)
+        self.assertEqual({"live", "historical"}, {row["role"] for row in rows})
+
+        families = audit_scan.validate_policy({
+            "protocol_version": "m0.1-v2", "independently_authored": True,
+            "families": [
+                {"family_id": "live", "kind": "literal", "literal": "Klyxr",
+                 "namespace": "display_brand", "unit_kinds": ["raw_text"],
+                 "candidate_keys": [keys[0]]},
+                {"family_id": "historical", "kind": "literal", "literal": "Klyxr",
+                 "namespace": "display_brand", "unit_kinds": ["raw_text"],
+                 "candidate_keys": [keys[1]]},
+            ],
+        }, self.limits)
+        audited = audit_scan.discover(
+            [("history.md", b"Klyxr then Klyxr")], families,
+            "fixture/source", "2" * 40, self.limits,
+        )
+        self.assertEqual(set(keys), {row["candidate_key"] for row in audited})
+        self.assertEqual(
+            {row["occurrence_key"] for row in rows},
+            {row["occurrence_key"] for row in audited},
+        )
+
     def test_independent_auditor_reconciles_exact_keys(self) -> None:
         self.verify_valid(self.build_valid("independent"))
 
@@ -358,6 +470,10 @@ class ProtocolTests(unittest.TestCase):
         audit = verify.canonical_document(built["audit_path"], self.limits)
         audit["candidates"][0]["locator"][next(key for key in audit["candidates"][0]["locator"] if key.endswith("start"))] += 1
         candidate = audit["candidates"][0]
+        candidate["candidate_key"] = lib.candidate_key(
+            "fixture/source", audit["source_tree"], candidate["path"],
+            candidate["unit_kind"], candidate["locator"], candidate["original"], self.limits,
+        )
         candidate["occurrence_key"] = lib.occurrence_key("fixture/source", audit["source_tree"], candidate["path"], candidate["unit_kind"], candidate["locator"], candidate["namespace"], candidate["original"], self.limits)
         self.write_json(built["audit_path"], audit)
         rows = verify.verify_package(built["package"], "fixture/source", built["source_export"]["tree"], self.limits)

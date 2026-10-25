@@ -1,11 +1,13 @@
 # M0.1 v2 Rule-to-Occurrence Ledger Protocol
 
-**Status:** Accepted protocol and tooling revision. Reviewed head
+**Status:** The accepted baseline is reviewed head
 `0b81e183df466890a779f1bbd777c6c864835a3b`, tree
-`c3b7438fbb20ee1debcc8e00490449975f9c2084`, was accepted by Greg and integrated
-through ordinary merge commit `8228246b221ee2c7571e5302a1357e3cfba27787`.
-Production inputs and migration-evidence generation still require separate owner
-authorization. M0.1 remains unaccepted and M1 remains unauthorized.
+`c3b7438fbb20ee1debcc8e00490449975f9c2084`, integrated through ordinary merge
+commit `8228246b221ee2c7571e5302a1357e3cfba27787`. This branch proposes an
+unaccepted occurrence-semantics repair to that baseline. It requires independent
+review, separate owner acceptance, and ordinary merge before it can replace the
+accepted revision. No production execution is authorized. M0.1 remains
+unaccepted and M1 remains unauthorized.
 
 ## 1. Purpose and non-authority
 
@@ -170,15 +172,22 @@ mapping injectivity.
 
 ### 7.2 Classification rules
 
+Discovery and semantic classification are separate. Every interpretation carries
+a physical `candidate_key` that excludes namespace, mapping, rule, role, and
+canonical identity. Classifiers group interpretations by that key and must select
+exactly one semantic interpretation for each physical candidate.
+
 Selectors are a conjunction of reviewed literal fields only:
 
 - `mapping_id` (required);
 - `unit_kind` (required);
-- exactly one of `path_exact`, `path_prefix`, or `path_suffix` (required);
-- optional exact `json_pointer_prefix`.
+- exactly one path selector (`path_exact`, `path_prefix`, or `path_suffix`)
+  or one nonempty, duplicate-free `candidate_keys` set (required);
+- optional exact `json_pointer_prefix`, permitted only with a path selector.
 
 There are no regular expressions, globs, code expressions, plugins, or callbacks.
-Historical rules require `path_exact`; broad historical exemptions reject.
+Historical rules require `path_exact` or exact `candidate_keys`; broad
+historical exemptions reject.
 
 Every rule records expected selected count, live/compatibility/historical role,
 phase, rationale, representative and boundary context, producer, consumer,
@@ -196,10 +205,17 @@ Discovery families use only bounded literal forms:
 - literal prefix followed by one or more ASCII digits; or
 - exact source suffix/path component.
 
-Each family names its namespace and eligible unit kinds. The auditor receives no
-classification rules, canonical identities, roles, phases, or historical
-exclusions. It reports every discovered key, plus unknown and unclassified
-candidates. Completeness is equality of exact occurrence-key sets, never counts.
+Each family names its namespace and eligible unit kinds. A family may also name
+an exact, nonempty, duplicate-free `candidate_keys` set. If present, every named
+key must be rediscovered and only those physical candidates are emitted for that
+family. This permits an independently reviewed audit policy to distinguish
+identical spellings with different meanings without importing classification
+rules.
+
+The auditor receives no classification rules, canonical identities, roles,
+phases, or historical exclusions. It reports both physical candidate keys and
+semantic occurrence keys. Completeness is equality of exact occurrence-key sets,
+never counts.
 
 ## 8. Occurrence units and precedence
 
@@ -220,7 +236,23 @@ record an exact structured-scan error in that manifest; they are never silently
 treated as valid JSON. Before evidence acceptance, each such status requires a
 corresponding reviewed limitation or other explicit surface disposition.
 
-## 9. Occurrence key and row
+## 9. Candidate key, occurrence key, and row
+
+A candidate key is:
+
+    sha256:<lowercase SHA-256 of canonical JSON tuple>
+
+Its tuple is:
+
+    [source_repository, source_tree, path, unit_kind, locator,
+     original_identity]
+
+It identifies discovered bytes and their intrinsic representation without
+assigning a namespace or any classification meaning. The raw semantic unit kinds
+`raw_text`, `embedded_identity`, and `machine_identifier` are normalized to
+`raw_text` in this tuple because those distinctions are assigned only during
+classification. All mapping interpretations of the same physical candidate
+therefore share one candidate key.
 
 An occurrence key is:
 
@@ -235,8 +267,8 @@ It contains only discovered identity and location, never classification result,
 mapping ID, rule ID, canonical identity, role, or rationale. Generator and auditor
 can therefore reconcile the same keys without sharing classification logic.
 
-Each generated row records the occurrence key plus exact location, source-file
-SHA-256, original/canonical identity, namespace, role, phase, producer, consumer,
+Each generated row records both keys plus exact location, source-file SHA-256,
+original/canonical identity, namespace, role, phase, producer, consumer,
 support/removal policy, validation/test identity, historical relationship,
 mapping ID, rule ID, and bounded context. Rows sort by occurrence key bytewise.
 

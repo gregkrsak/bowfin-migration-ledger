@@ -2,10 +2,11 @@
 
 Read [PROTOCOL.md](PROTOCOL.md) before reviewing any code.
 
-This directory is the accepted M0.1 v2 protocol/tooling revision. It contains only
-synthetic fixtures. It contains no production classification inputs and no
-migration evidence. Acceptance of this directory does not accept M0.1 or authorize
-M1.
+The accepted M0.1 v2 baseline is recorded in PROTOCOL.md. This branch proposes an
+unaccepted occurrence-semantics repair to that baseline. It contains only
+synthetic fixtures and no production classification inputs or migration evidence.
+The repair requires independent review, separate owner acceptance, and ordinary
+merge. It does not accept M0.1 or authorize M1.
 
 ## Review sequence
 
@@ -147,3 +148,17 @@ synthetic execution, focused independent confirmation, Greg's acceptance, and an
 ordinary merge. Production inputs, production execution, migration evidence,
 M0.1 acceptance, and M1 remain separately gated.
 
+
+## Proposed occurrence-semantics repair
+
+This draft repair introduces a namespace-free physical `candidate_key`, requires
+one semantic classification per physical candidate, and permits exact
+candidate-key selectors in both classification and independent audit policy.
+It exists to distinguish identical legacy spellings used as CLI names, package
+names, repository identities, domains, display brands, test identities, or
+historical prose without treating one spelling as one meaning.
+
+This revision has received no independent review or execution authorization.
+Do not execute it, generate production evidence with it, accept M0.1 from it, or
+begin M1. The existing production-input PR remains a separate draft and must be
+repaired only after this protocol revision is independently reviewed and accepted.
