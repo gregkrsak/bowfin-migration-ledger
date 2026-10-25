@@ -5,8 +5,9 @@ This directory is reserved for accepted, current migration evidence. Material in
 for use here.
 
 No M0.1 v2 production evidence exists yet. The protocol/tooling preparation PR
-does not authorize production inputs, scanner execution against the compiler
-repository, evidence generation, or phase acceptance.
+has been accepted and merged, but that acceptance does not authorize production
+inputs, scanner execution against the compiler repository, evidence generation,
+or phase acceptance.
 
 ## Required layout
 

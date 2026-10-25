@@ -17,3 +17,8 @@ precedence. Greg remains the sole human merge authority.
 The first record under `decisions/m0.1/` preserves only the bounded authorization
 to prepare the M0.1 v2 protocol/tooling candidate. It does not authorize running
 that candidate, producing evidence, accepting M0.1, beginning M1, or merging.
+
+The protocol/tooling acceptance closeout preserves the final independent review,
+Greg's exact-revision acceptance, and the ordinary PR #3 merge. It accepts only
+the recorded protocol/tooling revision. Production compact inputs, migration
+evidence, M0.1 acceptance, M1, and later work remain separately gated.

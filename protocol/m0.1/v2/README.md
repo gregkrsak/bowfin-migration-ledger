@@ -1,10 +1,11 @@
-# M0.1 v2 protocol candidate
+# M0.1 v2 protocol and tooling
 
 Read [PROTOCOL.md](PROTOCOL.md) before reviewing any code.
 
-This directory is a proposed, unaccepted protocol/tooling revision. It contains
-only synthetic fixtures. It contains no production classification inputs and no
-migration evidence.
+This directory is the accepted M0.1 v2 protocol/tooling revision. It contains only
+synthetic fixtures. It contains no production classification inputs and no
+migration evidence. Acceptance of this directory does not accept M0.1 or authorize
+M1.
 
 ## Review sequence
 
@@ -18,10 +19,11 @@ migration evidence.
 6. Only after exact-revision independent review may Greg authorize isolated
    synthetic test execution.
 
-## Future commands
+## Accepted interface
 
-The following commands describe the intended accepted interface. They are not an
-authorization to execute this candidate:
+The following commands describe the accepted interface. Their presence is not an
+authorization to execute the tooling against production inputs or generate
+migration evidence:
 
 ```text
 python3 -I generate.py \
@@ -133,13 +135,15 @@ tooling and other non-source dependency classes.
 `<new-package-path>` must not exist. The generator creates it exclusively and
 writes `publication.json` last; a pre-created empty directory is not accepted.
 
-## Current focused repair boundary
+## Accepted focused repair boundary
 
 P12/P15/P21–P24 repairs bind intermediate compiler content, actual E index bytes,
 append-only decision successors, every recovery edge's object kind, and strict
 Boolean types. Binding verification now requires independently reviewed source
 change paths (`--expected-source-change-path`, repeated; empty means no changes).
-See PROTOCOL.md §16 for the exact conservative policy and evidence limits.
-The candidate and its new controls have not been executed; independent static
-review and separately authorized bounded execution remain outstanding.
+See PROTOCOL.md §16 for the exact conservative policy and evidence limits. The
+exact revision received independent static review, separately authorized bounded
+synthetic execution, focused independent confirmation, Greg's acceptance, and an
+ordinary merge. Production inputs, production execution, migration evidence,
+M0.1 acceptance, and M1 remain separately gated.
 

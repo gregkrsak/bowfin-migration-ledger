@@ -1,8 +1,11 @@
 # M0.1 v2 Rule-to-Occurrence Ledger Protocol
 
-**Status:** Proposed protocol and tooling candidate. It is not accepted and must
-not generate migration-acceptance evidence until independently reviewed, accepted
-by Greg, and merged by ordinary merge commit.
+**Status:** Accepted protocol and tooling revision. Reviewed head
+`0b81e183df466890a779f1bbd777c6c864835a3b`, tree
+`c3b7438fbb20ee1debcc8e00490449975f9c2084`, was accepted by Greg and integrated
+through ordinary merge commit `8228246b221ee2c7571e5302a1357e3cfba27787`.
+Production inputs and migration-evidence generation still require separate owner
+authorization. M0.1 remains unaccepted and M1 remains unauthorized.
 
 ## 1. Purpose and non-authority
 
@@ -21,7 +24,7 @@ current evidence, or acceptance dependency.
 
 ## 2. Governing identity
 
-This candidate is subordinate to:
+This accepted revision is subordinate to:
 
 | Item | Identity |
 | --- | --- |
@@ -32,7 +35,8 @@ This candidate is subordinate to:
 | Contract path | `docs/migration/BOWFIN-NAME-MIGRATION-PLAN.md` |
 | Contract blob | `03cd2c5b584a996ebfb873491f0d2888c984cfb9` |
 
-If any of those identities changes, this candidate requires renewed review.
+If any of those identities changes, this acceptance no longer covers the changed
+revision; renewed review and owner acceptance are required.
 
 ## 3. Authorization sequence
 
@@ -49,6 +53,8 @@ If any of those identities changes, this candidate requires renewed review.
    authorization.
 
 This sequence prevents candidate tooling from establishing its own trust.
+Steps 1 through 4 completed for the exact accepted revision identified above.
+Step 5 remains a separate, ungranted authorization boundary.
 
 ## 4. Runtime and execution isolation
 
@@ -135,8 +141,8 @@ and job URLs never enter deterministic output.
 
 ## 7. Compact inputs
 
-Production compact inputs are not included in this PR. A future separately
-authorized input set contains:
+Production compact inputs are not included in this accepted revision. A future
+separately authorized input set contains:
 
 - `mappings.json` — namespace-qualified original/canonical mappings;
 - `classification-rules.json` — semantic rules and reviewed population claims;
@@ -416,7 +422,9 @@ expected kind before the visited-object shortcut. An unreadable listed object
 (`E_FILE_READ`) is normalized to `E_RECOVERY_BUNDLE`; other filesystem safety and
 resource diagnostics retain their original codes.
 
-These additions are proposed repairs under static review, not executed evidence.
+These additions received independent static review and passed the separately
+authorized bounded synthetic run. That result supports acceptance of this exact
+protocol/tooling revision only; it is not production or migration evidence.
 
 Accepted protocol, inputs, canonical uncompressed JSONL, index, summary, reports,
 decisions, and receipts remain in reachable Git history. Compression is transport
