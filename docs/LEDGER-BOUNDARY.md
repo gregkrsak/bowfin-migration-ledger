@@ -59,12 +59,20 @@ Every current M0.1 evidence record must identify at least:
 | `governing_contract` | Repository, commit, tree, path, and blob |
 | `tooling` | Ledger repository, accepted commit/tree, paths, and blobs |
 | `inputs` | Exact eight-file set, aggregate digest, and authenticated export |
+| `observations` | Closed retained-snapshot set with authenticated bytes |
+| `reviews` | Closed applicability-review set with authenticated content |
 | `generated` | Manifest, index, summary, publication-marker, chunk, and aggregate identities |
 | `non_authority` | Explicit denials of executable or decision authority |
 
 Required fields may not be inferred from directory names, branch names, issue
 numbers, comments, timestamps, or conversational context. Unknown mapping kinds,
 roles, or required status records fail closed.
+
+The verifier receives the accepted tooling identity independently of the evidence
+record and requires the fixed protocol artifact set. Generated rows are related
+back to their exact mapping and uniquely matching rule; retained observation and
+applicability-review bytes are authenticated and their semantic relationships are
+checked. Coexistence of individually valid hashes is not evidence derivation.
 
 Authenticated exports carry raw commit objects, repository-root trees, explicit
 eligible-view prefixes and trees, and complete root-to-view Git tree proofs. Each
@@ -189,6 +197,11 @@ authorizes M1.
 
 Every relevant surface is inspected, demonstrably not applicable, explicitly
 limited, or unavailable. Failure or inaccessibility is not not-applicable.
+
+Every external observation names retained snapshot bytes. Not-applicable status
+also names a retained canonical review body and explicit eligibility policy bound
+to that exact observation and subject. Expiry, point-in-time limits, or a named
+invalidating event rejects the decision even when the subject tree is unchanged.
 
 External acquisition is separate from deterministic generation. Each required
 surface class has a reviewed freshness policy with a justified observation window,

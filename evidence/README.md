@@ -24,6 +24,10 @@ evidence/m0.1/<source-commit>/
     applicability-decisions.json
     visual-inspection.json
     limitations.json
+  observations/
+    <retained-external-snapshot>
+  reviews/
+    <canonical-applicability-review>
   generated/
     scan-manifest.json
     index.json
@@ -41,7 +45,8 @@ evidence/m0.1/<source-commit>/
 The source-commit directory name and `record.json` identities must agree.
 `record.json` binds the source candidate and accepted base, governing contract,
 accepted tooling revision, compact inputs, external/visual observations, and
-generated package. It also denies execution, approval, custody, replay,
+generated package. The accepted tooling identity is also supplied independently
+to the verifier and cannot be selected by `record.json`. It also denies execution, approval, custody, replay,
 semantic-acceptance, merge, release, cutover, and next-phase authority.
 
 Each dependency is supplied as an authenticated Git export containing its raw
@@ -70,9 +75,17 @@ selected or materialized as a current dependency.
   explicit surface disposition before evidence can be accepted.
 - Missing, expired, limited, unavailable, or invalidated required external
   evidence fails current eligibility. `not_applicable` requires independent
-  semantic review; the tool cannot establish it merely from a label.
+  semantic review, retained review bytes, and an unexpired eligibility boundary;
+  the tool cannot establish it merely from a label or blob reference.
 - The required-surface register is closed-world, and applicability decisions
   exactly match the not-applicable subset.
+- Every registered observation resolves to one exact retained snapshot path,
+  Git blob SHA-1, and SHA-256. Every applicability decision resolves to a canonical
+  review body whose semantic fields are checked against the decision and subject.
+- Every generated row is checked against its exact mapping and unique matching
+  rule, including retained classification meaning and expected per-rule count.
+- The evidence record binds the exact independent-audit bytes; source, input,
+  manifest, and occurrence-key reconciliation is repeated during evidence binding.
 - The verifier reconstructs canonical greedy chunk boundaries; a fully rehashed
   alternative partition is not equivalent evidence.
 - Aggregate package bytes are charged before each read, and a package that would

@@ -449,6 +449,99 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual((False, "expired"), lib.evaluate_freshness(surface, datetime(2026, 10, 26, tzinfo=timezone.utc), "owner_acceptance", set()))
         self.assertEqual((False, "invalidating_event"), lib.evaluate_freshness(surface, datetime(2026, 10, 24, 12, tzinfo=timezone.utc), "pre_integration", {"repository_settings_changed"}))
 
+    def test_not_applicable_requires_current_semantic_review(self) -> None:
+        subject_commit, subject_tree = "1" * 40, "2" * 40
+        surface = copy.deepcopy(self.fixture["external_surfaces"]["surfaces"][0])
+        surface["status"] = "not_applicable"
+        observation_sha256 = lib.sha256_hex(
+            lib.canonical_json_bytes(surface, self.limits, trailing_lf=False)
+        )
+        review = {
+            "record_class": "applicability_review", "protocol_version": "m0.1-v2",
+            "surface_id": surface["surface_id"], "disposition": "not_applicable",
+            "subject_commit": subject_commit, "subject_tree": subject_tree,
+            "observation_sha256": observation_sha256, "reviewer": "Sarah",
+            "rationale": "The synthetic facility was absent at observation time.",
+            "eligibility_policy": surface["freshness_policy"],
+            "limitations": surface["limitations"],
+            "non_authority": {"owner_acceptance": False, "merge_permission": False},
+        }
+        reviews = self.workspace / "freshness-reviews"
+        reviews.mkdir()
+        self.write_json(reviews / "fixture-review.json", review)
+        review_export_path, review_export = self.make_export(reviews, "fixture/reviews", False)
+        review_entry = review_export["entries"][0]
+        decision = {
+            "surface_id": surface["surface_id"], "disposition": "not_applicable",
+            "reviewer": review["reviewer"], "rationale": review["rationale"],
+            "subject_commit": subject_commit, "subject_tree": subject_tree,
+            "record_repository": "fixture/reviews", "record_commit": review_export["commit"],
+            "record_tree": review_export["tree"], "record_path": "fixture-review.json",
+            "record_blob": review_entry["blob_sha1"], "record_sha256": review_entry["sha256"],
+            "observation_sha256": observation_sha256,
+            "eligibility_policy": surface["freshness_policy"],
+        }
+        register_path = self.workspace / "surface-register.json"
+        surface_path = self.workspace / "external-surfaces.json"
+        decision_path = self.workspace / "applicability-decisions.json"
+        self.write_json(register_path, {"protocol_version": "m0.1-v2", "required_surfaces": [{"surface_id": surface["surface_id"], "class": surface["class"]}]})
+        self.write_json(surface_path, {"protocol_version": "m0.1-v2", "surfaces": [surface]})
+        self.write_json(decision_path, {"protocol_version": "m0.1-v2", "decisions": [decision]})
+        arguments = (
+            surface_path, register_path, decision_path, "2026-10-24T12:00:00Z",
+            "owner_acceptance", [], subject_commit, subject_tree, reviews,
+            review_export_path, "fixture/reviews", review_export["commit"],
+            review_export["tree"], "", review_export["tree"], self.limits,
+        )
+        verify.verify_freshness(*arguments)
+        invalidated = list(arguments)
+        invalidated[5] = ["repository_settings_changed"]
+        with self.assertRaises(verify.lib.ProtocolError) as caught:
+            verify.verify_freshness(*invalidated)
+        self.assertEqual("E_FRESHNESS", caught.exception.code)
+
+        review["reviewer"] = "Unrelated reviewer"
+        wrong_reviews = self.workspace / "wrong-freshness-reviews"
+        wrong_reviews.mkdir()
+        self.write_json(wrong_reviews / "fixture-review.json", review)
+        wrong_export_path, wrong_export = self.make_export(wrong_reviews, "fixture/reviews", False)
+        wrong_entry = wrong_export["entries"][0]
+        decision["record_commit"] = wrong_export["commit"]
+        decision["record_tree"] = wrong_export["tree"]
+        decision["record_blob"] = wrong_entry["blob_sha1"]
+        decision["record_sha256"] = wrong_entry["sha256"]
+        self.write_json(decision_path, {"protocol_version": "m0.1-v2", "decisions": [decision]})
+        semantic_arguments = list(arguments)
+        semantic_arguments[8:15] = [
+            wrong_reviews, wrong_export_path, "fixture/reviews", wrong_export["commit"],
+            wrong_export["tree"], "", wrong_export["tree"],
+        ]
+        with self.assertRaises(verify.lib.ProtocolError) as caught:
+            verify.verify_freshness(*semantic_arguments)
+        self.assertEqual("E_APPLICABILITY_REVIEW", caught.exception.code)
+
+    def test_generated_rows_are_bound_to_compact_meaning(self) -> None:
+        built = self.build_valid("meaning-binding")
+        rows = copy.deepcopy(built["rows"])
+        rows[0]["canonical"] = "UnreviewedIdentity"
+        package = built["case"] / "meaning-tamper"
+        source_files = lib.verify_git_export(
+            built["source"], built["source_export_path"], self.limits,
+            "fixture/source", built["source_export"]["commit"],
+            built["source_export"]["tree"], "", built["source_export"]["tree"], True,
+        )[1]
+        lib.write_package(rows, lib.scan_manifest(source_files, self.limits), package, self.limits)
+        verified_rows = verify.verify_package(
+            package, "fixture/source", built["source_export"]["tree"], self.limits
+        )
+        compact = verify.validate_compact_input_files(
+            {path: (built["inputs"] / path).read_bytes() for path in verify.PRODUCTION_INPUT_PATHS},
+            self.limits,
+        )
+        with self.assertRaises(verify.lib.ProtocolError) as caught:
+            verify._validate_generated_meaning(verified_rows, compact)
+        self.assertEqual("E_CLASSIFICATION_BINDING", caught.exception.code)
+
     def test_manifest_binary_and_malformed_require_disposition(self) -> None:
         manifest = lib.scan_manifest([("binary.bin", b"\xff"), ("bad.json", b'{"x":')], self.limits)
         self.assertEqual("non_utf8", manifest[0]["text_status"])
@@ -457,42 +550,90 @@ class ProtocolTests(unittest.TestCase):
     def test_evidence_record_binds_actual_exports_and_generated_bytes(self) -> None:
         built = self.build_valid("evidence")
         source_export_path, source_export = self.make_export(built["source"], "fixture/source", False)
-        input_export_path, input_export = self.make_export(built["inputs"], "fixture/inputs", False)
         roots: dict[str, tuple[Path, Path, dict[str, Any]]] = {}
         for name, repository, files in (
             ("base", "fixture/source", {"README.md": b"accepted base\n"}),
             ("contract", "fixture/source", {"contract.md": b"contract\n"}),
-            ("tooling", "fixture/ledger", {"tool.py": b"# reviewed tool\n"}),
+            ("tooling", "fixture/ledger", {path: (path + "\n").encode() for path in verify.REQUIRED_TOOLING_PATHS}),
         ):
             root = built["case"] / name
             root.mkdir()
             for relative, data in files.items():
-                (root / relative).write_bytes(data)
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(data)
             export_path, export = self.make_export(root, repository, False)
             roots[name] = (root, export_path, export)
+
+        observations = built["case"] / "observations"
+        observations.mkdir()
+        (observations / "repository-settings.json").write_bytes(
+            b'{"repository":"fixture/source","settings":"observed"}\n'
+        )
+        observation_export_path, observation_export = self.make_export(
+            observations, "fixture/observations", False
+        )
+        observation_entry = observation_export["entries"][0]
+        documents = self.compact_documents()
+        surface = documents["external-surfaces.json"]["surfaces"][0]
+        surface["snapshot_blob_sha1"] = observation_entry["blob_sha1"]
+        surface["snapshot_sha256"] = observation_entry["sha256"]
+        for relative, document in documents.items():
+            self.write_json(built["inputs"] / relative, document)
+        input_export_path, input_export = self.make_export(built["inputs"], "fixture/inputs", False)
+
+        reviews = built["case"] / "reviews"
+        reviews.mkdir()
+        review_export_path, review_export = self.make_export(reviews, "fixture/reviews", False)
+        audit = verify.canonical_document(built["audit_path"], self.limits)
+        audit["source_export_sha256"] = lib.export_digest(source_export, self.limits)
+        audit["input_export_sha256"] = lib.export_digest(input_export, self.limits)
+        self.write_json(built["audit_path"], audit)
+
         index_data = (built["package"] / "index.json").read_bytes()
         summary_data = (built["package"] / "summary.json").read_bytes()
         manifest_data = (built["package"] / "scan-manifest.json").read_bytes()
         publication_data = (built["package"] / "publication.json").read_bytes()
+        audit_data = built["audit_path"].read_bytes()
         index = lib.strict_json_bytes(index_data, self.limits, "index")
         input_entries = {entry["path"]: entry for entry in input_export["entries"]}
         descriptor = [input_entries[path] for path in sorted(verify.PRODUCTION_INPUT_PATHS)]
         contract_entry = roots["contract"][2]["entries"][0]
+        expected_tooling = {
+            "repository": "fixture/ledger", "commit": roots["tooling"][2]["commit"],
+            "tree": roots["tooling"][2]["tree"], "view_prefix": "",
+            "view_tree": roots["tooling"][2]["tree"],
+            "export_sha256": lib.export_digest(roots["tooling"][2], self.limits),
+        }
         record = {
             "record_class": "migration_evidence", "protocol_version": "m0.1-v2", "phase": "M0.1",
             "source": {"repository": "fixture/source", "commit": source_export["commit"], "tree": source_export["tree"], "view_prefix": "", "view_tree": source_export["tree"], "export_sha256": lib.export_digest(source_export, self.limits)},
             "accepted_base": {"repository": "fixture/source", "commit": roots["base"][2]["commit"], "tree": roots["base"][2]["tree"], "view_prefix": "", "view_tree": roots["base"][2]["tree"], "export_sha256": lib.export_digest(roots["base"][2], self.limits)},
             "governing_contract": {"repository": "fixture/source", "commit": roots["contract"][2]["commit"], "tree": roots["contract"][2]["tree"], "view_prefix": "", "view_tree": roots["contract"][2]["tree"], "path": "contract.md", "blob": contract_entry["blob_sha1"], "export_sha256": lib.export_digest(roots["contract"][2], self.limits)},
-            "tooling": {"repository": "fixture/ledger", "commit": roots["tooling"][2]["commit"], "tree": roots["tooling"][2]["tree"], "view_prefix": "", "view_tree": roots["tooling"][2]["tree"], "required_paths": ["tool.py"], "export_sha256": lib.export_digest(roots["tooling"][2], self.limits)},
+            "tooling": {**expected_tooling, "required_paths": sorted(verify.REQUIRED_TOOLING_PATHS)},
             "inputs": {"repository": "fixture/inputs", "commit": input_export["commit"], "tree": input_export["tree"], "view_prefix": "", "view_tree": input_export["tree"], "required_paths": sorted(verify.PRODUCTION_INPUT_PATHS), "export_sha256": lib.export_digest(input_export, self.limits), "aggregate_sha256": lib.sha256_hex(lib.canonical_json_bytes(descriptor, self.limits, trailing_lf=False))},
-            "generated": {"scan_manifest_sha256": lib.sha256_hex(manifest_data), "index_sha256": lib.sha256_hex(index_data), "summary_sha256": lib.sha256_hex(summary_data), "publication_sha256": lib.sha256_hex(publication_data), "aggregate_sha256": index["aggregate_sha256"]},
+            "observations": {"repository": "fixture/observations", "commit": observation_export["commit"], "tree": observation_export["tree"], "view_prefix": "", "view_tree": observation_export["tree"], "required_paths": ["repository-settings.json"], "export_sha256": lib.export_digest(observation_export, self.limits)},
+            "reviews": {"repository": "fixture/reviews", "commit": review_export["commit"], "tree": review_export["tree"], "view_prefix": "", "view_tree": review_export["tree"], "required_paths": [], "export_sha256": lib.export_digest(review_export, self.limits)},
+            "generated": {"scan_manifest_sha256": lib.sha256_hex(manifest_data), "index_sha256": lib.sha256_hex(index_data), "summary_sha256": lib.sha256_hex(summary_data), "publication_sha256": lib.sha256_hex(publication_data), "independent_audit_sha256": lib.sha256_hex(audit_data), "aggregate_sha256": index["aggregate_sha256"]},
             "non_authority": {"execution": False, "approval": False, "custody": False, "replay_admission": False, "semantic_acceptance": False, "merge_permission": False, "release": False, "cutover": False, "next_phase": False},
         }
         record_path = built["case"] / "record.json"
         self.write_json(record_path, record)
-        verify.verify_evidence_binding(record_path, built["package"], built["source"], source_export_path, roots["base"][0], roots["base"][1], roots["contract"][0], roots["contract"][1], roots["tooling"][0], roots["tooling"][1], built["inputs"], input_export_path, self.limits)
+        arguments = (
+            record_path, built["package"], built["source"], source_export_path,
+            roots["base"][0], roots["base"][1], roots["contract"][0], roots["contract"][1],
+            roots["tooling"][0], roots["tooling"][1], observations, observation_export_path,
+            reviews, review_export_path, built["inputs"], input_export_path,
+            built["audit_path"], expected_tooling, self.limits,
+        )
+        verify.verify_evidence_binding(*arguments)
+        wrong_tooling = list(arguments)
+        wrong_tooling[17] = {**expected_tooling, "commit": "f" * 40}
+        with self.assertRaises(verify.lib.ProtocolError) as caught:
+            verify.verify_evidence_binding(*wrong_tooling)
+        self.assertEqual("E_EXPECTED_TOOLING", caught.exception.code)
         (built["source"] / "notes.txt").write_text("stale", encoding="utf-8")
-        self.assert_code("E_EXPORT_CONTENT", verify.verify_evidence_binding, record_path, built["package"], built["source"], source_export_path, roots["base"][0], roots["base"][1], roots["contract"][0], roots["contract"][1], roots["tooling"][0], roots["tooling"][1], built["inputs"], input_export_path, self.limits)
+        self.assert_code("E_EXPORT_CONTENT", verify.verify_evidence_binding, *arguments)
 
     def test_authenticated_cedp_ancestry_trees_targets_and_recovery(self) -> None:
         source_base = self.commit_evidence("fixture/source", "staging", "1" * 40, [], "source base")

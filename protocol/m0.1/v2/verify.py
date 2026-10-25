@@ -35,6 +35,17 @@ PRODUCTION_INPUT_PATHS = {
     "limitations.json",
 }
 
+REQUIRED_TOOLING_PATHS = {
+    "PROTOCOL.md",
+    "README.md",
+    "audit_scan.py",
+    "generate.py",
+    "limits.json",
+    "protocol_lib.py",
+    "schema.json",
+    "verify.py",
+}
+
 
 def canonical_document(path: Path, limits: dict[str, int], maximum: int | None = None) -> Any:
     bound = limits["max_input_file_bytes"] if maximum is None else maximum
@@ -224,11 +235,21 @@ def validate_compact_input_files(files: dict[str, bytes], limits: dict[str, int]
 
     surfaces = _document_rows(documents["external-surfaces.json"], "surfaces", limits["max_source_files"], "external-surfaces")
     surface_ids: set[str] = set()
+    snapshot_paths: set[str] = set()
     for index, row in enumerate(surfaces):
         label = f"surfaces[{index}]"
         if not isinstance(row, dict):
             lib.fail("E_SURFACE", f"{label} must be an object")
-        lib.require_keys(row, {"surface_id", "class", "status", "origin", "acquired_at", "coverage", "snapshot_sha256", "freshness_policy", "limitations"}, set(), label)
+        lib.require_keys(
+            row,
+            {
+                "surface_id", "class", "status", "origin", "acquired_at",
+                "coverage", "snapshot_path", "snapshot_blob_sha1",
+                "snapshot_sha256", "freshness_policy", "limitations",
+            },
+            set(),
+            label,
+        )
         surface_id = lib.require_identifier(row["surface_id"], f"{label}.surface_id")
         if surface_id in surface_ids:
             lib.fail("E_SURFACE", f"duplicate surface: {surface_id}")
@@ -239,6 +260,11 @@ def validate_compact_input_files(files: dict[str, bytes], limits: dict[str, int]
         for field in ("origin", "coverage"):
             _nonempty_string(row[field], f"{label}.{field}")
         lib.parse_utc(row["acquired_at"], f"{label}.acquired_at")
+        snapshot_path = lib.validate_relpath(row["snapshot_path"], limits).as_posix()
+        if snapshot_path in snapshot_paths:
+            lib.fail("E_SURFACE", f"duplicate snapshot path: {snapshot_path}")
+        snapshot_paths.add(snapshot_path)
+        lib.require_sha1(row["snapshot_blob_sha1"], f"{label}.snapshot_blob_sha1")
         lib.require_sha256(row["snapshot_sha256"], f"{label}.snapshot_sha256")
         _string_array(row["limitations"], f"{label}.limitations")
         _validate_freshness_policy(row["freshness_policy"], f"{label}.freshness_policy")
@@ -256,7 +282,8 @@ def validate_compact_input_files(files: dict[str, bytes], limits: dict[str, int]
         decision_fields = {
             "surface_id", "disposition", "reviewer", "rationale", "subject_commit",
             "subject_tree", "record_repository", "record_commit", "record_tree",
-            "record_path", "record_blob",
+            "record_path", "record_blob", "record_sha256", "observation_sha256",
+            "eligibility_policy",
         }
         lib.require_keys(row, decision_fields, set(), label)
         surface_id = lib.require_identifier(row["surface_id"], f"{label}.surface_id")
@@ -265,14 +292,27 @@ def validate_compact_input_files(files: dict[str, bytes], limits: dict[str, int]
         seen_decisions.add(surface_id)
         for field in ("subject_commit", "subject_tree", "record_commit", "record_tree", "record_blob"):
             lib.require_sha1(row[field], f"{label}.{field}")
+        for field in ("record_sha256", "observation_sha256"):
+            lib.require_sha256(row[field], f"{label}.{field}")
         for field in ("reviewer", "rationale", "record_repository"):
             _nonempty_string(row[field], f"{label}.{field}")
         lib.validate_relpath(row["record_path"], limits)
+        _validate_freshness_policy(row["eligibility_policy"], f"{label}.eligibility_policy")
     required_decisions = {
         row["surface_id"] for row in surfaces if row["status"] == "not_applicable"
     }
     if seen_decisions != required_decisions:
         lib.fail("E_APPLICABILITY", "reviewed applicability decisions do not exactly match not-applicable surfaces")
+    surfaces_by_id = {row["surface_id"]: row for row in surfaces}
+    for decision in decisions:
+        surface = surfaces_by_id[decision["surface_id"]]
+        observation_sha256 = lib.sha256_hex(
+            lib.canonical_json_bytes(surface, limits, trailing_lf=False)
+        )
+        if decision["observation_sha256"] != observation_sha256:
+            lib.fail("E_APPLICABILITY", "decision does not bind its exact observation")
+        if decision["eligibility_policy"] != surface["freshness_policy"]:
+            lib.fail("E_APPLICABILITY", "decision eligibility differs from observation policy")
 
     visuals = _document_rows(documents["visual-inspection.json"], "visuals", limits["max_source_files"], "visual-inspection")
     visual_paths: set[str] = set()
@@ -312,11 +352,128 @@ def validate_compact_input_files(files: dict[str, bytes], limits: dict[str, int]
             _nonempty_string(row[field], f"{label}.{field}")
     return {
         "documents": documents,
+        "surfaces": surfaces,
         "visuals": visuals,
         "visual_paths": visual_paths,
         "applicability_decisions": decisions,
         "limitation_surfaces": limitation_surfaces,
     }
+
+
+def _validate_applicability_review_records(
+    decisions: list[dict[str, Any]],
+    surfaces: list[dict[str, Any]],
+    review_files: dict[str, bytes],
+    review_entries: list[dict[str, Any]],
+    review_binding: dict[str, Any],
+    limits: dict[str, int],
+) -> None:
+    """Authenticate the bytes and semantic content of applicability reviews."""
+    expected_paths = {decision["record_path"] for decision in decisions}
+    if set(review_files) != expected_paths:
+        lib.fail("E_APPLICABILITY_BINDING", "review export path set does not match decisions")
+    entries = {entry["path"]: entry for entry in review_entries}
+    surfaces_by_id = {surface["surface_id"]: surface for surface in surfaces}
+    for decision in decisions:
+        surface_id = decision["surface_id"]
+        surface = surfaces_by_id[surface_id]
+        path = decision["record_path"]
+        entry = entries.get(path)
+        data = review_files.get(path)
+        if (
+            decision["record_repository"] != review_binding["repository"]
+            or decision["record_commit"] != review_binding["commit"]
+            or decision["record_tree"] != review_binding["tree"]
+            or entry is None
+            or data is None
+            or entry["blob_sha1"] != decision["record_blob"]
+            or entry["sha256"] != decision["record_sha256"]
+            or lib.sha256_hex(data) != decision["record_sha256"]
+        ):
+            lib.fail("E_APPLICABILITY_BINDING", f"review bytes are not authenticated: {surface_id}")
+        review = canonical_bytes(data, limits, path, limits["max_input_file_bytes"])
+        fields = {
+            "record_class", "protocol_version", "surface_id", "disposition",
+            "subject_commit", "subject_tree", "observation_sha256", "reviewer",
+            "rationale", "eligibility_policy", "limitations", "non_authority",
+        }
+        if not isinstance(review, dict):
+            lib.fail("E_APPLICABILITY_REVIEW", f"review must be an object: {surface_id}")
+        lib.require_keys(review, fields, set(), f"applicability-review:{surface_id}")
+        expected = {
+            "record_class": "applicability_review",
+            "protocol_version": lib.PROTOCOL_VERSION,
+            "surface_id": surface_id,
+            "disposition": "not_applicable",
+            "subject_commit": decision["subject_commit"],
+            "subject_tree": decision["subject_tree"],
+            "observation_sha256": decision["observation_sha256"],
+            "reviewer": decision["reviewer"],
+            "rationale": decision["rationale"],
+            "eligibility_policy": decision["eligibility_policy"],
+            "limitations": surface["limitations"],
+            "non_authority": {"owner_acceptance": False, "merge_permission": False},
+        }
+        if review != expected:
+            lib.fail("E_APPLICABILITY_REVIEW", f"review meaning mismatch: {surface_id}")
+
+
+def _row_matches_selector(row: dict[str, Any], selector: dict[str, Any]) -> bool:
+    if row["mapping_id"] != selector["mapping_id"] or row["unit_kind"] != selector["unit_kind"]:
+        return False
+    path = row["path"]
+    if "path_exact" in selector and path != selector["path_exact"]:
+        return False
+    if "path_prefix" in selector and not (
+        path == selector["path_prefix"] or path.startswith(selector["path_prefix"] + "/")
+    ):
+        return False
+    if "path_suffix" in selector and not path.endswith(selector["path_suffix"]):
+        return False
+    pointer_prefix = selector.get("json_pointer_prefix")
+    if pointer_prefix is not None:
+        pointer = row["locator"].get("json_pointer")
+        if not isinstance(pointer, str) or not pointer.startswith(pointer_prefix):
+            return False
+    return True
+
+
+def _validate_generated_meaning(
+    rows: list[dict[str, Any]], compact: dict[str, Any]
+) -> None:
+    """Bind every retained classification field to the reviewed compact inputs."""
+    mappings = compact["documents"]["mappings.json"]["mappings"]
+    rules = compact["documents"]["classification-rules.json"]["rules"]
+    mappings_by_id = {mapping["mapping_id"]: mapping for mapping in mappings}
+    rules_by_id = {rule["rule_id"]: rule for rule in rules}
+    counts = {rule["rule_id"]: 0 for rule in rules}
+    semantic_fields = {
+        "role": "role",
+        "phase": "phase",
+        "producer": "producer",
+        "consumer": "consumer",
+        "support_policy": "support_policy",
+        "validation_test_id": "validation_test_id",
+        "historical_relationship": "historical_relationship",
+    }
+    for row in rows:
+        mapping = mappings_by_id.get(row["mapping_id"])
+        if mapping is None or (
+            row["namespace"] != mapping["namespace"]
+            or row["original"] != mapping["original"]
+            or row["canonical"] != mapping["canonical"]
+        ):
+            lib.fail("E_CLASSIFICATION_BINDING", f"row mapping meaning mismatch: {row['occurrence_key']}")
+        matching = [rule for rule in rules if _row_matches_selector(row, rule["selector"])]
+        rule = rules_by_id.get(row["rule_id"])
+        if len(matching) != 1 or rule is None or matching[0]["rule_id"] != row["rule_id"]:
+            lib.fail("E_CLASSIFICATION_BINDING", f"row rule selection mismatch: {row['occurrence_key']}")
+        if any(row[row_field] != rule[rule_field] for row_field, rule_field in semantic_fields.items()):
+            lib.fail("E_CLASSIFICATION_BINDING", f"row rule meaning mismatch: {row['occurrence_key']}")
+        counts[row["rule_id"]] += 1
+    for rule in rules:
+        if counts[rule["rule_id"]] != rule["expected_count"]:
+            lib.fail("E_CLASSIFICATION_BINDING", f"rule population mismatch: {rule['rule_id']}")
 
 
 def validate_locator(unit_kind: str, locator: Any) -> dict[str, Any]:
@@ -746,6 +903,13 @@ def verify_freshness(
     events: list[str],
     subject_commit: str,
     subject_tree: str,
+    review_root: Path,
+    review_export_path: Path,
+    review_repository: str,
+    review_commit: str,
+    review_tree: str,
+    review_view_prefix: str,
+    review_view_tree: str,
     limits: dict[str, int],
 ) -> None:
     register = canonical_document(register_path, limits)
@@ -781,7 +945,8 @@ def verify_freshness(
             lib.fail("E_FRESHNESS_SURFACE", "surface must be an object")
         fields = {
             "surface_id", "class", "status", "origin", "acquired_at", "coverage",
-            "snapshot_sha256", "freshness_policy", "limitations",
+            "snapshot_path", "snapshot_blob_sha1", "snapshot_sha256",
+            "freshness_policy", "limitations",
         }
         lib.require_keys(surface, fields, set(), f"surfaces[{index}]")
         surface_id = lib.require_identifier(surface["surface_id"], "surface_id")
@@ -794,6 +959,8 @@ def verify_freshness(
         for field in ("origin", "coverage"):
             _nonempty_string(surface[field], f"{surface_id}.{field}")
         lib.parse_utc(surface["acquired_at"], f"{surface_id}.acquired_at")
+        lib.validate_relpath(surface["snapshot_path"], limits)
+        lib.require_sha1(surface["snapshot_blob_sha1"], f"{surface_id}.snapshot_blob_sha1")
         lib.require_sha256(surface["snapshot_sha256"], f"{surface_id}.snapshot_sha256")
         if not isinstance(surface["limitations"], list) or any(not isinstance(item, str) or not item for item in surface["limitations"]):
             lib.fail("E_FRESHNESS_SURFACE", f"invalid limitations: {surface_id}")
@@ -806,7 +973,8 @@ def verify_freshness(
     decision_fields = {
         "surface_id", "disposition", "reviewer", "rationale", "subject_commit",
         "subject_tree", "record_repository", "record_commit", "record_tree",
-        "record_path", "record_blob",
+        "record_path", "record_blob", "record_sha256", "observation_sha256",
+        "eligibility_policy",
     }
     for index, decision in enumerate(decisions):
         if not isinstance(decision, dict):
@@ -819,19 +987,46 @@ def verify_freshness(
             _nonempty_string(decision[field], f"decision.{field}")
         for field in ("subject_commit", "subject_tree", "record_commit", "record_tree", "record_blob"):
             lib.require_sha1(decision[field], f"decision.{field}")
+        for field in ("record_sha256", "observation_sha256"):
+            lib.require_sha256(decision[field], f"decision.{field}")
         lib.validate_relpath(decision["record_path"], limits)
+        _validate_freshness_policy(decision["eligibility_policy"], "decision.eligibility_policy")
         if decision["subject_commit"] != subject_commit or decision["subject_tree"] != subject_tree:
             lib.fail("E_APPLICABILITY", f"decision does not bind current subject: {surface_id}")
+        surface = observed.get(surface_id)
+        if surface is None:
+            lib.fail("E_APPLICABILITY", f"decision names an unknown surface: {surface_id}")
+        observation_sha256 = lib.sha256_hex(
+            lib.canonical_json_bytes(surface, limits, trailing_lf=False)
+        )
+        if (
+            decision["observation_sha256"] != observation_sha256
+            or decision["eligibility_policy"] != surface["freshness_policy"]
+        ):
+            lib.fail("E_APPLICABILITY", f"decision does not bind observation eligibility: {surface_id}")
         applicability[surface_id] = decision
+
+    review_document, review_file_list = lib.verify_git_export(
+        review_root, review_export_path, limits, review_repository, review_commit,
+        review_tree, review_view_prefix, review_view_tree, False,
+    )
+    review_binding = {
+        "repository": review_repository,
+        "commit": review_commit,
+        "tree": review_tree,
+    }
+    _validate_applicability_review_records(
+        list(applicability.values()), list(observed.values()), dict(review_file_list),
+        review_document["entries"], review_binding, limits,
+    )
 
     instant = lib.parse_utc(evaluation_time, "evaluation_time")
     failures: list[str] = []
     for surface_id, surface in observed.items():
-        if surface["status"] == "not_applicable":
-            if surface_id not in applicability:
-                failures.append(f"{surface_id}:missing_reviewed_applicability")
+        if surface["status"] == "not_applicable" and surface_id not in applicability:
+            failures.append(f"{surface_id}:missing_reviewed_applicability")
             continue
-        if surface_id in applicability:
+        if surface["status"] != "not_applicable" and surface_id in applicability:
             failures.append(f"{surface_id}:unexpected_applicability_decision")
             continue
         eligible, reason = lib.evaluate_freshness(surface, instant, evaluation_point, set(events))
@@ -852,14 +1047,21 @@ def verify_evidence_binding(
     contract_export_path: Path,
     tooling_root: Path,
     tooling_export_path: Path,
+    observation_root: Path,
+    observation_export_path: Path,
+    review_root: Path,
+    review_export_path: Path,
     input_root: Path,
     input_export_path: Path,
+    audit_path: Path,
+    expected_tooling: dict[str, str],
     limits: dict[str, int],
 ) -> None:
     record = canonical_document(record_path, limits)
     required = {
         "record_class", "protocol_version", "phase", "source", "accepted_base",
-        "governing_contract", "tooling", "inputs", "generated", "non_authority",
+        "governing_contract", "tooling", "inputs", "observations", "reviews",
+        "generated", "non_authority",
     }
     if not isinstance(record, dict):
         lib.fail("E_RECORD", "record must be an object")
@@ -881,19 +1083,36 @@ def verify_evidence_binding(
         "repository", "commit", "tree", "view_prefix", "view_tree",
         "required_paths", "export_sha256", "aggregate_sha256",
     }
+    artifact_fields = {
+        "repository", "commit", "tree", "view_prefix", "view_tree",
+        "required_paths", "export_sha256",
+    }
     generated_fields = {
         "scan_manifest_sha256", "index_sha256", "summary_sha256",
-        "publication_sha256", "aggregate_sha256",
+        "publication_sha256", "independent_audit_sha256", "aggregate_sha256",
     }
     for field, fields in (
         ("source", source_fields), ("accepted_base", source_fields),
         ("governing_contract", contract_fields), ("tooling", tooling_fields),
-        ("inputs", input_fields), ("generated", generated_fields),
+        ("inputs", input_fields), ("observations", artifact_fields),
+        ("reviews", artifact_fields), ("generated", generated_fields),
     ):
         value = record[field]
         if not isinstance(value, dict):
             lib.fail("E_RECORD_FIELD", f"{field} must be an object")
         lib.require_keys(value, fields, set(), field)
+
+    expected_tooling_fields = {
+        "repository", "commit", "tree", "view_prefix", "view_tree", "export_sha256",
+    }
+    if set(expected_tooling) != expected_tooling_fields:
+        lib.fail("E_EXPECTED_TOOLING", "independent tooling expectation is incomplete")
+    tooling = record["tooling"]
+    if (
+        any(tooling[field] != expected_tooling[field] for field in expected_tooling_fields)
+        or set(tooling["required_paths"]) != REQUIRED_TOOLING_PATHS
+    ):
+        lib.fail("E_EXPECTED_TOOLING", "record did not select the independently expected tooling")
 
     export_specs = {
         "source": (source_root, source_export_path),
@@ -901,6 +1120,8 @@ def verify_evidence_binding(
         "governing_contract": (contract_root, contract_export_path),
         "tooling": (tooling_root, tooling_export_path),
         "inputs": (input_root, input_export_path),
+        "observations": (observation_root, observation_export_path),
+        "reviews": (review_root, review_export_path),
     }
     exported_files: dict[str, dict[str, bytes]] = {}
     entries: dict[str, list[dict[str, Any]]] = {}
@@ -923,10 +1144,12 @@ def verify_evidence_binding(
     if contract["path"] not in contract_entries or contract_entries[contract["path"]]["blob_sha1"] != contract["blob"]:
         lib.fail("E_RECORD_CONTRACT", "governing contract blob is not present in its authenticated export")
 
-    for field in ("tooling", "inputs"):
+    for field in ("tooling", "inputs", "observations", "reviews"):
         paths = record[field]["required_paths"]
-        if not isinstance(paths, list) or not paths or len(paths) != len(set(paths)):
-            lib.fail("E_RECORD_PATHS", f"{field}.required_paths must be nonempty and unique")
+        if not isinstance(paths, list) or len(paths) != len(set(paths)):
+            lib.fail("E_RECORD_PATHS", f"{field}.required_paths must be unique")
+        if field in {"tooling", "inputs", "observations"} and not paths:
+            lib.fail("E_RECORD_PATHS", f"{field}.required_paths must be nonempty")
         for path in paths:
             lib.validate_relpath(path, limits)
         available = {entry["path"] for entry in entries[field]}
@@ -942,17 +1165,19 @@ def verify_evidence_binding(
     compact = validate_compact_input_files(exported_files["inputs"], limits)
 
     rows = verify_package(package, record["source"]["repository"], record["source"]["tree"], limits)
-    del rows
+    _validate_generated_meaning(rows, compact)
     index_data = lib.read_bounded_file(package / "index.json", limits["max_input_file_bytes"])
     summary_data = lib.read_bounded_file(package / "summary.json", limits["max_input_file_bytes"])
     manifest_data = lib.read_bounded_file(package / "scan-manifest.json", limits["max_export_bytes"])
     publication_data = lib.read_bounded_file(package / "publication.json", limits["max_input_file_bytes"])
+    audit_data = lib.read_bounded_file(audit_path, limits["max_audit_output_bytes"])
     index = lib.strict_json_bytes(index_data, limits, "index.json")
     expected_generated = {
         "scan_manifest_sha256": lib.sha256_hex(manifest_data),
         "index_sha256": lib.sha256_hex(index_data),
         "summary_sha256": lib.sha256_hex(summary_data),
         "publication_sha256": lib.sha256_hex(publication_data),
+        "independent_audit_sha256": lib.sha256_hex(audit_data),
         "aggregate_sha256": index["aggregate_sha256"],
     }
     if record["generated"] != expected_generated:
@@ -968,25 +1193,45 @@ def verify_evidence_binding(
     )
     if manifest_document != lib.scan_manifest_document(authenticated_manifest):
         lib.fail("E_SOURCE_BINDING", "package scan manifest does not exactly cover authenticated source bytes")
+    reconcile(
+        rows, audit_path, limits, record["source"]["repository"],
+        record["source"]["commit"], record["source"]["tree"],
+        record["source"]["export_sha256"], record["inputs"]["export_sha256"],
+        index["scan_manifest_sha256"],
+    )
     source_entries = {entry["path"]: entry for entry in entries["source"]}
     for visual in compact["visuals"]:
         entry = source_entries.get(visual["path"])
         if entry is None or entry["blob_sha1"] != visual["blob_sha1"] or entry["sha256"] != visual["sha256"]:
             lib.fail("E_VISUAL_BINDING", f"visual record does not bind authenticated source bytes: {visual['path']}")
-    tooling_entries = {entry["path"]: entry for entry in entries["tooling"]}
-    tooling = record["tooling"]
+    observation_entries = {entry["path"]: entry for entry in entries["observations"]}
+    observation_paths = {surface["snapshot_path"] for surface in compact["surfaces"]}
+    if set(record["observations"]["required_paths"]) != observation_paths or set(exported_files["observations"]) != observation_paths:
+        lib.fail("E_OBSERVATION_BINDING", "observation export path set does not match required surfaces")
+    for surface in compact["surfaces"]:
+        entry = observation_entries.get(surface["snapshot_path"])
+        data = exported_files["observations"].get(surface["snapshot_path"])
+        if (
+            entry is None
+            or data is None
+            or entry["blob_sha1"] != surface["snapshot_blob_sha1"]
+            or entry["sha256"] != surface["snapshot_sha256"]
+            or lib.sha256_hex(data) != surface["snapshot_sha256"]
+        ):
+            lib.fail("E_OBSERVATION_BINDING", f"snapshot bytes are not authenticated: {surface['surface_id']}")
+    review_paths = {decision["record_path"] for decision in compact["applicability_decisions"]}
+    if set(record["reviews"]["required_paths"]) != review_paths:
+        lib.fail("E_APPLICABILITY_BINDING", "review binding path set does not match decisions")
     for decision in compact["applicability_decisions"]:
-        entry = tooling_entries.get(decision["record_path"])
         if (
             decision["subject_commit"] != record["source"]["commit"]
             or decision["subject_tree"] != record["source"]["tree"]
-            or decision["record_repository"] != tooling["repository"]
-            or decision["record_commit"] != tooling["commit"]
-            or decision["record_tree"] != tooling["tree"]
-            or entry is None
-            or entry["blob_sha1"] != decision["record_blob"]
         ):
-            lib.fail("E_APPLICABILITY_BINDING", f"applicability decision record is not authenticated: {decision['surface_id']}")
+            lib.fail("E_APPLICABILITY_BINDING", f"review subject mismatch: {decision['surface_id']}")
+    _validate_applicability_review_records(
+        compact["applicability_decisions"], compact["surfaces"],
+        exported_files["reviews"], entries["reviews"], record["reviews"], limits,
+    )
     for path, item in manifest.items():
         if item["text_status"] == "non_utf8" or item["structured_status"] == "invalid_json":
             if f"file:{path}" not in compact["limitation_surfaces"] and path not in compact["visual_paths"]:
@@ -1165,8 +1410,19 @@ def parse_args() -> argparse.Namespace:
     evidence.add_argument("--contract-export", required=True, type=Path)
     evidence.add_argument("--tooling-root", required=True, type=Path)
     evidence.add_argument("--tooling-export", required=True, type=Path)
+    evidence.add_argument("--observation-root", required=True, type=Path)
+    evidence.add_argument("--observation-export", required=True, type=Path)
+    evidence.add_argument("--review-root", required=True, type=Path)
+    evidence.add_argument("--review-export", required=True, type=Path)
     evidence.add_argument("--input-root", required=True, type=Path)
     evidence.add_argument("--input-export", required=True, type=Path)
+    evidence.add_argument("--audit", required=True, type=Path)
+    evidence.add_argument("--expected-tooling-repository", required=True)
+    evidence.add_argument("--expected-tooling-commit", required=True)
+    evidence.add_argument("--expected-tooling-tree", required=True)
+    evidence.add_argument("--expected-tooling-view-prefix", required=True)
+    evidence.add_argument("--expected-tooling-view-tree", required=True)
+    evidence.add_argument("--expected-tooling-export-sha256", required=True)
     binding = subcommands.add_parser("binding")
     binding.add_argument("--record", required=True, type=Path)
     freshness = subcommands.add_parser("freshness")
@@ -1178,6 +1434,13 @@ def parse_args() -> argparse.Namespace:
     freshness.add_argument("--subject-commit", required=True)
     freshness.add_argument("--subject-tree", required=True)
     freshness.add_argument("--event", action="append", default=[])
+    freshness.add_argument("--review-root", required=True, type=Path)
+    freshness.add_argument("--review-export", required=True, type=Path)
+    freshness.add_argument("--review-repository", required=True)
+    freshness.add_argument("--review-commit", required=True)
+    freshness.add_argument("--review-tree", required=True)
+    freshness.add_argument("--review-view-prefix", required=True)
+    freshness.add_argument("--review-view-tree", required=True)
     return parser.parse_args()
 
 
@@ -1196,11 +1459,21 @@ def main() -> int:
                 index["scan_manifest_sha256"],
             )
     elif args.command == "evidence":
+        expected_tooling = {
+            "repository": args.expected_tooling_repository,
+            "commit": args.expected_tooling_commit,
+            "tree": args.expected_tooling_tree,
+            "view_prefix": args.expected_tooling_view_prefix,
+            "view_tree": args.expected_tooling_view_tree,
+            "export_sha256": args.expected_tooling_export_sha256,
+        }
         verify_evidence_binding(
             args.record, args.package, args.source_root, args.source_export,
             args.base_root, args.base_export, args.contract_root, args.contract_export,
-            args.tooling_root, args.tooling_export, args.input_root, args.input_export,
-            limits,
+            args.tooling_root, args.tooling_export,
+            args.observation_root, args.observation_export,
+            args.review_root, args.review_export,
+            args.input_root, args.input_export, args.audit, expected_tooling, limits,
         )
     elif args.command == "binding":
         verify_binding_record(args.record, limits)
@@ -1208,7 +1481,10 @@ def main() -> int:
         verify_freshness(
             args.external_surfaces, args.surface_register, args.applicability_decisions,
             args.evaluation_time, args.evaluation_point, args.event,
-            args.subject_commit, args.subject_tree, limits,
+            args.subject_commit, args.subject_tree,
+            args.review_root, args.review_export, args.review_repository,
+            args.review_commit, args.review_tree, args.review_view_prefix,
+            args.review_view_tree, limits,
         )
     else:
         lib.fail("E_COMMAND", "unknown command")

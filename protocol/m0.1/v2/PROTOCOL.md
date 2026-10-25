@@ -143,6 +143,11 @@ authorized input set contains:
 Every input document declares `protocol_version: "m0.1-v2"` and rejects unknown
 top-level fields.
 
+Each external observation names a retained snapshot path plus its Git blob SHA-1
+and SHA-256. The evidence record authenticates a closed observation export whose
+path set exactly equals the registered surfaces. Observation metadata without the
+corresponding retained bytes is not eligible evidence.
+
 ### 7.1 Mappings
 
 Each mapping has a stable `mapping_id`, namespace, original identity, canonical
@@ -274,14 +279,39 @@ expired windows, limited or unavailable required surfaces, or applicable
 invalidating events fail closed even when snapshot bytes are unchanged.
 Reacquisition creates a new bound observation and requires renewed disposition.
 A `not_applicable` record retains only that reviewed claim; the tooling does not
-manufacture semantic applicability from the label. The required-surface register
-and observation set must match exactly. Each not-applicable observation requires
-one decision bound to the subject commit/tree and a content-addressed review
-record; other observations must have none.
+manufacture semantic applicability from the label. It remains subject to the
+observation's explicit age, event, evaluation-point, and point-in-time boundaries.
+The required-surface register and observation set must match exactly. Each
+not-applicable observation requires one decision bound to the exact canonical
+observation, subject commit/tree, and eligibility policy. That decision resolves
+to a retained canonical review body whose meaning—surface, disposition, subject,
+reviewer, rationale, policy, limitations, and non-authority—is validated rather
+than inferred from its pathname or blob identity. Other observations must have no
+applicability review. Human process corroboration remains separate.
 
 Offline regeneration consumes retained inputs only and never refreshes them.
 
-## 12. Deterministic versus runtime provenance
+## 12. Evidence derivation binding
+
+An evidence record does not choose its own trusted tooling. The verifier receives
+the accepted tooling repository, commit, root tree, selected view, view tree, and
+export digest independently from the record. The selected tooling view must
+contain the exact required set: `PROTOCOL.md`, `README.md`, `audit_scan.py`,
+`generate.py`, `limits.json`, `protocol_lib.py`, `schema.json`, and `verify.py`.
+
+After structural package verification, the verifier independently relates every
+row back to the compact inputs. Its mapping ID must resolve to the exact retained
+namespace, original, and canonical identities. Exactly one reviewed rule must
+match the row's mapping, unit, path selector, and optional JSON-Pointer prefix;
+the row's role, phase, producer, consumer, support policy, validation identity,
+historical relationship, rule ID, and per-rule population must agree with that
+rule. A self-consistent rehash after altering classification meaning rejects.
+
+The evidence record also binds the exact independent-audit bytes. Reconciliation
+checks their source, input-export, and scan-manifest identities and requires exact
+occurrence-key equality with the semantically bound package rows.
+
+## 13. Deterministic versus runtime provenance
 
 Deterministic output contains exact repository/tree/blob identities, canonical
 inputs, file hashes, rows, indexes, summaries, and limitations. Acquisition time,
@@ -290,7 +320,7 @@ in separate runtime provenance or decision records and are never inputs to
 deterministic package bytes except where a retained external observation itself
 is the explicit reviewed input.
 
-## 13. Shared components and independent failure modes
+## 14. Shared components and independent failure modes
 
 Generator, auditor, and verifier share only strict JSON, canonical encoding,
 SHA-256, path validation, occurrence-key construction, and bounded file I/O.
@@ -309,7 +339,7 @@ traversal are charged to the processing budget. Package verification charges the
 cumulative serialized-byte budget before each document or chunk read; it never
 first materializes an over-budget package and rejects afterward.
 
-## 14. Rejection behavior
+## 15. Rejection behavior
 
 The tools return zero only for a satisfied command. Failures return nonzero and a
 stable code on stderr. Required failures include duplicate JSON keys, unknown
@@ -335,7 +365,7 @@ therefore rejects before an operation that could wait for a writer. Row, chunk,
 aggregate, generated-byte, and processing budgets are charged before or during
 work. An existing destination rejects.
 
-## 15. Retention, transfer, recovery, and R8
+## 16. Retention, transfer, recovery, and R8
 
 Accepted protocol, inputs, canonical uncompressed JSONL, index, summary, reports,
 decisions, and receipts remain in reachable Git history. Compression is transport
@@ -357,7 +387,7 @@ head. P verifies merge parents, resulting trees, integrated heads, and target
 branches rather than trusting asserted correspondence. Recovery authenticates the
 restored E commit/tree and separately binds backup and recovery-evidence digests.
 
-## 16. Synthetic test boundary
+## 17. Synthetic test boundary
 
 Fixtures beneath `tests/fixtures/` are synthetic protocol tests. They are not
 compact production inputs, migration evidence, source classifications, owner

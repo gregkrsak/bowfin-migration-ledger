@@ -34,6 +34,8 @@
         },
         "limitations": [],
         "origin": "fixture://repository/settings",
+        "snapshot_blob_sha1": "0000000000000000000000000000000000000000",
+        "snapshot_path": "repository-settings.json",
         "snapshot_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
         "status": "inspected",
         "surface_id": "fixture-repository-settings"

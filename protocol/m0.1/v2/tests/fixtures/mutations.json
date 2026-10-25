@@ -28,7 +28,11 @@
     {"expected_code": "E_FIELD_UNKNOWN", "mutation_id": "direct-input-unknown-field", "test_method": "test_direct_compact_input_field_validation"},
     {"expected_code": "E_SURFACE_REGISTER", "mutation_id": "missing-required-surface", "test_method": "test_missing_surface_and_unsupported_not_applicable"},
     {"expected_code": "E_APPLICABILITY", "mutation_id": "unsupported-not-applicable", "test_method": "test_missing_surface_and_unsupported_not_applicable"},
+    {"expected_code": "E_FRESHNESS", "mutation_id": "stale-not-applicable-observation", "test_method": "test_not_applicable_requires_current_semantic_review"},
+    {"expected_code": "E_APPLICABILITY_REVIEW", "mutation_id": "applicability-review-meaning-mismatch", "test_method": "test_not_applicable_requires_current_semantic_review"},
+    {"expected_code": "E_CLASSIFICATION_BINDING", "mutation_id": "generated-classification-meaning-drift", "test_method": "test_generated_rows_are_bound_to_compact_meaning"},
     {"expected_code": "E_EXPORT_CONTENT", "mutation_id": "evidence-source-bytes-drift", "test_method": "test_evidence_record_binds_actual_exports_and_generated_bytes"},
+    {"expected_code": "E_EXPECTED_TOOLING", "mutation_id": "unexpected-tooling-revision", "test_method": "test_evidence_record_binds_actual_exports_and_generated_bytes"},
     {"expected_code": "E_BINDING_TARGET", "mutation_id": "wrong-integration-target", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"}
   ],
   "protocol_version": "m0.1-v2-fixture"

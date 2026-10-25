@@ -947,22 +947,22 @@ def evaluate_freshness(
     points = policy["evaluation_points"]
     if set(points) != {"owner_acceptance", "pre_integration"} or evaluation_point not in points:
         return (False, "missing_evaluation_point")
-    if surface["status"] != "inspected":
+    if surface["status"] not in {"inspected", "not_applicable"}:
         return (False, "not_currently_inspected")
     events = set(policy["invalidating_events"])
     if observed_events.intersection(events):
         return (False, "invalidating_event")
+    acquired = parse_utc(surface["acquired_at"], "acquired_at")
+    age = (evaluation_time - acquired).total_seconds()
+    if age < 0:
+        return (False, "acquisition_in_future")
     if policy["point_in_time_only"] is True:
-        return (False, "point_in_time_only")
+        return (age == 0, "eligible" if age == 0 else "point_in_time_expired")
     maximum = policy["max_age_seconds"]
     if maximum is None:
         if not events:
             return (False, "no_current_eligibility_rule")
     else:
-        acquired = parse_utc(surface["acquired_at"], "acquired_at")
-        age = (evaluation_time - acquired).total_seconds()
-        if age < 0:
-            return (False, "acquisition_in_future")
         if age > maximum:
             return (False, "expired")
     return (True, "eligible")

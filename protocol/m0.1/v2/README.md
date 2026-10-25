@@ -67,6 +67,48 @@ python3 -I verify.py package \
   --input-export-sha256 <64-hex-digest> \
   --audit <audit-result.json>
 
+python3 -I verify.py evidence \
+  --record <migration-evidence-record.json> \
+  --package <generated-directory> \
+  --source-root <read-only-source-snapshot> \
+  --source-export <authenticated-source-export.json> \
+  --base-root <read-only-accepted-base-snapshot> \
+  --base-export <authenticated-base-export.json> \
+  --contract-root <read-only-contract-snapshot> \
+  --contract-export <authenticated-contract-export.json> \
+  --tooling-root <read-only-tooling-snapshot> \
+  --tooling-export <authenticated-tooling-export.json> \
+  --observation-root <read-only-observation-snapshot> \
+  --observation-export <authenticated-observation-export.json> \
+  --review-root <read-only-review-snapshot> \
+  --review-export <authenticated-review-export.json> \
+  --input-root <read-only-input-snapshot> \
+  --input-export <authenticated-input-export.json> \
+  --audit <independent-audit-result.json> \
+  --expected-tooling-repository <owner/repository> \
+  --expected-tooling-commit <40-hex-commit> \
+  --expected-tooling-tree <40-hex-root-tree> \
+  --expected-tooling-view-prefix <repository-relative-prefix> \
+  --expected-tooling-view-tree <40-hex-view-tree> \
+  --expected-tooling-export-sha256 <64-hex-digest>
+
+python3 -I verify.py freshness \
+  --external-surfaces <external-surfaces.json> \
+  --surface-register <surface-register.json> \
+  --applicability-decisions <applicability-decisions.json> \
+  --evaluation-time <UTC-time-ending-in-Z> \
+  --evaluation-point <owner_acceptance-or-pre_integration> \
+  --subject-commit <40-hex-commit> \
+  --subject-tree <40-hex-tree> \
+  --review-root <read-only-review-snapshot> \
+  --review-export <authenticated-review-export.json> \
+  --review-repository <owner/repository> \
+  --review-commit <40-hex-commit> \
+  --review-tree <40-hex-root-tree> \
+  --review-view-prefix <repository-relative-prefix-or-empty-string> \
+  --review-view-tree <40-hex-view-tree> \
+  [--event <observed-invalidating-event>]...
+
 python3 -I verify.py binding \
   --record <integration-binding-record.json>
 
