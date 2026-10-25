@@ -1,55 +1,135 @@
-# Evidence and Archive Layout
+# Current migration evidence
 
-This repository distinguishes current migration evidence from unaccepted historical preservation. Storage location never determines acceptance or authority.
+This directory is reserved for accepted, current migration evidence. Material in
+`archive/unaccepted/**` is historical preservation and is permanently ineligible
+for use here.
 
-## Current migration evidence
+No M0.1 v2 production evidence exists yet. The protocol/tooling preparation PR
+does not authorize production inputs, scanner execution against the compiler
+repository, evidence generation, or phase acceptance.
 
-After the governing compiler contract recognizes this ledger and the relevant phase is authorized, current evidence may use:
+## Required layout
+
+A future separately authorized M0.1 package uses:
 
 ```text
-evidence/<phase>/<source-commit>/
+evidence/m0.1/<source-commit>/
   record.json
   inputs/
+    mappings.json
+    classification-rules.json
+    audit-policy.json
+    surface-register.json
+    external-surfaces.json
+    applicability-decisions.json
+    visual-inspection.json
+    limitations.json
+  observations/
+    <retained-external-snapshot>
+  reviews/
+    <canonical-applicability-review>
   generated/
+    scan-manifest.json
+    index.json
+    summary.json
+    publication.json
+    occurrences/
+      0000.jsonl
+      ...
   reports/
+    generation.json
+    independent-audit.json
+    verification.json
 ```
 
-The directory name is navigational, not authoritative. `record.json` must carry the complete exact-identity binding defined in `docs/LEDGER-BOUNDARY.md`.
+The source-commit directory name and `record.json` identities must agree.
+`record.json` binds the source candidate and accepted base, governing contract,
+accepted tooling revision, compact inputs, external/visual observations, and
+generated package. The accepted tooling identity is also supplied independently
+to the verifier and cannot be selected by `record.json`. It also denies execution, approval, custody, replay,
+semantic-acceptance, merge, release, cutover, and next-phase authority.
 
-- `inputs/`: compact typed mappings, classifications, and bounded configuration reviewed as sources of truth for the stated evidence claim.
-- `generated/`: reproducible outputs retained because independent inspection or durable audit requires them.
-- `reports/`: human-readable generation, validation, and independent-review reports with their limitations.
-- Transient outputs remain workflow artifacts or are regenerated when durable retention is unnecessary.
+Each dependency is supplied as an authenticated Git export containing its raw
+commit object, repository-root tree, explicit eligible-view prefix and tree, and
+a complete root-to-view Git tree proof. The proof authenticates opaque sibling
+objects without reading or making them eligible. The selected view then carries
+its complete path/mode/blob/content inventory, which is reconstructed and compared
+against that exact subtree of a separately supplied filesystem snapshot. A
+self-hash, named path list, or unproved subtree label is not correspondence proof.
+`archive/unaccepted/**` may appear only as opaque proof metadata and may never be
+selected or materialized as a current dependency.
 
-Each retained generated file must identify, or be covered by a record identifying, its inputs, generator, digest algorithm and digest, coverage, and limitations. A large file is not evidence of completeness merely because it contains many rows.
+## Package rules
 
-## Unaccepted historical snapshots
+- Occurrence chunks are canonical, uncompressed JSONL and remain reachable in
+  Git. Compression may be used only as a transport copy.
+- `scan-manifest.json` authenticates every scanned source path, byte count,
+  SHA-256, UTF-8 status, and structured-scan status.
+- `index.json` authenticates the scan manifest and every occurrence chunk.
+- `publication.json` is written last and binds the manifest, index, and summary;
+  its absence makes the package incomplete.
+- The independent audit records its own complete scan manifest and must agree
+  with the generator's exact manifest digest before occurrence keys reconcile.
+- A binary/non-UTF-8 file or malformed JSON file does not silently disappear.
+  Its manifest status requires a corresponding reviewed limitation or other
+  explicit surface disposition before evidence can be accepted.
+- Missing, expired, limited, unavailable, or invalidated required external
+  evidence fails current eligibility. `not_applicable` requires independent
+  semantic review, retained review bytes, and an unexpired eligibility boundary;
+  the tool cannot establish it merely from a label or blob reference.
+- The required-surface register is closed-world, and applicability decisions
+  exactly match the not-applicable subset.
+- Every registered observation resolves to one exact retained snapshot path,
+  Git blob SHA-1, and SHA-256. Every applicability decision resolves to a canonical
+  review body whose semantic fields are checked against the decision and subject.
+- Every generated row is checked against its exact mapping and unique matching
+  rule, including retained classification meaning and expected per-rule count.
+- The evidence record binds the exact independent-audit bytes; the same single
+  read is hashed, parsed, and reconciled against source, input, manifest, and
+  occurrence-key identities.
+- Compiler-source evidence always selects the repository root. Its paths and
+  occurrence keys are therefore repository-relative; selected subviews remain
+  available for tooling, compact inputs, observations, reviews, and contracts.
+- Classification-meaning verification is indexed by mapping and unit kind and is
+  charged against the processing budget, including remaining selector and semantic
+  comparisons.
+- The verifier reconstructs canonical greedy chunk boundaries; a fully rehashed
+  alternative partition is not equivalent evidence.
+- Aggregate package bytes are charged before each read, and a package that would
+  cross the generated-byte limit rejects before the next file is opened.
 
-A separately authorized preservation import uses a distinct path such as:
+## Decisions and authority
 
-```text
-archive/unaccepted/<snapshot-id>/
-  ARCHIVE-RECORD.json
-  NOTES.md
-  payload/
-    <original paths and bytes>
-```
+Review findings, owner decisions, corrections, revocations, and integration
+receipts live under `decisions/`, outside the immutable package they describe.
+They identify exact commits, trees, blobs, and package digests. A comment, author
+name, timestamp, passing check, or newest record is never authority by itself.
 
-The required record class and status are `unaccepted_historical_snapshot` and `UNACCEPTED_HISTORICAL_SNAPSHOT`. The wrapper must record:
+Only Greg may accept a candidate or merge a pull request. Acceptance of E does
+not accept C, authorize integration, or begin M1. The later integration receipt P
+must prove the finite C/E/D/P correspondence required by the governing contract.
+That proof includes complete reconstructed commit trees, exhaustive sole-parent
+C/E introduced chains, and canonical review and owner-decision bodies bound by
+their exact blobs and containing commits. Expected repositories, target branches,
+merge commits, and the recovery ref are supplied to verification independently of
+the receipt. Human authority is corroborated by the governed process, not created
+by an author-name string inside JSON.
 
-- origin repository and pull request or other origin reference;
-- origin commit and tree;
-- complete imported path set and original path spelling;
-- per-file and total byte sizes;
-- digest algorithm and per-file payload content identities;
-- any source revision that the payload claimed to examine, separately from its origin;
-- copy-integrity and import-completeness results;
-- reproduction status: `unattempted`, `succeeded`, `failed`, or `limited`;
-- semantic-validation status and bounded limitations; and
-- the authorizing and reviewing records for preservation.
+## Availability and retirement
 
-The payload remains byte-for-byte unchanged. New explanations, corrections, and supersession records are appended outside `payload/`. An archived workflow stays beneath the payload path and does not become an active repository workflow. Archived scripts, instructions, generators, and validators are retained as historical code and are not current tooling unless separately authorized and reviewed.
+Accepted protocol, inputs, evidence, decisions, and receipts must remain
+recoverable from reachable Git history plus the documented backup path. An
+expiring workflow artifact, cache, attachment, or object-store URL cannot be the
+sole retained copy. Ledger unavailability blocks only gates that require ledger
+evidence; it never blocks ordinary compiler build, verification, failure
+recovery, or accepted production operation.
 
-Copy integrity proves that the intended historical bytes were preserved. It does not prove that an archived generator is reproducible, that its results are correct or complete, that its architecture is adopted, that M0.1 is accepted, or that later migration work is authorized. Successful reproduction is not required for preservation.
+The recovery path is evidenced by a bounded directory containing a canonical
+manifest and raw Git objects. The manifest digest binds retained refs and object
+descriptors; verification checks each raw object's Git identity and SHA-256 and
+walks the complete reachable commit/tree/blob graph from an independently expected
+ref. A separate post-integration commit binds the canonical recovery result.
+Hashes without the referenced recoverable objects are not recovery evidence.
 
-This foundation intentionally contains no imported material from the closed first M0.1 attempt. A later import requires separate authorization and review.
+After R8, archive this repository read-only unless a later accepted decision
+defines another role. Retirement does not erase or reclassify evidence.

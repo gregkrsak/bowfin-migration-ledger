@@ -1,0 +1,154 @@
+{
+  "audit_policy": {
+    "families": [
+      {
+        "family_id": "audit-brand",
+        "kind": "literal",
+        "literal": "Klyxr",
+        "namespace": "display_brand",
+        "unit_kinds": ["raw_text", "structured_value"]
+      },
+      {
+        "family_id": "audit-source-suffix",
+        "kind": "source_suffix",
+        "literal": ".klx",
+        "namespace": "source_suffix",
+        "unit_kinds": ["path_component"]
+      }
+    ],
+    "independently_authored": true,
+    "protocol_version": "m0.1-v2"
+  },
+  "external_surfaces": {
+    "protocol_version": "m0.1-v2",
+    "surfaces": [
+      {
+        "acquired_at": "2026-10-24T00:00:00Z",
+        "class": "repository_metadata",
+        "coverage": "Synthetic repository settings fixture",
+        "freshness_policy": {
+          "evaluation_points": ["owner_acceptance", "pre_integration"],
+          "invalidating_events": ["repository_settings_changed"],
+          "max_age_seconds": 86400,
+          "point_in_time_only": false
+        },
+        "limitations": [],
+        "origin": "fixture://repository/settings",
+        "snapshot_blob_sha1": "0000000000000000000000000000000000000000",
+        "snapshot_path": "repository-settings.json",
+        "snapshot_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "status": "inspected",
+        "surface_id": "fixture-repository-settings"
+      }
+    ]
+  },
+  "mappings": {
+    "mappings": [
+      {
+        "canonical": "Bowfin",
+        "mapping_id": "map-brand",
+        "namespace": "display_brand",
+        "original": "Klyxr",
+        "policy": "replace"
+      },
+      {
+        "canonical": ".bow",
+        "mapping_id": "map-source-suffix",
+        "namespace": "source_suffix",
+        "original": ".klx",
+        "policy": "compatibility"
+      }
+    ],
+    "protocol_version": "m0.1-v2"
+  },
+  "protocol_version": "m0.1-v2-fixture",
+  "rules": {
+    "protocol_version": "m0.1-v2",
+    "rules": [
+      {
+        "boundary_context": ["Entire synthetic file"],
+        "consumer": "fixture reader",
+        "expected_count": 1,
+        "historical_relationship": null,
+        "phase": "M4",
+        "producer": "fixture author",
+        "rationale": "Synthetic live brand occurrence",
+        "representative_context": ["Klyxr"],
+        "role": "live",
+        "rule_id": "rule-brand-note",
+        "selector": {
+          "mapping_id": "map-brand",
+          "path_exact": "notes.txt",
+          "unit_kind": "raw_text"
+        },
+        "support_policy": "replace in the synthetic fixture",
+        "validation_test_id": "M01V2-FIXTURE-01"
+      },
+      {
+        "boundary_context": ["Raw JSON bytes"],
+        "consumer": "fixture reader",
+        "expected_count": 1,
+        "historical_relationship": null,
+        "phase": "M4",
+        "producer": "fixture author",
+        "rationale": "Synthetic raw JSON brand occurrence",
+        "representative_context": ["project value"],
+        "role": "live",
+        "rule_id": "rule-brand-json-raw",
+        "selector": {
+          "mapping_id": "map-brand",
+          "path_exact": "metadata.json",
+          "unit_kind": "raw_text"
+        },
+        "support_policy": "replace in the synthetic fixture",
+        "validation_test_id": "M01V2-FIXTURE-02"
+      },
+      {
+        "boundary_context": ["Exact /project pointer"],
+        "consumer": "fixture reader",
+        "expected_count": 1,
+        "historical_relationship": null,
+        "phase": "M4",
+        "producer": "fixture author",
+        "rationale": "Synthetic structured JSON brand occurrence",
+        "representative_context": ["/project"],
+        "role": "live",
+        "rule_id": "rule-brand-json-structured",
+        "selector": {
+          "json_pointer_prefix": "/project",
+          "mapping_id": "map-brand",
+          "path_exact": "metadata.json",
+          "unit_kind": "structured_value"
+        },
+        "support_policy": "replace in the synthetic fixture",
+        "validation_test_id": "M01V2-FIXTURE-03"
+      },
+      {
+        "boundary_context": ["Exact synthetic path"],
+        "consumer": "fixture loader",
+        "expected_count": 1,
+        "historical_relationship": null,
+        "phase": "M3",
+        "producer": "fixture author",
+        "rationale": "Synthetic source-suffix occurrence",
+        "representative_context": ["example.klx"],
+        "role": "compatibility",
+        "rule_id": "rule-source-suffix",
+        "selector": {
+          "mapping_id": "map-source-suffix",
+          "path_exact": "example.klx",
+          "unit_kind": "path_component"
+        },
+        "support_policy": "retain legacy input while canonicalizing output",
+        "validation_test_id": "M01V2-FIXTURE-04"
+      }
+    ]
+  },
+  "source_files": {
+    "example.klx": "ok\n",
+    "metadata.json": "{\"project\":\"Klyxr\"}\n",
+    "notes.txt": "Klyxr\n"
+  },
+  "source_repository": "fixture/source",
+  "source_tree": "1111111111111111111111111111111111111111"
+}

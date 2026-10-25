@@ -1,0 +1,30 @@
+{
+  "aggregate": {
+    "descriptors": [
+      {
+        "byte_count": 123,
+        "first_key": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "last_key": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "path": "occurrences/0000.jsonl",
+        "row_count": 4,
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    ],
+    "expected_sha256": "b7b627e436de89a590050a4a3f74490a3c1eee2f25d0ef9d5ef2be1c9f2e1090"
+  },
+  "canonical_json": {
+    "expected_utf8_hex": "7b2261223a5b332c325d2c227a223a317d0a",
+    "value": {"a": [3, 2], "z": 1}
+  },
+  "occurrence_key": {
+    "expected": "sha256:1f56843d7d92fc11995482680bf072dbc04cdc09053b40603a9ef4c5872380b1",
+    "locator": {"byte_end": 5, "byte_start": 0},
+    "namespace": "display_brand",
+    "original": "Klyxr",
+    "path": "a.txt",
+    "repository": "fixture/source",
+    "tree": "1111111111111111111111111111111111111111",
+    "unit_kind": "raw_text"
+  },
+  "protocol_version": "m0.1-v2-fixture"
+}
