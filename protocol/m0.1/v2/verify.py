@@ -13,7 +13,13 @@ from typing import Any
 
 def _load_library() -> Any:
     path = Path(__file__).resolve().with_name("protocol_lib.py")
-    spec = importlib.util.spec_from_file_location("_bowfin_m01v2_protocol_lib", path)
+    name = "_bowfin_m01v2_protocol_lib"
+    existing = sys.modules.get(name)
+    if existing is not None:
+        if Path(existing.__file__).resolve() != path:
+            raise RuntimeError("reviewed protocol library name resolves to another file")
+        return existing
+    spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
         raise RuntimeError("cannot load reviewed protocol_lib.py")
     module = importlib.util.module_from_spec(spec)
@@ -156,7 +162,15 @@ def _validate_rules_document(document: Any, mapping_ids: set[str], limits: dict[
             lib.fail("E_SELECTOR_PATH", f"{label} requires exactly one path selector")
         selected = selector[path_fields[0]]
         if path_fields[0] == "path_suffix":
-            if not isinstance(selected, str) or not selected or selected.startswith("/") or "\\" in selected or "\x00" in selected:
+            if (
+                not isinstance(selected, str)
+                or not selected
+                or selected.startswith("/")
+                or "\\" in selected
+                or "\x00" in selected
+                or any(0xD800 <= ord(char) <= 0xDFFF for char in selected)
+                or len(selected.encode("utf-8")) > limits["max_path_bytes"]
+            ):
                 lib.fail("E_SELECTOR_PATH", f"invalid path suffix: {label}")
         else:
             lib.validate_relpath(selected, limits)
@@ -1345,8 +1359,13 @@ def verify_evidence_binding(
         lib.fail("E_RECORD_AUTHORITY", "non-authority flags are incomplete or elevated")
 
 
-def _commit_evidence(value: Any, label: str) -> dict[str, Any]:
-    fields = {"repository", "branch", "commit", "tree", "parents", "commit_object_base64"}
+def _commit_evidence(
+    value: Any, label: str, limits: dict[str, int]
+) -> dict[str, Any]:
+    fields = {
+        "repository", "branch", "commit", "tree", "parents",
+        "commit_object_base64", "tree_entries",
+    }
     if not isinstance(value, dict):
         lib.fail("E_COMMIT_EVIDENCE", f"{label} must be an object")
     lib.require_keys(value, fields, set(), label)
@@ -1370,7 +1389,74 @@ def _commit_evidence(value: Any, label: str) -> dict[str, Any]:
     actual_parents = [line[7:].decode("ascii") for line in headers if line.startswith(b"parent ")]
     if trees != [value["tree"]] or actual_parents != parents:
         lib.fail("E_COMMIT_EVIDENCE", f"{label} tree or parents mismatch")
+    entries = _tree_inventory(value["tree_entries"], f"{label}.tree_entries", limits)
+    reconstructed, _objects = lib.git_tree_objects(
+        entries, limits, allow_archive=True
+    )
+    if reconstructed != value["tree"]:
+        lib.fail("E_COMMIT_TREE", f"{label} complete tree inventory mismatch")
     return value
+
+
+def _tree_inventory(
+    value: Any, label: str, limits: dict[str, int]
+) -> list[dict[str, Any]]:
+    if not isinstance(value, list) or len(value) > limits["max_source_files"]:
+        lib.fail("E_COMMIT_TREE", f"{label} must be a bounded array")
+    entries: list[dict[str, Any]] = []
+    prior: bytes | None = None
+    for index, entry in enumerate(value):
+        item_label = f"{label}[{index}]"
+        if not isinstance(entry, dict):
+            lib.fail("E_COMMIT_TREE", f"{item_label} must be an object")
+        lib.require_keys(entry, {"path", "mode", "blob_sha1"}, set(), item_label)
+        path = lib.validate_relpath(
+            entry["path"], limits, allow_archive=True
+        ).as_posix()
+        encoded = path.encode("utf-8")
+        if prior is not None and encoded <= prior:
+            lib.fail("E_COMMIT_TREE", f"{label} is not strictly path ordered")
+        prior = encoded
+        if entry["mode"] not in lib.FILE_MODES:
+            lib.fail("E_COMMIT_TREE", f"unsupported file mode in {item_label}")
+        lib.require_sha1(entry["blob_sha1"], f"{item_label}.blob_sha1")
+        entries.append(dict(entry))
+    return entries
+
+
+def _bound_json_record(
+    value: Any,
+    commit: dict[str, Any],
+    label: str,
+    limits: dict[str, int],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    fields = {"path", "blob_sha1", "sha256", "content_base64"}
+    if not isinstance(value, dict):
+        lib.fail("E_DECISION_RECORD", f"{label} must be an object")
+    lib.require_keys(value, fields, set(), label)
+    path = lib.validate_relpath(value["path"], limits).as_posix()
+    lib.require_sha1(value["blob_sha1"], f"{label}.blob_sha1")
+    lib.require_sha256(value["sha256"], f"{label}.sha256")
+    try:
+        data = base64.b64decode(value["content_base64"], validate=True)
+    except (TypeError, ValueError) as error:
+        lib.fail("E_DECISION_RECORD", f"{label} has invalid base64: {error}")
+    if len(data) > limits["max_input_file_bytes"]:
+        lib.fail("E_DECISION_RECORD", f"{label} exceeds the input bound")
+    if (
+        lib.git_object_sha1("blob", data) != value["blob_sha1"]
+        or lib.sha256_hex(data) != value["sha256"]
+    ):
+        lib.fail("E_DECISION_RECORD", f"{label} byte identity mismatch")
+    entries = {entry["path"]: entry for entry in commit["tree_entries"]}
+    if path not in entries or entries[path]["blob_sha1"] != value["blob_sha1"]:
+        lib.fail("E_DECISION_RECORD", f"{label} is not in its authenticated commit tree")
+    document = canonical_bytes(
+        data, limits, label, limits["max_input_file_bytes"]
+    )
+    if not isinstance(document, dict):
+        lib.fail("E_DECISION_RECORD", f"{label} content must be an object")
+    return document, value
 
 
 def _introduced_chain(
@@ -1378,25 +1464,206 @@ def _introduced_chain(
     reviewed: dict[str, Any],
     values: Any,
     label: str,
+    limits: dict[str, int],
 ) -> list[dict[str, Any]]:
     if not isinstance(values, list) or not values:
         lib.fail("E_BINDING_ANCESTRY", f"{label} must be a nonempty introduced-commit array")
-    chain = [_commit_evidence(value, f"{label}[{index}]") for index, value in enumerate(values)]
+    chain = [
+        _commit_evidence(value, f"{label}[{index}]", limits)
+        for index, value in enumerate(values)
+    ]
     prior = base["commit"]
     repository = base["repository"]
-    branch = base["branch"]
     for index, commit in enumerate(chain):
-        if commit["repository"] != repository or commit["branch"] != branch:
-            lib.fail("E_BINDING_ANCESTRY", f"{label}[{index}] repository or branch drift")
-        if not commit["parents"] or commit["parents"][0] != prior:
-            lib.fail("E_BINDING_ANCESTRY", f"{label}[{index}] does not first-parent descend from prior commit")
+        if commit["repository"] != repository:
+            lib.fail("E_BINDING_ANCESTRY", f"{label}[{index}] repository drift")
+        if commit["parents"] != [prior]:
+            lib.fail(
+                "E_BINDING_ANCESTRY",
+                f"{label}[{index}] must be a complete single-parent descendant",
+            )
         prior = commit["commit"]
     if chain[-1] != reviewed:
         lib.fail("E_BINDING_ANCESTRY", f"{label} does not terminate at reviewed head")
     return chain
 
 
-def verify_binding_record(path: Path, limits: dict[str, int]) -> None:
+def _git_tree_references(data: bytes, label: str, limits: dict[str, int]) -> list[tuple[str, str]]:
+    references: list[tuple[str, str]] = []
+    cursor = 0
+    prior: bytes | None = None
+    while cursor < len(data):
+        space = data.find(b" ", cursor)
+        terminator = data.find(b"\0", space + 1 if space >= 0 else cursor)
+        if space <= cursor or terminator < 0 or terminator + 21 > len(data):
+            lib.fail("E_RECOVERY_BUNDLE", f"malformed tree object: {label}")
+        try:
+            mode = data[cursor:space].decode("ascii")
+            name = data[space + 1:terminator].decode("utf-8", "strict")
+        except UnicodeError as error:
+            lib.fail("E_RECOVERY_BUNDLE", f"invalid tree entry in {label}: {error}")
+        if mode not in lib.FILE_MODES | {"40000"}:
+            lib.fail("E_RECOVERY_BUNDLE", f"unsupported tree mode in {label}")
+        lib._validate_tree_component(name, limits, f"{label}.name")
+        sort_key = name.encode("utf-8") + (b"/" if mode == "40000" else b"")
+        if prior is not None and sort_key <= prior:
+            lib.fail("E_RECOVERY_BUNDLE", f"noncanonical Git tree order: {label}")
+        prior = sort_key
+        identity = data[terminator + 1:terminator + 21].hex()
+        references.append(("tree" if mode == "40000" else "blob", identity))
+        cursor = terminator + 21
+    return references
+
+
+def _git_commit_references(data: bytes, label: str) -> list[tuple[str, str]]:
+    headers = data.split(b"\n\n", 1)[0].splitlines()
+    trees = [line[5:] for line in headers if line.startswith(b"tree ")]
+    parents = [line[7:] for line in headers if line.startswith(b"parent ")]
+    if len(trees) != 1:
+        lib.fail("E_RECOVERY_BUNDLE", f"commit must name one tree: {label}")
+    references: list[tuple[str, str]] = []
+    for kind, values in (("tree", trees), ("commit", parents)):
+        for value in values:
+            try:
+                identity = value.decode("ascii")
+            except UnicodeError as error:
+                lib.fail("E_RECOVERY_BUNDLE", f"invalid commit header in {label}: {error}")
+            lib.require_sha1(identity, f"{label}.{kind}")
+            references.append((kind, identity))
+    return references
+
+
+def _verify_recovery_bundle(
+    root: Path,
+    recovery: dict[str, Any],
+    expected_repository: str,
+    expected_ref: str,
+    restored: dict[str, Any],
+    required_commits: list[dict[str, Any]],
+    limits: dict[str, int],
+) -> None:
+    manifest_path = root / "manifest.json"
+    manifest_data = lib.read_bounded_file(manifest_path, limits["max_export_bytes"])
+    manifest = canonical_bytes(
+        manifest_data, limits, "recovery-bundle/manifest.json", limits["max_export_bytes"]
+    )
+    if not isinstance(manifest, dict):
+        lib.fail("E_RECOVERY_BUNDLE", "recovery manifest must be an object")
+    lib.require_keys(
+        manifest,
+        {"record_class", "protocol_version", "repository", "refs", "objects"},
+        set(),
+        "recovery-bundle",
+    )
+    if (
+        manifest["record_class"] != "git_recovery_bundle"
+        or manifest["protocol_version"] != lib.PROTOCOL_VERSION
+        or manifest["repository"] != expected_repository
+    ):
+        lib.fail("E_RECOVERY_BUNDLE", "recovery manifest identity mismatch")
+    if lib.sha256_hex(manifest_data) != recovery["backup_sha256"]:
+        lib.fail("E_RECOVERY_BUNDLE", "backup manifest digest mismatch")
+
+    refs = manifest["refs"]
+    if not isinstance(refs, list) or not refs:
+        lib.fail("E_RECOVERY_BUNDLE", "recovery refs must be nonempty")
+    ref_map: dict[str, str] = {}
+    for index, ref in enumerate(refs):
+        label = f"recovery-bundle.refs[{index}]"
+        if not isinstance(ref, dict):
+            lib.fail("E_RECOVERY_BUNDLE", f"{label} must be an object")
+        lib.require_keys(ref, {"name", "commit"}, set(), label)
+        name = _nonempty_string(ref["name"], f"{label}.name")
+        if not name.startswith("refs/") or name in ref_map:
+            lib.fail("E_RECOVERY_BUNDLE", f"invalid or duplicate ref: {name}")
+        ref_map[name] = lib.require_sha1(ref["commit"], f"{label}.commit")
+    if set(ref_map) != set(recovery["retained_refs"]):
+        lib.fail("E_RECOVERY_BUNDLE", "retained refs do not match the bundle")
+    if ref_map.get(expected_ref) != restored["commit"]:
+        lib.fail("E_RECOVERY_BUNDLE", "independently expected recovery ref is absent")
+
+    descriptors = manifest["objects"]
+    if not isinstance(descriptors, list) or not descriptors or len(descriptors) > limits["max_source_files"]:
+        lib.fail("E_RECOVERY_BUNDLE", "invalid recovery object inventory")
+    objects: dict[str, tuple[str, bytes]] = {}
+    expected_paths = {"manifest.json"}
+    total = 0
+    for index, descriptor in enumerate(descriptors):
+        label = f"recovery-bundle.objects[{index}]"
+        if not isinstance(descriptor, dict):
+            lib.fail("E_RECOVERY_BUNDLE", f"{label} must be an object")
+        lib.require_keys(
+            descriptor, {"sha1", "kind", "path", "sha256", "byte_count"}, set(), label
+        )
+        identity = lib.require_sha1(descriptor["sha1"], f"{label}.sha1")
+        if descriptor["kind"] not in {"blob", "tree", "commit"} or identity in objects:
+            lib.fail("E_RECOVERY_BUNDLE", f"invalid or duplicate object: {identity}")
+        expected_path = f"objects/{identity}"
+        if descriptor["path"] != expected_path:
+            lib.fail("E_RECOVERY_BUNDLE", f"noncanonical object path: {identity}")
+        lib.require_sha256(descriptor["sha256"], f"{label}.sha256")
+        size = descriptor["byte_count"]
+        if not isinstance(size, int) or isinstance(size, bool) or size < 0 or size > limits["max_source_file_bytes"]:
+            lib.fail("E_RECOVERY_BUNDLE", f"invalid object size: {identity}")
+        total += size
+        if total > limits["max_total_source_bytes"]:
+            lib.fail("E_RECOVERY_BUNDLE", "recovery bundle exceeds total-byte bound")
+        data = lib.read_bounded_file(root / expected_path, limits["max_source_file_bytes"])
+        if (
+            len(data) != size
+            or lib.sha256_hex(data) != descriptor["sha256"]
+            or lib.git_object_sha1(descriptor["kind"], data) != identity
+        ):
+            lib.fail("E_RECOVERY_BUNDLE", f"recovery object bytes mismatch: {identity}")
+        objects[identity] = (descriptor["kind"], data)
+        expected_paths.add(expected_path)
+    actual_paths = set(lib._enumerate_root(root, limits))
+    if actual_paths != expected_paths:
+        lib.fail("E_RECOVERY_BUNDLE", "recovery bundle path set mismatch")
+
+    for commit in required_commits:
+        raw = base64.b64decode(commit["commit_object_base64"], validate=True)
+        if objects.get(commit["commit"]) != ("commit", raw):
+            lib.fail("E_RECOVERY_BUNDLE", "required ledger commit is absent from backup")
+
+    pending: list[tuple[str, str]] = [("commit", restored["commit"])]
+    visited: set[str] = set()
+    while pending:
+        expected_kind, identity = pending.pop()
+        if identity in visited:
+            continue
+        visited.add(identity)
+        item = objects.get(identity)
+        if item is None or item[0] != expected_kind:
+            lib.fail("E_RECOVERY_BUNDLE", f"missing reachable {expected_kind}: {identity}")
+        kind, data = item
+        if kind == "commit":
+            pending.extend(_git_commit_references(data, identity))
+        elif kind == "tree":
+            pending.extend(_git_tree_references(data, identity, limits))
+
+
+def verify_binding_record(
+    path: Path,
+    recovery_bundle_root: Path,
+    expected_integration: dict[str, str],
+    limits: dict[str, int],
+) -> None:
+    expected_fields = {
+        "source_repository", "source_target_branch", "source_merge_commit",
+        "ledger_repository", "ledger_target_branch", "ledger_merge_commit",
+        "recovery_ref",
+    }
+    if not isinstance(expected_integration, dict):
+        lib.fail("E_BINDING_TARGET", "expected integration values must be an object")
+    lib.require_keys(
+        expected_integration, expected_fields, set(), "expected-integration"
+    )
+    for field in expected_fields - {"source_merge_commit", "ledger_merge_commit"}:
+        _nonempty_string(expected_integration[field], f"expected-integration.{field}")
+    for field in ("source_merge_commit", "ledger_merge_commit"):
+        lib.require_sha1(expected_integration[field], f"expected-integration.{field}")
+
     record = canonical_document(path, limits, limits["max_export_bytes"])
     required = {"record_class", "protocol_version", "phase", "sequence", "C", "E", "D", "P", "recovery"}
     if not isinstance(record, dict):
@@ -1413,29 +1680,41 @@ def verify_binding_record(path: Path, limits: dict[str, int]) -> None:
     for section, fields in (
         ("C", {"base", "introduced_commits", "reviewed"}),
         ("E", {"base", "introduced_commits", "reviewed", "source_candidate_commit", "source_candidate_tree", "index_sha256"}),
-        ("D", {"review", "owner_decision", "source_candidate_commit", "evidence_commit", "review_record_blob", "owner_decision_blob"}),
+        ("D", {"review", "owner_decision", "source_candidate_commit", "evidence_commit", "review_record", "owner_decision_record"}),
         ("P", {"source_merge", "ledger_merge", "source_head", "ledger_head"}),
     ):
         value = record[section]
         if not isinstance(value, dict):
             lib.fail("E_BINDING_FIELD", f"{section} must be an object")
         lib.require_keys(value, fields, set(), section)
-    C_base = _commit_evidence(record["C"]["base"], "C.base")
-    C_reviewed = _commit_evidence(record["C"]["reviewed"], "C.reviewed")
-    E_base = _commit_evidence(record["E"]["base"], "E.base")
-    E_reviewed = _commit_evidence(record["E"]["reviewed"], "E.reviewed")
-    D_review = _commit_evidence(record["D"]["review"], "D.review")
-    D_owner = _commit_evidence(record["D"]["owner_decision"], "D.owner_decision")
-    source_merge = _commit_evidence(record["P"]["source_merge"], "P.source_merge")
-    ledger_merge = _commit_evidence(record["P"]["ledger_merge"], "P.ledger_merge")
+    C_base = _commit_evidence(record["C"]["base"], "C.base", limits)
+    C_reviewed = _commit_evidence(record["C"]["reviewed"], "C.reviewed", limits)
+    E_base = _commit_evidence(record["E"]["base"], "E.base", limits)
+    E_reviewed = _commit_evidence(record["E"]["reviewed"], "E.reviewed", limits)
+    D_review = _commit_evidence(record["D"]["review"], "D.review", limits)
+    D_owner = _commit_evidence(
+        record["D"]["owner_decision"], "D.owner_decision", limits
+    )
+    source_merge = _commit_evidence(
+        record["P"]["source_merge"], "P.source_merge", limits
+    )
+    ledger_merge = _commit_evidence(
+        record["P"]["ledger_merge"], "P.ledger_merge", limits
+    )
 
     lib.require_sha256(record["E"]["index_sha256"], "E.index_sha256")
     for field in ("source_candidate_commit", "source_candidate_tree"):
         lib.require_sha1(record["E"][field], f"E.{field}")
-    for field in ("source_candidate_commit", "evidence_commit", "review_record_blob", "owner_decision_blob"):
+    for field in ("source_candidate_commit", "evidence_commit"):
         lib.require_sha1(record["D"][field], f"D.{field}")
-    _introduced_chain(C_base, C_reviewed, record["C"]["introduced_commits"], "C.introduced_commits")
-    _introduced_chain(E_base, E_reviewed, record["E"]["introduced_commits"], "E.introduced_commits")
+    C_chain = _introduced_chain(
+        C_base, C_reviewed, record["C"]["introduced_commits"],
+        "C.introduced_commits", limits,
+    )
+    E_chain = _introduced_chain(
+        E_base, E_reviewed, record["E"]["introduced_commits"],
+        "E.introduced_commits", limits,
+    )
     if record["E"]["source_candidate_commit"] != C_reviewed["commit"] or record["E"]["source_candidate_tree"] != C_reviewed["tree"]:
         lib.fail("E_BINDING_CORRESPONDENCE", "E does not bind reviewed C")
     if (
@@ -1445,20 +1724,74 @@ def verify_binding_record(path: Path, limits: dict[str, int]) -> None:
         or D_owner["parents"] != [D_review["commit"]]
     ):
         lib.fail("E_BINDING_CORRESPONDENCE", "D does not descend from and bind C/E")
+
+    review_body, review_reference = _bound_json_record(
+        record["D"]["review_record"], D_review, "D.review_record", limits
+    )
+    expected_review = {
+        "record_class": "independent_review",
+        "protocol_version": lib.PROTOCOL_VERSION,
+        "phase": "M0.1",
+        "reviewer": "Sarah",
+        "source_candidate_commit": C_reviewed["commit"],
+        "source_candidate_tree": C_reviewed["tree"],
+        "evidence_commit": E_reviewed["commit"],
+        "evidence_tree": E_reviewed["tree"],
+        "disposition": "ready_for_owner_decision",
+        "non_authority": {"owner_acceptance": False, "merge_permission": False},
+    }
+    if review_body != expected_review:
+        lib.fail("E_REVIEW_DECISION", "independent review body has incorrect meaning")
+    owner_body, _owner_reference = _bound_json_record(
+        record["D"]["owner_decision_record"], D_owner,
+        "D.owner_decision_record", limits,
+    )
+    expected_owner = {
+        "record_class": "owner_decision",
+        "protocol_version": lib.PROTOCOL_VERSION,
+        "phase": "M0.1",
+        "owner": "Greg Krsak",
+        "source_candidate_commit": C_reviewed["commit"],
+        "source_candidate_tree": C_reviewed["tree"],
+        "evidence_commit": E_reviewed["commit"],
+        "evidence_tree": E_reviewed["tree"],
+        "review_commit": D_review["commit"],
+        "review_record_blob": review_reference["blob_sha1"],
+        "disposition": "accepted_for_integration",
+        "merge_authorized": True,
+    }
+    if owner_body != expected_owner:
+        lib.fail("E_OWNER_DECISION", "owner decision body has incorrect meaning")
+
     if source_merge["parents"] != [C_base["commit"], C_reviewed["commit"]] or source_merge["tree"] != C_reviewed["tree"]:
         lib.fail("E_BINDING_INTEGRATION", "source merge does not integrate reviewed C over its base")
     if ledger_merge["parents"] != [E_base["commit"], D_owner["commit"]] or ledger_merge["tree"] != D_owner["tree"]:
         lib.fail("E_BINDING_INTEGRATION", "ledger merge does not integrate E/D over its base")
     if record["P"]["source_head"] != C_reviewed["commit"] or record["P"]["ledger_head"] != D_owner["commit"]:
         lib.fail("E_BINDING_INTEGRATION", "P names incorrect integrated heads")
-    if source_merge["branch"] != C_base["branch"] or ledger_merge["branch"] != E_base["branch"]:
-        lib.fail("E_BINDING_TARGET", "merge target branch does not match accepted base branch")
+    if (
+        C_base["repository"] != expected_integration["source_repository"]
+        or C_reviewed["repository"] != expected_integration["source_repository"]
+        or source_merge["repository"] != expected_integration["source_repository"]
+        or source_merge["branch"] != expected_integration["source_target_branch"]
+        or source_merge["commit"] != expected_integration["source_merge_commit"]
+        or E_base["repository"] != expected_integration["ledger_repository"]
+        or E_reviewed["repository"] != expected_integration["ledger_repository"]
+        or D_review["repository"] != expected_integration["ledger_repository"]
+        or D_owner["repository"] != expected_integration["ledger_repository"]
+        or ledger_merge["repository"] != expected_integration["ledger_repository"]
+        or ledger_merge["branch"] != expected_integration["ledger_target_branch"]
+        or ledger_merge["commit"] != expected_integration["ledger_merge_commit"]
+    ):
+        lib.fail(
+            "E_BINDING_TARGET",
+            "binding does not match independently supplied repositories, targets, and merges",
+        )
 
     recovery = record["recovery"]
     recovery_fields = {
         "repository", "backup_sha256", "retained_refs", "tested_at",
-        "restored_commit", "restored_tree", "restored_commit_object_base64",
-        "recovery_evidence_blob",
+        "restored_commit", "restored_tree", "recovery_commit", "recovery_record",
     }
     if not isinstance(recovery, dict):
         lib.fail("E_RECOVERY", "recovery must be an object")
@@ -1468,23 +1801,50 @@ def verify_binding_record(path: Path, limits: dict[str, int]) -> None:
     lib.require_sha256(recovery["backup_sha256"], "recovery backup_sha256")
     lib.require_sha1(recovery["restored_commit"], "recovery restored_commit")
     lib.require_sha1(recovery["restored_tree"], "recovery restored_tree")
-    lib.require_sha1(recovery["recovery_evidence_blob"], "recovery evidence blob")
     if not isinstance(recovery["retained_refs"], list) or not recovery["retained_refs"] or any(not isinstance(item, str) or not item for item in recovery["retained_refs"]):
         lib.fail("E_RECOVERY", "retained_refs must be nonempty")
+    if len(set(recovery["retained_refs"])) != len(recovery["retained_refs"]):
+        lib.fail("E_RECOVERY", "retained_refs must be unique")
     lib.parse_utc(recovery["tested_at"], "recovery.tested_at")
-    restored = _commit_evidence(
-        {
-            "repository": recovery["repository"],
-            "branch": E_reviewed["branch"],
-            "commit": recovery["restored_commit"],
-            "tree": recovery["restored_tree"],
-            "parents": E_reviewed["parents"],
-            "commit_object_base64": recovery["restored_commit_object_base64"],
-        },
-        "recovery.restored",
+    recovery_commit = _commit_evidence(
+        recovery["recovery_commit"], "recovery.recovery_commit", limits
     )
-    if restored["commit"] != E_reviewed["commit"] or restored["tree"] != E_reviewed["tree"]:
+    if (
+        recovery["restored_commit"] != E_reviewed["commit"]
+        or recovery["restored_tree"] != E_reviewed["tree"]
+    ):
         lib.fail("E_RECOVERY", "recovery did not restore reviewed E")
+    if (
+        recovery_commit["repository"] != expected_integration["ledger_repository"]
+        or recovery_commit["parents"] != [ledger_merge["commit"]]
+    ):
+        lib.fail("E_RECOVERY", "recovery evidence is not a post-integration ledger commit")
+    recovery_body, _recovery_reference = _bound_json_record(
+        recovery["recovery_record"], recovery_commit,
+        "recovery.recovery_record", limits,
+    )
+    expected_recovery = {
+        "record_class": "recovery_evidence",
+        "protocol_version": lib.PROTOCOL_VERSION,
+        "repository": expected_integration["ledger_repository"],
+        "backup_sha256": recovery["backup_sha256"],
+        "retained_refs": recovery["retained_refs"],
+        "tested_at": recovery["tested_at"],
+        "restored_commit": E_reviewed["commit"],
+        "restored_tree": E_reviewed["tree"],
+        "disposition": "succeeded",
+        "non_authority": {
+            "acceptance": False, "merge_permission": False, "next_phase": False,
+        },
+    }
+    if recovery_body != expected_recovery:
+        lib.fail("E_RECOVERY_RECORD", "recovery evidence body has incorrect meaning")
+    _verify_recovery_bundle(
+        recovery_bundle_root, recovery,
+        expected_integration["ledger_repository"],
+        expected_integration["recovery_ref"], E_reviewed,
+        [E_base, *E_chain], limits,
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -1524,6 +1884,14 @@ def parse_args() -> argparse.Namespace:
     evidence.add_argument("--expected-tooling-export-sha256", required=True)
     binding = subcommands.add_parser("binding")
     binding.add_argument("--record", required=True, type=Path)
+    binding.add_argument("--recovery-bundle", required=True, type=Path)
+    binding.add_argument("--expected-source-repository", required=True)
+    binding.add_argument("--expected-source-target-branch", required=True)
+    binding.add_argument("--expected-source-merge-commit", required=True)
+    binding.add_argument("--expected-ledger-repository", required=True)
+    binding.add_argument("--expected-ledger-target-branch", required=True)
+    binding.add_argument("--expected-ledger-merge-commit", required=True)
+    binding.add_argument("--expected-recovery-ref", required=True)
     freshness = subcommands.add_parser("freshness")
     freshness.add_argument("--external-surfaces", required=True, type=Path)
     freshness.add_argument("--surface-register", required=True, type=Path)
@@ -1575,7 +1943,18 @@ def main() -> int:
             args.input_root, args.input_export, args.audit, expected_tooling, limits,
         )
     elif args.command == "binding":
-        verify_binding_record(args.record, limits)
+        expected_integration = {
+            "source_repository": args.expected_source_repository,
+            "source_target_branch": args.expected_source_target_branch,
+            "source_merge_commit": args.expected_source_merge_commit,
+            "ledger_repository": args.expected_ledger_repository,
+            "ledger_target_branch": args.expected_ledger_target_branch,
+            "ledger_merge_commit": args.expected_ledger_merge_commit,
+            "recovery_ref": args.expected_recovery_ref,
+        }
+        verify_binding_record(
+            args.record, args.recovery_bundle, expected_integration, limits
+        )
     elif args.command == "freshness":
         verify_freshness(
             args.external_surfaces, args.surface_register, args.applicability_decisions,

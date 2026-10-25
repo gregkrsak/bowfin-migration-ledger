@@ -17,7 +17,13 @@ from typing import Any, Iterator
 
 def _load_library() -> Any:
     path = Path(__file__).resolve().with_name("protocol_lib.py")
-    spec = importlib.util.spec_from_file_location("_bowfin_m01v2_protocol_lib", path)
+    name = "_bowfin_m01v2_protocol_lib"
+    existing = sys.modules.get(name)
+    if existing is not None:
+        if Path(existing.__file__).resolve() != path:
+            raise RuntimeError("reviewed protocol library name resolves to another file")
+        return existing
+    spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
         raise RuntimeError("cannot load reviewed protocol_lib.py")
     module = importlib.util.module_from_spec(spec)

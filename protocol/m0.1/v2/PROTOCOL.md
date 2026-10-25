@@ -89,9 +89,11 @@ opaque mode/object identities; their bytes are neither supplied nor read.
 
 The export then carries the selected view's complete ordered recursive
 path/mode/blob-SHA-1/SHA-256/byte-count set. Verification reconstructs the view
-tree, enumerates only that filesystem subtree independently, and requires exact
-mode and byte equality. The expected prefix and view tree are independently
-supplied alongside the repository commit and root tree. Selecting
+tree, locally enumerates that filesystem subtree, and requires exact mode and byte
+equality. Generator and auditor invoke this same reviewed authentication and
+enumeration boundary; they do not independently enumerate the filesystem. The
+expected prefix and view tree are independently supplied alongside the repository
+commit and root tree. Selecting
 `archive/unaccepted` is forbidden even when its opaque tree identity legitimately
 appears in an ancestor proof. `synthetic_fixture` and
 `current_accepted_dependency` eligibility classes are explicit and never
@@ -329,15 +331,21 @@ is the explicit reviewed input.
 
 ## 14. Shared components and independent failure modes
 
-Generator, auditor, and verifier share only strict JSON, canonical encoding,
-SHA-256, path validation, occurrence-key construction, and bounded file I/O.
-Generator rule matching is not imported by the auditor. Auditor discovery policy
-is not imported by the generator. The verifier does not call either scanner when
+Generator, auditor, and verifier deliberately share the authenticated Git-export
+boundary, fatal filesystem enumeration, source JSON parsing, manifest
+construction, strict JSON, canonical encoding, SHA-256, path validation,
+occurrence-key construction, and bounded file I/O. That shared boundary proves
+which bytes both scanners received; it is a disclosed common-mode surface, not an
+independent enumeration claim. Generator rule matching and structured traversal
+are not imported by the auditor. Auditor matching, traversal, and discovery policy
+are not imported by the generator. The verifier does not call either scanner when
 checking package structure.
 
-Shared primitive defects remain a common-mode risk and must be disclosed in review.
-Synthetic expectations therefore include literal precomputed keys/digests and
-mutation cases that do not ask the candidate generator to define its own oracle.
+Shared authentication, parsing, manifest, and primitive defects remain a
+common-mode risk and must be disclosed in review. Synthetic expectations therefore
+include literal precomputed keys/digests, independently specified Git-object
+vectors, and mutation cases that do not ask the candidate generator or shared
+export constructor to define its own oracle.
 
 Literal discovery uses separately implemented linear-time matchers in the
 generator and auditor. Their prefix construction, character comparisons, match
@@ -391,11 +399,30 @@ Ledger unavailability blocks only migration gates that require it. It never bloc
 normal compiler build, check, verify, run, failure recovery, or accepted production
 operation.
 
-The C/E/D/P receipt carries raw commit objects. C and E each include an ordered,
-nonempty `introduced_commits` first-parent chain from accepted base to reviewed
-head. P verifies merge parents, resulting trees, integrated heads, and target
-branches rather than trusting asserted correspondence. Recovery authenticates the
-restored E commit/tree and separately binds backup and recovery-evidence digests.
+The C/E/D/P receipt carries raw commit objects and complete flat tree inventories;
+the verifier reconstructs every named Git tree rather than accepting a tree hash
+as an assertion. C and E each include an ordered, nonempty introduced-commit chain
+from accepted base to reviewed head. Every introduced commit must have exactly the
+prior commit as its sole parent, so no unlisted merge parent or side ancestry can
+enter the reviewed range.
+
+P verifies merge parents, resulting trees, and integrated heads. Repository names,
+target branches, merge commits, and the recovery ref are supplied independently on
+the verifier command line and must match the receipt; consistently changing every
+candidate-controlled label therefore cannot retarget integration. Review, owner,
+and recovery records carry their canonical JSON bytes, blob identities, digests,
+paths, and containing commit trees. The verifier checks their complete semantic
+bodies as well as their ancestry. Human identity and authority still require the
+governed process; strings inside those records do not create authority.
+
+Recovery uses a bounded directory containing a canonical manifest and raw Git
+objects. The manifest digest binds every retained ref and object descriptor. Each
+object's byte count, SHA-256, Git object identity, type, and canonical path are
+checked. Traversal from the independently expected restored ref must find the
+complete reachable commit/tree/blob graph, including the exact E base and
+introduced commits. A separate post-integration ledger commit binds the canonical
+recovery-evidence body. Backup or recovery hashes without the corresponding
+authenticated objects are insufficient.
 
 ## 17. Synthetic test boundary
 
@@ -412,8 +439,11 @@ bytes with expired freshness; invalidating events; and C/E/D/P finite-sequence a
 recovery-record shape. It also covers competing package creation, interrupted
 single-document writes, FIFO inputs, missing completion markers, cumulative
 package-byte exhaustion before the next read, and adversarial no-match discovery
-that exhausts the comparison budget. Additional controls cover a single immutable
-audit read, classification-meaning budget exhaustion, numeric substitution for
-Boolean review fields, and rejection of non-root compiler-source views.
+that exhausts the comparison budget. Positive controls are listed separately from
+mutation cases. They cover a single immutable audit read, one shared protocol-
+exception identity, complete occurrence-key identity where different structured
+units legitimately share a locator, fresh fixture state for each mutation,
+classification-meaning budget exhaustion, numeric substitution for Boolean review
+fields, and rejection of non-root compiler-source views.
 
 No test execution is authorized by the existence of these files.

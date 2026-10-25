@@ -110,7 +110,15 @@ python3 -I verify.py freshness \
   [--event <observed-invalidating-event>]...
 
 python3 -I verify.py binding \
-  --record <integration-binding-record.json>
+  --record <integration-binding-record.json> \
+  --recovery-bundle <bounded-git-object-bundle-directory> \
+  --expected-source-repository <owner/repository> \
+  --expected-source-target-branch <branch> \
+  --expected-source-merge-commit <40-hex-commit> \
+  --expected-ledger-repository <owner/repository> \
+  --expected-ledger-target-branch <branch> \
+  --expected-ledger-merge-commit <40-hex-commit> \
+  --expected-recovery-ref <refs/heads/name>
 
 python3 -I tests/test_protocol.py
 ```

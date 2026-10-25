@@ -35,7 +35,7 @@ def load_module(name: str, filename: str) -> Any:
     return module
 
 
-lib = load_module("_m01v2_test_lib", "protocol_lib.py")
+lib = load_module("_bowfin_m01v2_protocol_lib", "protocol_lib.py")
 generate = load_module("_m01v2_test_generate", "generate.py")
 audit_scan = load_module("_m01v2_test_audit", "audit_scan.py")
 verify = load_module("_m01v2_test_verify", "verify.py")
@@ -56,21 +56,30 @@ class ProtocolTests(unittest.TestCase):
             callable_(*args, **kwargs)
         self.assertEqual(code, caught.exception.code)
 
+    def test_protocol_error_identity_is_shared(self) -> None:
+        self.assertIs(lib, generate.lib)
+        self.assertIs(lib, audit_scan.lib)
+        self.assertIs(lib, verify.lib)
+        self.assert_code("E_IDENTIFIER", generate.lib.require_identifier, "_bad", "fixture")
+        with self.assertRaises(ValueError):
+            self.assert_code("E_IDENTIFIER", lambda: (_ for _ in ()).throw(ValueError("unrelated")))
+
     def write_json(self, path: Path, value: Any) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(lib.canonical_json_bytes(value, self.limits))
 
     def compact_documents(self) -> dict[str, Any]:
-        surface = self.fixture["external_surfaces"]["surfaces"][0]
+        fixture = copy.deepcopy(self.fixture)
+        surface = fixture["external_surfaces"]["surfaces"][0]
         return {
-            "mappings.json": self.fixture["mappings"],
-            "classification-rules.json": self.fixture["rules"],
-            "audit-policy.json": self.fixture["audit_policy"],
+            "mappings.json": fixture["mappings"],
+            "classification-rules.json": fixture["rules"],
+            "audit-policy.json": fixture["audit_policy"],
             "surface-register.json": {
                 "protocol_version": "m0.1-v2",
                 "required_surfaces": [{"surface_id": surface["surface_id"], "class": surface["class"]}],
             },
-            "external-surfaces.json": self.fixture["external_surfaces"],
+            "external-surfaces.json": fixture["external_surfaces"],
             "applicability-decisions.json": {"protocol_version": "m0.1-v2", "decisions": []},
             "visual-inspection.json": {"protocol_version": "m0.1-v2", "visuals": []},
             "limitations.json": {"protocol_version": "m0.1-v2", "limitations": []},
@@ -105,10 +114,35 @@ class ProtocolTests(unittest.TestCase):
         self.write_json(path, document)
         return path, document
 
-    def commit_evidence(self, repository: str, branch: str, tree: str, parents: list[str], message: str) -> dict[str, Any]:
+    def tree_entry(self, path: str, data: bytes, mode: str = "100644") -> dict[str, Any]:
+        return {
+            "path": path, "mode": mode,
+            "blob_sha1": lib.git_object_sha1("blob", data),
+        }
+
+    def bound_record(self, path: str, data: bytes) -> dict[str, Any]:
+        return {
+            "path": path,
+            "blob_sha1": lib.git_object_sha1("blob", data),
+            "sha256": lib.sha256_hex(data),
+            "content_base64": base64.b64encode(data).decode("ascii"),
+        }
+
+    def commit_evidence(
+        self, repository: str, branch: str, tree_entries: list[dict[str, Any]],
+        parents: list[str], message: str,
+    ) -> dict[str, Any]:
+        tree_entries = sorted(copy.deepcopy(tree_entries), key=lambda item: item["path"].encode("utf-8"))
+        tree = lib.git_tree_objects(tree_entries, self.limits, allow_archive=True)[0]
         headers = [f"tree {tree}", *(f"parent {parent}" for parent in parents)]
         raw = ("\n".join(headers) + "\nauthor Fixture <fixture@example.invalid> 0 +0000\ncommitter Fixture <fixture@example.invalid> 0 +0000\n\n" + message + "\n").encode("ascii")
-        return {"repository": repository, "branch": branch, "commit": lib.git_object_sha1("commit", raw), "tree": tree, "parents": parents, "commit_object_base64": base64.b64encode(raw).decode("ascii")}
+        return {
+            "repository": repository, "branch": branch,
+            "commit": lib.git_object_sha1("commit", raw), "tree": tree,
+            "parents": parents,
+            "commit_object_base64": base64.b64encode(raw).decode("ascii"),
+            "tree_entries": tree_entries,
+        }
 
     def build_valid(self, name: str = "valid") -> dict[str, Any]:
         case = self.workspace / name
@@ -280,10 +314,35 @@ class ProtocolTests(unittest.TestCase):
             {"mapping_id": "ked2", "namespace": "engineering_decision", "original": "KED-002", "canonical": "BED-002", "policy": "replace"},
         ]}
         mappings = generate.validate_mappings(mapping_document, self.limits)
-        rows = generate.discover([("KED-001-KED-002.json", b'{"KED-001":"KED-002"}\n')], mappings, "fixture/source", "1" * 40, self.limits)
-        locators = [lib.canonical_json_bytes(row["locator"], self.limits, trailing_lf=False) for row in rows]
-        self.assertEqual(len(locators), len(set(locators)))
-        self.assertNotIn(b"match_index", b"".join(locators))
+        files = [("KED-001-KED-002.json", b'{"KED-001":"KED-002"}\n')]
+        rows = generate.discover(files, mappings, "fixture/source", "1" * 40, self.limits)
+        keys = [row["occurrence_key"] for row in rows]
+        self.assertEqual(len(keys), len(set(keys)))
+        structured = {
+            (row["unit_kind"], row["original"]): row
+            for row in rows
+            if row["unit_kind"] in {"structured_key", "structured_value"}
+        }
+        expected_locator = {
+            "json_pointer": "/KED-001", "value_byte_start": 0, "value_byte_end": 7,
+        }
+        self.assertEqual(expected_locator, structured[("structured_key", "KED-001")]["locator"])
+        self.assertEqual(expected_locator, structured[("structured_value", "KED-002")]["locator"])
+        self.assertNotEqual(
+            structured[("structured_key", "KED-001")]["occurrence_key"],
+            structured[("structured_value", "KED-002")]["occurrence_key"],
+        )
+        family = [{
+            "family_id": "ked-family", "kind": "ascii_digit_suffix", "literal": "KED-",
+            "namespace": "engineering_decision",
+            "unit_kinds": ["path_component", "raw_text", "structured_key", "structured_value"],
+        }]
+        audited = audit_scan.discover(files, family, "fixture/source", "1" * 40, self.limits)
+        self.assertEqual(set(keys), {row["occurrence_key"] for row in audited})
+        self.assertNotIn(
+            b"match_index",
+            b"".join(lib.canonical_json_bytes(row["locator"], self.limits, trailing_lf=False) for row in rows),
+        )
 
     def test_independent_auditor_reconciles_exact_keys(self) -> None:
         self.verify_valid(self.build_valid("independent"))
@@ -421,9 +480,27 @@ class ProtocolTests(unittest.TestCase):
         self.assert_code("E_PATH", lib.validate_relpath, "a/../b", self.limits)
 
     def test_incremental_processing_limit(self) -> None:
-        limits = dict(self.limits)
-        limits["max_processing_steps"] = 1
-        self.assert_code("E_PROCESSING_STEPS", generate.discover, [("x.txt", b"Klyxr Klyxr")], generate.validate_mappings(self.fixture["mappings"], self.limits), "fixture/source", "1" * 40, limits)
+        mappings = generate.validate_mappings(self.fixture["mappings"], self.limits)
+        rules = generate.validate_rules(self.fixture["rules"], mappings, self.limits)
+        candidates = generate.discover(
+            [("src/Klyxr.txt", b"Klyxr Klyxr")], mappings,
+            "fixture/source", "1" * 40, self.limits,
+        )
+        self.assertTrue(candidates)
+        exact_index_cost = (
+            sum(1 + len(item["mapping_id"]) for item in mappings)
+            + sum(
+                1 + len(rule["selector"]["mapping_id"])
+                + len(rule["selector"]["unit_kind"])
+                for rule in rules
+            )
+            + sum(1 + len(rule["rule_id"]) for rule in rules)
+        )
+        limits = {**self.limits, "max_processing_steps": exact_index_cost}
+        self.assert_code(
+            "E_PROCESSING_STEPS", generate.classify,
+            candidates, mappings, rules, limits,
+        )
 
     def test_direct_compact_input_field_validation(self) -> None:
         files = {name: lib.canonical_json_bytes(value, self.limits) for name, value in self.compact_documents().items()}
@@ -433,6 +510,24 @@ class ProtocolTests(unittest.TestCase):
         bad["surfaces"][0]["unknown"] = True
         changed["external-surfaces.json"] = lib.canonical_json_bytes(bad, self.limits)
         self.assert_code("E_FIELD_UNKNOWN", verify.validate_compact_input_files, changed, self.limits)
+
+        bad_identifier = self.compact_documents()
+        bad_identifier["mappings.json"]["mappings"][0]["mapping_id"] = "_invalid"
+        changed = {
+            name: lib.canonical_json_bytes(value, self.limits)
+            for name, value in bad_identifier.items()
+        }
+        self.assert_code("E_IDENTIFIER", verify.validate_compact_input_files, changed, self.limits)
+
+        bad_suffix = self.compact_documents()
+        selector = bad_suffix["classification-rules.json"]["rules"][0]["selector"]
+        selector.pop("path_exact", None)
+        selector["path_suffix"] = "x" * (self.limits["max_path_bytes"] + 1)
+        changed = {
+            name: lib.canonical_json_bytes(value, self.limits)
+            for name, value in bad_suffix.items()
+        }
+        self.assert_code("E_SELECTOR_PATH", verify.validate_compact_input_files, changed, self.limits)
 
     def test_missing_surface_and_unsupported_not_applicable(self) -> None:
         documents = self.compact_documents()
@@ -600,6 +695,10 @@ class ProtocolTests(unittest.TestCase):
     def test_compiler_source_view_must_be_repository_root(self) -> None:
         self.assert_code(
             "E_SOURCE_VIEW", lib.require_root_source_view,
+            "nested", "1" * 40, "1" * 40,
+        )
+        self.assert_code(
+            "E_SOURCE_VIEW", lib.require_root_source_view,
             "nested", "1" * 40, "2" * 40,
         )
         self.assert_code(
@@ -715,29 +814,220 @@ class ProtocolTests(unittest.TestCase):
         self.assert_code("E_EXPORT_CONTENT", verify.verify_evidence_binding, *arguments)
 
     def test_authenticated_cedp_ancestry_trees_targets_and_recovery(self) -> None:
-        source_base = self.commit_evidence("fixture/source", "staging", "1" * 40, [], "source base")
-        source_head = self.commit_evidence("fixture/source", "staging", "2" * 40, [source_base["commit"]], "source candidate")
-        ledger_base = self.commit_evidence("fixture/ledger", "main", "3" * 40, [], "ledger base")
-        evidence_head = self.commit_evidence("fixture/ledger", "main", "4" * 40, [ledger_base["commit"]], "evidence")
-        review = self.commit_evidence("fixture/ledger", "main", "5" * 40, [evidence_head["commit"]], "review")
-        owner = self.commit_evidence("fixture/ledger", "main", "6" * 40, [review["commit"]], "owner")
-        source_merge = self.commit_evidence("fixture/source", "staging", source_head["tree"], [source_base["commit"], source_head["commit"]], "merge source")
-        ledger_merge = self.commit_evidence("fixture/ledger", "main", owner["tree"], [ledger_base["commit"], owner["commit"]], "merge ledger")
+        source_base_data = b"source base\n"
+        source_head_data = b"source candidate\n"
+        source_base_entries = [self.tree_entry("README.md", source_base_data)]
+        source_head_entries = [
+            *source_base_entries, self.tree_entry("src/candidate.bow", source_head_data),
+        ]
+        source_base = self.commit_evidence(
+            "fixture/source", "staging", source_base_entries, [], "source base"
+        )
+        source_head = self.commit_evidence(
+            "fixture/source", "candidate", source_head_entries,
+            [source_base["commit"]], "source candidate",
+        )
+
+        ledger_base_data = b"ledger base\n"
+        evidence_data = b'{"index":"bound"}\n'
+        ledger_base_entries = [self.tree_entry("README.md", ledger_base_data)]
+        evidence_entries = [
+            *ledger_base_entries,
+            self.tree_entry("evidence/m0.1/index.json", evidence_data),
+        ]
+        ledger_base = self.commit_evidence(
+            "fixture/ledger", "main", ledger_base_entries, [], "ledger base"
+        )
+        evidence_head = self.commit_evidence(
+            "fixture/ledger", "evidence", evidence_entries,
+            [ledger_base["commit"]], "evidence",
+        )
+
+        review_body = {
+            "record_class": "independent_review", "protocol_version": "m0.1-v2",
+            "phase": "M0.1", "reviewer": "Sarah",
+            "source_candidate_commit": source_head["commit"],
+            "source_candidate_tree": source_head["tree"],
+            "evidence_commit": evidence_head["commit"],
+            "evidence_tree": evidence_head["tree"],
+            "disposition": "ready_for_owner_decision",
+            "non_authority": {"owner_acceptance": False, "merge_permission": False},
+        }
+        review_data = lib.canonical_json_bytes(review_body, self.limits)
+        review_reference = self.bound_record("decisions/review.json", review_data)
+        review_entries = [
+            *evidence_entries,
+            self.tree_entry(review_reference["path"], review_data),
+        ]
+        review = self.commit_evidence(
+            "fixture/ledger", "decisions", review_entries,
+            [evidence_head["commit"]], "review",
+        )
+
+        owner_body = {
+            "record_class": "owner_decision", "protocol_version": "m0.1-v2",
+            "phase": "M0.1", "owner": "Greg Krsak",
+            "source_candidate_commit": source_head["commit"],
+            "source_candidate_tree": source_head["tree"],
+            "evidence_commit": evidence_head["commit"],
+            "evidence_tree": evidence_head["tree"],
+            "review_commit": review["commit"],
+            "review_record_blob": review_reference["blob_sha1"],
+            "disposition": "accepted_for_integration", "merge_authorized": True,
+        }
+        owner_data = lib.canonical_json_bytes(owner_body, self.limits)
+        owner_reference = self.bound_record("decisions/owner.json", owner_data)
+        owner_entries = [
+            *review_entries, self.tree_entry(owner_reference["path"], owner_data),
+        ]
+        owner = self.commit_evidence(
+            "fixture/ledger", "decisions", owner_entries,
+            [review["commit"]], "owner",
+        )
+        source_merge = self.commit_evidence(
+            "fixture/source", "staging", source_head_entries,
+            [source_base["commit"], source_head["commit"]], "merge source",
+        )
+        ledger_merge = self.commit_evidence(
+            "fixture/ledger", "main", owner_entries,
+            [ledger_base["commit"], owner["commit"]], "merge ledger",
+        )
+
+        bundle = self.workspace / "recovery-bundle"
+        (bundle / "objects").mkdir(parents=True)
+        object_map: dict[str, tuple[str, bytes]] = {}
+        for data in (ledger_base_data, evidence_data):
+            object_map[lib.git_object_sha1("blob", data)] = ("blob", data)
+        for commit in (ledger_base, evidence_head):
+            raw = base64.b64decode(commit["commit_object_base64"], validate=True)
+            object_map[commit["commit"]] = ("commit", raw)
+            _tree, trees = lib.git_tree_objects(
+                commit["tree_entries"], self.limits, allow_archive=True
+            )
+            object_map.update({identity: ("tree", data) for identity, data in trees.items()})
+        descriptors = []
+        for identity, (kind, data) in sorted(object_map.items()):
+            relative = f"objects/{identity}"
+            (bundle / relative).write_bytes(data)
+            descriptors.append({
+                "sha1": identity, "kind": kind, "path": relative,
+                "sha256": lib.sha256_hex(data), "byte_count": len(data),
+            })
+        recovery_manifest = {
+            "record_class": "git_recovery_bundle", "protocol_version": "m0.1-v2",
+            "repository": "fixture/ledger",
+            "refs": [{"name": "refs/heads/main", "commit": evidence_head["commit"]}],
+            "objects": descriptors,
+        }
+        manifest_data = lib.canonical_json_bytes(recovery_manifest, self.limits)
+        (bundle / "manifest.json").write_bytes(manifest_data)
+        backup_sha256 = lib.sha256_hex(manifest_data)
+
+        recovery_body = {
+            "record_class": "recovery_evidence", "protocol_version": "m0.1-v2",
+            "repository": "fixture/ledger", "backup_sha256": backup_sha256,
+            "retained_refs": ["refs/heads/main"],
+            "tested_at": "2026-10-24T12:00:00Z",
+            "restored_commit": evidence_head["commit"],
+            "restored_tree": evidence_head["tree"], "disposition": "succeeded",
+            "non_authority": {
+                "acceptance": False, "merge_permission": False, "next_phase": False,
+            },
+        }
+        recovery_data = lib.canonical_json_bytes(recovery_body, self.limits)
+        recovery_reference = self.bound_record("evidence/recovery.json", recovery_data)
+        recovery_entries = [
+            *owner_entries,
+            self.tree_entry(recovery_reference["path"], recovery_data),
+        ]
+        recovery_commit = self.commit_evidence(
+            "fixture/ledger", "main", recovery_entries,
+            [ledger_merge["commit"]], "recovery evidence",
+        )
         record = {
             "record_class": "integration_binding", "protocol_version": "m0.1-v2", "phase": "M0.1", "sequence": ["C", "E", "D", "P"],
             "C": {"base": source_base, "introduced_commits": [source_head], "reviewed": source_head},
             "E": {"base": ledger_base, "introduced_commits": [evidence_head], "reviewed": evidence_head, "source_candidate_commit": source_head["commit"], "source_candidate_tree": source_head["tree"], "index_sha256": "7" * 64},
-            "D": {"review": review, "owner_decision": owner, "source_candidate_commit": source_head["commit"], "evidence_commit": evidence_head["commit"], "review_record_blob": "8" * 40, "owner_decision_blob": "9" * 40},
+            "D": {"review": review, "owner_decision": owner, "source_candidate_commit": source_head["commit"], "evidence_commit": evidence_head["commit"], "review_record": review_reference, "owner_decision_record": owner_reference},
             "P": {"source_merge": source_merge, "ledger_merge": ledger_merge, "source_head": source_head["commit"], "ledger_head": owner["commit"]},
-            "recovery": {"repository": "fixture/ledger", "backup_sha256": "a" * 64, "retained_refs": ["refs/heads/main"], "tested_at": "2026-10-24T12:00:00Z", "restored_commit": evidence_head["commit"], "restored_tree": evidence_head["tree"], "restored_commit_object_base64": evidence_head["commit_object_base64"], "recovery_evidence_blob": "b" * 40},
+            "recovery": {"repository": "fixture/ledger", "backup_sha256": backup_sha256, "retained_refs": ["refs/heads/main"], "tested_at": "2026-10-24T12:00:00Z", "restored_commit": evidence_head["commit"], "restored_tree": evidence_head["tree"], "recovery_commit": recovery_commit, "recovery_record": recovery_reference},
+        }
+        expected = {
+            "source_repository": "fixture/source", "source_target_branch": "staging",
+            "source_merge_commit": source_merge["commit"],
+            "ledger_repository": "fixture/ledger", "ledger_target_branch": "main",
+            "ledger_merge_commit": ledger_merge["commit"],
+            "recovery_ref": "refs/heads/main",
         }
         path = self.workspace / "binding.json"
         self.write_json(path, record)
-        verify.verify_binding_record(path, self.limits)
+        verify.verify_binding_record(path, bundle, expected, self.limits)
+
         changed = copy.deepcopy(record)
+        changed["C"]["base"]["branch"] = "prod"
+        changed["C"]["reviewed"]["branch"] = "prod"
+        changed["C"]["introduced_commits"][0]["branch"] = "prod"
         changed["P"]["source_merge"]["branch"] = "prod"
         self.write_json(path, changed)
-        self.assert_code("E_BINDING_TARGET", verify.verify_binding_record, path, self.limits)
+        self.assert_code(
+            "E_BINDING_TARGET", verify.verify_binding_record,
+            path, bundle, expected, self.limits,
+        )
+
+        hidden_parent = self.commit_evidence(
+            "fixture/source", "candidate", source_head_entries,
+            [source_base["commit"], "f" * 40], "hidden merge parent",
+        )
+        self.assert_code(
+            "E_BINDING_ANCESTRY", verify._introduced_chain,
+            source_base, hidden_parent, [hidden_parent], "hidden", self.limits,
+        )
+
+        missing_object = bundle / descriptors[0]["path"]
+        missing_bytes = missing_object.read_bytes()
+        missing_object.unlink()
+        self.write_json(path, record)
+        self.assert_code(
+            "E_RECOVERY_BUNDLE", verify.verify_binding_record,
+            path, bundle, expected, self.limits,
+        )
+        missing_object.write_bytes(missing_bytes)
+
+        altered = copy.deepcopy(record)
+        altered_owner_body = {**owner_body, "merge_authorized": False}
+        altered_owner_data = lib.canonical_json_bytes(altered_owner_body, self.limits)
+        altered_owner_reference = self.bound_record(
+            "decisions/owner.json", altered_owner_data
+        )
+        altered_owner_entries = [
+            *review_entries,
+            self.tree_entry(altered_owner_reference["path"], altered_owner_data),
+        ]
+        altered_owner = self.commit_evidence(
+            "fixture/ledger", "decisions", altered_owner_entries,
+            [review["commit"]], "altered owner",
+        )
+        altered_ledger_merge = self.commit_evidence(
+            "fixture/ledger", "main", altered_owner_entries,
+            [ledger_base["commit"], altered_owner["commit"]], "altered merge ledger",
+        )
+        altered_recovery_commit = self.commit_evidence(
+            "fixture/ledger", "main", recovery_entries,
+            [altered_ledger_merge["commit"]], "altered recovery evidence",
+        )
+        altered["D"]["owner_decision"] = altered_owner
+        altered["D"]["owner_decision_record"] = altered_owner_reference
+        altered["P"]["ledger_merge"] = altered_ledger_merge
+        altered["P"]["ledger_head"] = altered_owner["commit"]
+        altered["recovery"]["recovery_commit"] = altered_recovery_commit
+        altered_expected = {
+            **expected, "ledger_merge_commit": altered_ledger_merge["commit"],
+        }
+        self.write_json(path, altered)
+        self.assert_code(
+            "E_OWNER_DECISION", verify.verify_binding_record,
+            path, bundle, altered_expected, self.limits,
+        )
 
     def test_mutation_manifest_maps_to_real_tests(self) -> None:
         manifest = json.loads((FIXTURES / "mutations.json").read_text(encoding="utf-8"))
@@ -745,6 +1035,11 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(len(ids), len(set(ids)))
         for item in manifest["mutations"]:
             self.assertTrue(item["expected_code"].startswith("E_"))
+            self.assertTrue(callable(getattr(self, item["test_method"])))
+        control_ids = [item["control_id"] for item in manifest["controls"]]
+        self.assertEqual(len(control_ids), len(set(control_ids)))
+        for item in manifest["controls"]:
+            self.assertEqual({"control_id", "test_method"}, set(item))
             self.assertTrue(callable(getattr(self, item["test_method"])))
 
 

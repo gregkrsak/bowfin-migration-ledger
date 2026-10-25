@@ -76,7 +76,8 @@ def require_identifier(value: Any, label: str) -> str:
     if not isinstance(value, str) or not value or len(value) > 200:
         fail("E_IDENTIFIER", f"invalid {label}")
     allowed = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:-"
-    if value[0] not in allowed.replace(".", "").replace(":", "") or any(char not in allowed for char in value):
+    initial = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    if value[0] not in initial or any(char not in allowed for char in value):
         fail("E_IDENTIFIER", f"invalid {label}")
     return value
 
@@ -214,7 +215,9 @@ def require_keys(obj: dict[str, Any], required: set[str], optional: set[str], la
         fail("E_FIELD_UNKNOWN", f"{label} unknown fields: {unknown}")
 
 
-def validate_relpath(raw: Any, limits: dict[str, int]) -> PurePosixPath:
+def validate_relpath(
+    raw: Any, limits: dict[str, int], *, allow_archive: bool = False
+) -> PurePosixPath:
     if not isinstance(raw, str) or not raw:
         fail("E_PATH", "path must be a nonempty string")
     if raw.startswith("/") or "\\" in raw or "\x00" in raw:
@@ -232,7 +235,11 @@ def validate_relpath(raw: Any, limits: dict[str, int]) -> PurePosixPath:
         fail("E_PATH_SIZE", f"path exceeds max_path_bytes: {raw!r}")
     if ".git" in components:
         fail("E_GIT_METADATA", f"Git metadata is forbidden: {raw}")
-    if len(components) >= 2 and components[0:2] == ["archive", "unaccepted"]:
+    if (
+        not allow_archive
+        and len(components) >= 2
+        and components[0:2] == ["archive", "unaccepted"]
+    ):
         fail("E_ARCHIVE_DEPENDENCY", f"unaccepted archive path is forbidden: {raw}")
     return PurePosixPath(*components)
 
@@ -376,10 +383,16 @@ def load_limits(path: Path) -> dict[str, int]:
     return result
 
 
-def _git_tree_sha(entries: list[dict[str, Any]], limits: dict[str, int]) -> str:
+def git_tree_objects(
+    entries: list[dict[str, Any]],
+    limits: dict[str, int],
+    *,
+    allow_archive: bool = False,
+) -> tuple[str, dict[str, bytes]]:
+    """Reconstruct a complete flat file inventory into raw Git tree objects."""
     root: dict[str, Any] = {}
     for entry in entries:
-        path = validate_relpath(entry["path"], limits)
+        path = validate_relpath(entry["path"], limits, allow_archive=allow_archive)
         node = root
         for component in path.parts[:-1]:
             existing = node.setdefault(component, {})
@@ -390,6 +403,8 @@ def _git_tree_sha(entries: list[dict[str, Any]], limits: dict[str, int]) -> str:
         if leaf in node:
             fail("E_EXPORT_PATH", f"duplicate or colliding path: {entry['path']}")
         node[leaf] = (entry["mode"], entry["blob_sha1"])
+
+    objects: dict[str, bytes] = {}
 
     def build(node: dict[str, Any]) -> str:
         records: list[tuple[bytes, bytes]] = []
@@ -405,9 +420,16 @@ def _git_tree_sha(entries: list[dict[str, Any]], limits: dict[str, int]) -> str:
                 record = mode.encode("ascii") + b" " + name_bytes + b"\0" + bytes.fromhex(object_sha)
             records.append((sort_key, record))
         payload = b"".join(record for _key, record in sorted(records, key=lambda item: item[0]))
-        return git_object_sha1("tree", payload)
+        identity = git_object_sha1("tree", payload)
+        objects[identity] = payload
+        return identity
 
-    return build(root)
+    root_identity = build(root)
+    return root_identity, objects
+
+
+def _git_tree_sha(entries: list[dict[str, Any]], limits: dict[str, int]) -> str:
+    return git_tree_objects(entries, limits)[0]
 
 
 def _git_direct_tree_sha(entries: list[dict[str, Any]]) -> str:

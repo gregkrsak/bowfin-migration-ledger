@@ -26,6 +26,8 @@
     {"expected_code": "E_ARCHIVE_DEPENDENCY", "mutation_id": "archive-dependency", "test_method": "test_archive_and_dot_path_reject"},
     {"expected_code": "E_PROCESSING_STEPS", "mutation_id": "incremental-budget-exhaustion", "test_method": "test_incremental_processing_limit"},
     {"expected_code": "E_FIELD_UNKNOWN", "mutation_id": "direct-input-unknown-field", "test_method": "test_direct_compact_input_field_validation"},
+    {"expected_code": "E_IDENTIFIER", "mutation_id": "schema-invalid-leading-identifier", "test_method": "test_direct_compact_input_field_validation"},
+    {"expected_code": "E_SELECTOR_PATH", "mutation_id": "oversized-selector-suffix", "test_method": "test_direct_compact_input_field_validation"},
     {"expected_code": "E_SURFACE_REGISTER", "mutation_id": "missing-required-surface", "test_method": "test_missing_surface_and_unsupported_not_applicable"},
     {"expected_code": "E_APPLICABILITY", "mutation_id": "unsupported-not-applicable", "test_method": "test_missing_surface_and_unsupported_not_applicable"},
     {"expected_code": "E_FRESHNESS", "mutation_id": "stale-not-applicable-observation", "test_method": "test_not_applicable_requires_current_semantic_review"},
@@ -37,7 +39,16 @@
     {"expected_code": "E_SOURCE_VIEW", "mutation_id": "nonroot-compiler-source-view", "test_method": "test_compiler_source_view_must_be_repository_root"},
     {"expected_code": "E_EXPORT_CONTENT", "mutation_id": "evidence-source-bytes-drift", "test_method": "test_evidence_record_binds_actual_exports_and_generated_bytes"},
     {"expected_code": "E_EXPECTED_TOOLING", "mutation_id": "unexpected-tooling-revision", "test_method": "test_evidence_record_binds_actual_exports_and_generated_bytes"},
-    {"expected_code": "E_BINDING_TARGET", "mutation_id": "wrong-integration-target", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"}
+    {"expected_code": "E_BINDING_TARGET", "mutation_id": "wrong-integration-target", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"},
+    {"expected_code": "E_BINDING_ANCESTRY", "mutation_id": "hidden-introduced-parent", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"},
+    {"expected_code": "E_OWNER_DECISION", "mutation_id": "owner-decision-meaning-drift", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"},
+    {"expected_code": "E_RECOVERY_BUNDLE", "mutation_id": "missing-recovery-object", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"}
+  ],
+  "controls": [
+    {"control_id": "single-read-audit-byte-binding", "test_method": "test_evidence_record_binds_actual_exports_and_generated_bytes"},
+    {"control_id": "shared-protocol-error-identity", "test_method": "test_protocol_error_identity_is_shared"},
+    {"control_id": "complete-occurrence-identity", "test_method": "test_intrinsic_locators_distinguish_multiple_identities"},
+    {"control_id": "fresh-fixture-per-mutation", "test_method": "test_missing_surface_and_unsupported_not_applicable"}
   ],
   "protocol_version": "m0.1-v2-fixture"
 }

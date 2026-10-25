@@ -108,6 +108,12 @@ name, timestamp, passing check, or newest record is never authority by itself.
 Only Greg may accept a candidate or merge a pull request. Acceptance of E does
 not accept C, authorize integration, or begin M1. The later integration receipt P
 must prove the finite C/E/D/P correspondence required by the governing contract.
+That proof includes complete reconstructed commit trees, exhaustive sole-parent
+C/E introduced chains, and canonical review and owner-decision bodies bound by
+their exact blobs and containing commits. Expected repositories, target branches,
+merge commits, and the recovery ref are supplied to verification independently of
+the receipt. Human authority is corroborated by the governed process, not created
+by an author-name string inside JSON.
 
 ## Availability and retirement
 
@@ -117,6 +123,13 @@ expiring workflow artifact, cache, attachment, or object-store URL cannot be the
 sole retained copy. Ledger unavailability blocks only gates that require ledger
 evidence; it never blocks ordinary compiler build, verification, failure
 recovery, or accepted production operation.
+
+The recovery path is evidenced by a bounded directory containing a canonical
+manifest and raw Git objects. The manifest digest binds retained refs and object
+descriptors; verification checks each raw object's Git identity and SHA-256 and
+walks the complete reachable commit/tree/blob graph from an independently expected
+ref. A separate post-integration commit binds the canonical recovery result.
+Hashes without the referenced recoverable objects are not recovery evidence.
 
 After R8, archive this repository read-only unless a later accepted decision
 defines another role. Retirement does not erase or reclassify evidence.

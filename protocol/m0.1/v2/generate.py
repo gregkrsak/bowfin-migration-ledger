@@ -17,7 +17,13 @@ from typing import Any, Iterator
 
 def _load_library() -> Any:
     path = Path(__file__).resolve().with_name("protocol_lib.py")
-    spec = importlib.util.spec_from_file_location("_bowfin_m01v2_protocol_lib", path)
+    name = "_bowfin_m01v2_protocol_lib"
+    existing = sys.modules.get(name)
+    if existing is not None:
+        if Path(existing.__file__).resolve() != path:
+            raise RuntimeError("reviewed protocol library name resolves to another file")
+        return existing
+    spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
         raise RuntimeError("cannot load reviewed protocol_lib.py")
     module = importlib.util.module_from_spec(spec)
@@ -352,20 +358,48 @@ def discover(
     return candidates
 
 
-def _selector_matches(selector: dict[str, Any], item: dict[str, Any]) -> bool:
-    if selector["mapping_id"] != item["mapping_id"] or selector["unit_kind"] != item["unit_kind"]:
+def _charge_comparison(budget: Any, left: Any, right: Any) -> None:
+    amount = 1
+    if isinstance(left, str):
+        amount += len(left)
+    if isinstance(right, str):
+        amount += len(right)
+    budget.charge(amount)
+
+
+def _selector_matches(
+    selector: dict[str, Any], item: dict[str, Any], budget: Any
+) -> bool:
+    _charge_comparison(budget, selector["mapping_id"], item["mapping_id"])
+    if selector["mapping_id"] != item["mapping_id"]:
+        return False
+    _charge_comparison(budget, selector["unit_kind"], item["unit_kind"])
+    if selector["unit_kind"] != item["unit_kind"]:
         return False
     path = item["path"]
-    if "path_exact" in selector and path != selector["path_exact"]:
-        return False
-    if "path_prefix" in selector and not (path == selector["path_prefix"] or path.startswith(selector["path_prefix"] + "/")):
-        return False
-    if "path_suffix" in selector and not path.endswith(selector["path_suffix"]):
-        return False
+    if "path_exact" in selector:
+        _charge_comparison(budget, path, selector["path_exact"])
+        if path != selector["path_exact"]:
+            return False
+    if "path_prefix" in selector:
+        prefix = selector["path_prefix"]
+        _charge_comparison(budget, path, prefix)
+        if path != prefix:
+            _charge_comparison(budget, path, prefix + "/")
+            if not path.startswith(prefix + "/"):
+                return False
+    if "path_suffix" in selector:
+        _charge_comparison(budget, path, selector["path_suffix"])
+        if not path.endswith(selector["path_suffix"]):
+            return False
     pointer_prefix = selector.get("json_pointer_prefix")
     if pointer_prefix is not None:
         pointer = item["locator"].get("json_pointer")
-        if not isinstance(pointer, str) or not pointer.startswith(pointer_prefix):
+        budget.charge(1)
+        if not isinstance(pointer, str):
+            return False
+        _charge_comparison(budget, pointer, pointer_prefix)
+        if not pointer.startswith(pointer_prefix):
             return False
     return True
 
@@ -377,23 +411,36 @@ def classify(
     limits: dict[str, int],
 ) -> list[dict[str, Any]]:
     budget = lib.WorkBudget(limits)
-    mappings_by_id = {item["mapping_id"]: item for item in mappings}
+    mappings_by_id: dict[str, dict[str, Any]] = {}
+    for item in mappings:
+        budget.charge(1 + len(item["mapping_id"]))
+        mappings_by_id[item["mapping_id"]] = item
     rules_by_unit: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for rule in rules:
         selector = rule["selector"]
+        budget.charge(1 + len(selector["mapping_id"]) + len(selector["unit_kind"]))
         rules_by_unit.setdefault((selector["mapping_id"], selector["unit_kind"]), []).append(rule)
-    selected_counts = {rule["rule_id"]: 0 for rule in rules}
+    selected_counts: dict[str, int] = {}
+    for rule in rules:
+        budget.charge(1 + len(rule["rule_id"]))
+        selected_counts[rule["rule_id"]] = 0
     rows: list[dict[str, Any]] = []
     for item in candidates:
+        budget.charge(1 + len(item["mapping_id"]) + len(item["unit_kind"]))
         possible = rules_by_unit.get((item["mapping_id"], item["unit_kind"]), [])
-        budget.charge(len(possible))
-        matched = [rule for rule in possible if _selector_matches(rule["selector"], item)]
+        matched = []
+        for rule in possible:
+            budget.charge(1)
+            if _selector_matches(rule["selector"], item, budget):
+                matched.append(rule)
         if not matched:
             lib.fail("E_UNCLASSIFIED", f"unclassified occurrence: {item['occurrence_key']}")
         if len(matched) != 1:
             lib.fail("E_MULTIPLE_CLASSIFICATION", f"multiple classifications: {item['occurrence_key']}")
         rule = matched[0]
+        budget.charge(1 + len(rule["rule_id"]))
         selected_counts[rule["rule_id"]] += 1
+        budget.charge(1 + len(item["mapping_id"]))
         mapping = mappings_by_id[item["mapping_id"]]
         budget.add_occurrence()
         rows.append(
@@ -412,6 +459,7 @@ def classify(
             }
         )
     for rule in rules:
+        budget.charge(2 + len(rule["rule_id"]))
         actual = selected_counts[rule["rule_id"]]
         if actual != rule["expected_count"]:
             lib.fail("E_EXPECTED_COUNT", f"{rule['rule_id']} expected {rule['expected_count']} but selected {actual}")

@@ -79,6 +79,12 @@ occurrence identities remain repository-relative and unambiguous. Other dependen
 classes may retain authenticated selected views. Independent-audit binding hashes,
 parses, and reconciles one immutable read rather than reopening a pathname.
 
+Generator and auditor intentionally share the authenticated Git-export boundary,
+fatal filesystem enumeration, source-JSON parser, and manifest constructor. That
+establishes a common byte universe but is not independent enumeration. Their
+matching and structured traversal remain separate, and review must retain the
+shared-boundary limitation and independently specified Git-object vectors.
+
 Authenticated exports carry raw commit objects, repository-root trees, explicit
 eligible-view prefixes and trees, and complete root-to-view Git tree proofs. Each
 proof node supplies all direct entries required to reconstruct that tree. Opaque
@@ -143,6 +149,15 @@ Structural validity, independent-review disposition, Greg's acceptance/rejection
 integration status, and next-phase authorization are separate states. Missing,
 conflicting, superseded, or unverifiable records fail closed. Latest comment wins,
 newest timestamp wins, and author-name string matching are prohibited.
+
+Integration correspondence is not established by labels carried only inside a
+candidate record. The verifier receives expected source and ledger repositories,
+target branches, merge commits, and recovery ref independently. It reconstructs
+every named commit tree from a complete inventory, requires each introduced C/E
+commit to be the sole-parent descendant of the prior commit, and authenticates the
+canonical review and owner-decision bodies through their exact blobs and containing
+trees. These checks establish byte and ancestry correspondence; governed human
+process remains the source of review and owner authority.
 
 ## 7. Authority and failure behavior
 
@@ -231,3 +246,11 @@ Git plus a documented backup/recovery path. Repository transfer records old and
 new identities without rewriting history. After R8, archive this repository
 read-only unless a later accepted decision defines a continuing role. Retirement
 does not erase or reclassify evidence or archives.
+
+Recovery evidence includes the bounded on-disk object bundle, not merely a digest
+claim. A canonical manifest binds its refs and every object descriptor; verification
+checks byte counts, SHA-256, Git object identities and kinds, exact bundle paths,
+and the complete commit/tree/blob graph reachable from the independently expected
+ref. The canonical recovery result is itself bound into a separate post-integration
+ledger commit. Missing objects, unexpected paths, or unbound recovery prose fail
+closed.
