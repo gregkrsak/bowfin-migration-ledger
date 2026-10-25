@@ -1,0 +1,18 @@
+{
+  "record_class": "external_observation",
+  "surface_id": "public-identity-registries",
+  "observed_at": "2026-10-25T21:26:49Z",
+  "origin": "M0.1 production-input construction",
+  "classes": [
+    "trademark_registry",
+    "package_registry",
+    "editor_tooling_registry",
+    "application_store",
+    "social_identity"
+  ],
+  "queried": [],
+  "limitations": [
+    "No current registry snapshots were acquired in this tranche.",
+    "Absence and non-applicability are not inferred from missing observations."
+  ]
+}
