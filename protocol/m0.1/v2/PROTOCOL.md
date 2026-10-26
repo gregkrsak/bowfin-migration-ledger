@@ -1,12 +1,14 @@
 # M0.1 v2 Rule-to-Occurrence Ledger Protocol
 
-**Status:** Accepted protocol/tooling revision including the occurrence-semantics
-repair. Reviewed head `23bed495c73b600d0a849b3c336d08a5c6cdd1b1`, tree
+**Status:** Proposed discovery-efficiency repair of the accepted protocol/tooling
+revision. The prior occurrence-semantics repair at reviewed head
+`23bed495c73b600d0a849b3c336d08a5c6cdd1b1`, tree
 `c642dca4c4b8ae4e08f1250e1862bbe821c43b04`, and protocol subtree
 `d0e0c7419020415ddc7996631db616b2f73a25b3` were accepted by Greg and integrated
 through ordinary merge commit `ef9574336edf2b16aae4308330d581f0bacb6e45`.
-Production inputs and evidence generation remain separately gated. M0.1 remains
-unaccepted and M1 remains unauthorized.
+The present changed revision is unreviewed, unexecuted, and not yet eligible as a
+tooling dependency. Production inputs and evidence generation remain separately
+gated. M0.1 remains unaccepted and M1 remains unauthorized.
 
 ## 1. Purpose and non-authority
 
@@ -54,8 +56,11 @@ revision; renewed review and owner acceptance are required.
    authorization.
 
 This sequence prevents candidate tooling from establishing its own trust.
-Steps 1 through 4 completed for the exact accepted revision identified above.
-Step 5 remains a separate, ungranted authorization boundary.
+Steps 1 through 4 completed for the prior accepted revision identified above.
+The changed discovery repair requires its own independent static review and
+separate later execution/acceptance decisions. Replacement-input preparation was
+separately authorized and is paused; neither that preparation nor the present
+tooling-repair preparation permits production execution or evidence generation.
 
 ## 4. Runtime and execution isolation
 
@@ -427,10 +432,40 @@ include literal precomputed keys/digests, independently specified Git-object
 vectors, and mutation cases that do not ask the candidate generator or shared
 export constructor to define its own oracle.
 
-Literal discovery uses separately implemented linear-time matchers in the
-generator and auditor. Their prefix construction, character comparisons, match
-materialization, digit-suffix traversal, offset construction, and structured
-traversal are charged to the processing budget. Package verification charges the
+Literal discovery uses separate implementations. The auditor retains its own
+per-family KMP matcher. The proposed generator uses one first-character literal
+index per discovery stage, with a single position-dispatch traversal of each path
+component, raw text, and decoded JSON key/value. Equal spellings share comparison
+work but retain every original mapping/namespace binding. Every shorter/longer
+overlap is emitted; dispatch does not select a semantic interpretation.
+
+Generator index construction charges `8 + 2 * len(original)` per mapping before
+string hashing/equality, bucket insertion, and binding append. Each scanned position costs
+two units before its first-character lookup; each relevant distinct literal costs
+two before its remaining-length check; each suffix-character comparison costs
+three before the character accesses; each emitted binding costs one before yield.
+The stage also precharges twice the source-byte count for hashing/UTF-8 decoding,
+the raw character count before its single offset map, twice each path-component
+character count before offsets/encoding, and `1 + len(pointer) + 2 * len(value)`
+before structured offsets/encoding. Existing physical-key, materialization,
+occurrence-count, classification, and verification charges remain in force.
+
+The generator stores references to bounded literal strings, not a trie with a
+node per character. With dense shared first-character/prefix populations, suffix
+comparison work can still grow with the relevant bucket and literal lengths.
+There is no universal linear-time, wall-clock, or production-feasibility claim;
+the unchanged stage-local processing limit must reject excess work. Auditor
+prefix construction, character comparisons, match materialization, digit-suffix
+traversal, offset construction, and structured traversal retain their existing
+charges. No matching logic is shared between generator and auditor.
+
+The generator's cost schedule changes, not the normative limit. Budget-dependent
+accept/reject outcomes can therefore differ in either direction, including dense
+prefix inputs that the older per-literal KMP traversal handled more efficiently.
+When discovery completes, its full candidate interpretations and intrinsic
+coordinates must agree; encounter order is not canonical package row order.
+
+Package verification charges the
 cumulative serialized-byte budget before each document or chunk read; it never
 first materializes an over-budget package and rejects afterward. Classification-
 meaning verification indexes rules by spelling and normalized physical kind,
@@ -600,7 +635,23 @@ cost permits all rule precharging and index construction, then observes rejectio
 on the first candidate descriptor. BML-OS11 corrected the fixed crate-overlap
 vector without weakening population enforcement.
 
-The exact accepted repair received independent static review and one separately
+The prior accepted occurrence-semantics repair received independent static review and one separately
 authorized bounded run in which all 54 authored tests passed. Both one-run
 authorizations are exhausted. The existence or acceptance of these files grants
 no production execution, evidence generation, M0.1 acceptance, or later authority.
+
+The proposed discovery-efficiency repair adds six authored methods and the
+independently specified `discovery-dispatch.json` fixture. A 6,064,042-character,
+195-mapping synthetic control reproduces the old algorithm's unavoidable
+2,371,040,422-step floor arithmetically. It requires the new discovery to return
+four exact fixed-key records, including the short spelling inside a longer one,
+under a 40,000,000-unit control ceiling without changing normative limits. Other
+controls cover Unicode offsets across hidden paths/raw text/JSON keys and values;
+all short/long overlaps and duplicate-spelling bindings under reordered mappings;
+single-character and incomplete-tail literals; precharge at index construction,
+position, comparison, emission, source hashing, and raw/path offset-map boundaries;
+and dense-prefix no-match
+exhaustion. All 54 predecessor method bodies and the existing fixture vectors
+remain intact; the mutation manifest is extended without changing prior entries.
+The new fixture is synthetic and is not a production input or evidence package.
+These 60 authored methods have not been executed at this changed revision.

@@ -1070,6 +1070,139 @@ class ProtocolTests(unittest.TestCase):
             list(audit_scan._matches("A" * 4096, family, budget))
         self.assertEqual("E_PROCESSING_STEPS", caught.exception.code)
 
+    def test_generator_dispatch_source_scale(self) -> None:
+        """Production-length synthetic discovery, not production execution."""
+        fixture = json.loads((FIXTURES / "discovery-dispatch.json").read_text(encoding="utf-8"))
+        case = fixture["scale"]
+        mappings = [
+            {"mapping_id": f"dummy.{index:03d}", "namespace": "fixture_legacy",
+             "original": f"ZLEGACY-{index:03d}", "canonical": f"NEXT-{index:03d}",
+             "policy": "replace"}
+            for index in range(case["dummy_count"])
+        ] + copy.deepcopy(case["special_mappings"])
+        mappings = generate.validate_mappings(
+            {"protocol_version": "m0.1-v2", "mappings": mappings}, self.limits,
+        )
+        self.assertEqual(195, len(mappings))
+        self.assertEqual(2_000_000_000, self.limits["max_processing_steps"])
+        self.assertEqual(
+            case["expected_old_lower_bound"],
+            (2 * len(mappings) + 1) * case["character_count"],
+        )
+        self.assertGreater(case["expected_old_lower_bound"], self.limits["max_processing_steps"])
+        text = (case["prefix_character"] * (case["character_count"] - len(case["tail"]))
+                + case["tail"])
+        self.assertEqual(6_064_042, len(text))
+        budget = lib.WorkBudget(self.limits)
+        with mock.patch.object(generate.lib, "WorkBudget", return_value=budget) as factory:
+            rows = generate.discover(
+                [(case["path"], text.encode("utf-8"))], mappings,
+                case["repository"], case["tree"], self.limits,
+            )
+        factory.assert_called_once_with(self.limits)
+        # The oracle contains four independently stated rows, including the
+        # short spelling inside the longer crate spelling, not just a count.
+        projected = [{field: row[field] for field in case["expected"][0]} for row in rows]
+        order = lambda row: row["occurrence_key"]
+        self.assertEqual(sorted(case["expected"], key=order), sorted(projected, key=order))
+        self.assertLessEqual(budget.steps, case["new_work_upper_bound"])
+
+    def test_generator_dispatch_unicode_intrinsic_surfaces(self) -> None:
+        fixture = json.loads((FIXTURES / "discovery-dispatch.json").read_text(encoding="utf-8"))
+        case = fixture["intrinsic"]
+        rows = generate.discover(
+            [(case["path"], case["text"].encode("utf-8"))], [case["mapping"]],
+            case["repository"], case["tree"], self.limits,
+        )
+        projected = [{field: row[field] for field in case["expected"][0]} for row in rows]
+        order = lambda row: row["candidate_key"]
+        self.assertEqual(sorted(case["expected"], key=order), sorted(projected, key=order))
+        self.assertEqual(5, len({row["candidate_key"] for row in rows}))
+
+    def test_generator_dispatch_multiplicity_and_order(self) -> None:
+        fixture = json.loads((FIXTURES / "discovery-dispatch.json").read_text(encoding="utf-8"))
+        case = fixture["matcher"]
+        for mappings in (case["mappings"], list(reversed(case["mappings"]))):
+            budget = lib.WorkBudget(self.limits)
+            index = generate._literal_index(mappings, budget)
+            actual = [[mapping["mapping_id"], start, end]
+                      for mapping, start, end in generate._literal_matches(case["text"], index, budget)]
+            self.assertEqual(sorted(case["expected"]), sorted(actual))
+            self.assertEqual(9, len(actual))
+
+    def test_generator_dispatch_partial_prefixes_and_single_character(self) -> None:
+        mappings = [{"mapping_id": name, "original": literal}
+                    for name, literal in (("one", "a"), ("two", "aa"), ("miss", "aaab"))]
+        budget = lib.WorkBudget(self.limits)
+        index = generate._literal_index(mappings, budget)
+        actual = [[mapping["mapping_id"], start, end]
+                  for mapping, start, end in generate._literal_matches("aaa", index, budget)]
+        self.assertEqual(
+            sorted([["one", 0, 1], ["one", 1, 2], ["one", 2, 3],
+                    ["two", 0, 2], ["two", 1, 3]]), sorted(actual),
+        )
+        self.assertEqual([], list(generate._literal_matches("", index, budget)))
+        self.assertEqual([], list(generate._literal_matches("aaa", {}, budget)))
+
+    def test_generator_dispatch_budget_sites(self) -> None:
+        small = {**self.limits, "max_processing_steps": 17}
+        self.assert_code("E_PROCESSING_STEPS", generate._literal_index,
+                         [{"original": "klyxr"}], lib.WorkBudget(small))
+        budget = lib.WorkBudget({**self.limits, "max_processing_steps": 18})
+        self.assertEqual(1, len(generate._literal_index([{"original": "klyxr"}], budget)))
+        self.assertEqual(18, budget.steps)
+        # Two units must be charged before even the first bucket lookup.
+        unread_index = mock.Mock()
+        budget = lib.WorkBudget({**self.limits, "max_processing_steps": 1})
+        self.assert_code("E_PROCESSING_STEPS", lambda: list(
+            generate._literal_matches("x", unread_index, budget)))
+        unread_index.get.assert_not_called()
+        index = generate._literal_index([{"original": "aaab"}], lib.WorkBudget(self.limits))
+        # Start and bucket cost four; the third three-unit suffix comparison
+        # crosses twelve. No match need exist for this charge to be required.
+        budget = lib.WorkBudget({**self.limits, "max_processing_steps": 12})
+        self.assert_code("E_PROCESSING_STEPS", lambda: list(
+            generate._literal_matches("aaaa", index, budget)))
+        index = generate._literal_index([{"original": "a"}], lib.WorkBudget(self.limits))
+        # Four units reach a complete match; the binding must charge the fifth.
+        budget = lib.WorkBudget({**self.limits, "max_processing_steps": 4})
+        self.assert_code("E_PROCESSING_STEPS", lambda: list(
+            generate._literal_matches("a", index, budget)))
+        budget = lib.WorkBudget({**self.limits, "max_processing_steps": 5})
+        self.assertEqual(1, len(list(generate._literal_matches("a", index, budget))))
+        self.assertEqual(5, budget.steps)
+        mapping = {"mapping_id": "word", "namespace": "display_brand",
+                   "original": "klyxr", "canonical": "bowfin", "policy": "replace"}
+        # Index 18, then hashing/decode precharge 10: cap 27 must stop before
+        # even hashing the five-byte source file.
+        with mock.patch.object(generate.lib, "sha256_hex") as hash_bytes:
+            self.assert_code("E_PROCESSING_STEPS", generate.discover,
+                             [("x.txt", b"klyxr")], [mapping], "fixture/source", "1" * 40,
+                             {**self.limits, "max_processing_steps": 27})
+            hash_bytes.assert_not_called()
+        # Raw offset map follows index 18 and file precharge 10; five more
+        # units must be available before constructing that map.
+        with mock.patch.object(generate, "_byte_offsets") as offsets:
+            self.assert_code("E_PROCESSING_STEPS", generate.discover,
+                             [("x.txt", b"klyxr")], [mapping], "fixture/source", "1" * 40,
+                             {**self.limits, "max_processing_steps": 32})
+            offsets.assert_not_called()
+        # A non-UTF-8 file still scans its path. Index 18 and file precharge 2
+        # leave the ten-unit path-map precharge next, before any offsets exist.
+        with mock.patch.object(generate, "_byte_offsets") as offsets:
+            self.assert_code("E_PROCESSING_STEPS", generate.discover,
+                             [("x.txt", b"\xff")], [mapping], "fixture/source", "1" * 40,
+                             {**self.limits, "max_processing_steps": 29})
+            offsets.assert_not_called()
+
+    def test_generator_dispatch_dense_prefix_no_match_exhaustion(self) -> None:
+        index = generate._literal_index(
+            [{"original": "a" * 64 + "b"}], lib.WorkBudget(self.limits),
+        )
+        budget = lib.WorkBudget({**self.limits, "max_processing_steps": 16})
+        self.assert_code("E_PROCESSING_STEPS", lambda: list(
+            generate._literal_matches("a" * 4096, index, budget)))
+
     def test_archive_and_dot_path_reject(self) -> None:
         self.assert_code("E_ARCHIVE_DEPENDENCY", lib.validate_relpath, "archive/unaccepted/data", self.limits)
         self.assert_code("E_PATH", lib.validate_relpath, "a/../b", self.limits)

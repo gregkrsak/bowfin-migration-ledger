@@ -2,6 +2,32 @@
 
 Read [PROTOCOL.md](PROTOCOL.md) before reviewing any code.
 
+## Proposed discovery-efficiency repair
+
+This working revision proposes a generator-only literal-dispatch repair. It is
+not yet independently reviewed, executed, accepted, or eligible as tooling.
+The existing accepted revision and all prior results below remain historical
+facts, not validation of this changed revision.
+
+The generator builds a first-character index once per discovery stage and scans
+each path component, raw text, and decoded JSON string once for dispatch. It
+compares only literals in the relevant bucket and preserves all overlapping
+spellings and all namespace interpretations. Every construction, dispatch,
+comparison, and yielded binding is charged. Dense adversarial prefixes still
+fail closed at the unchanged `max_processing_steps: 2000000000`.
+
+The independent auditor, verifier, shared library, schema, limits, and existing
+54 test methods are unchanged. Six new authored methods cover production-length
+synthetic discovery, fixed Unicode/path/JSON keys, overlapping and duplicate
+spellings, partial prefixes, and exact work-budget failure sites. They have not
+been run. See [the repair note](../../../docs/M01-DISCOVERY-EFFICIENCY-REPAIR.md)
+for the static lower-bound proof, review boundary, and remaining limitations.
+
+Production inputs, production execution, evidence generation, acceptance,
+readiness, merge, and later phases remain separately gated. PR #5 is unchanged.
+
+## Prior accepted revision
+
 The accepted M0.1 v2 revision recorded in PROTOCOL.md includes the
 occurrence-semantics repair merged through PR #6. This directory contains only
 protocol/tooling and synthetic fixtures; it contains no accepted production
