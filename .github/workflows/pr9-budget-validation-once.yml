@@ -1,0 +1,41 @@
+name: PR9 exact-head bounded synthetic validation
+"on":
+  push:
+    branches: [pr9-budget-validation-once]
+    paths:
+      - .github/workflows/pr9-budget-validation-once.yml
+      - .github/scripts/pr9-validate-once.py
+permissions:
+  contents: read
+  pull-requests: read
+concurrency:
+  group: pr9-single-synthetic-validation
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: >-
+      github.repository == 'gregkrsak/bowfin-migration-ledger' &&
+      github.ref == 'refs/heads/pr9-budget-validation-once' &&
+      github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Verify reviewed bytes and run the synthetic suite once
+        env:
+          GH_READ_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          python3 -I -B - <<'PY'
+          import hashlib, os, pathlib, re, sys, urllib.request
+          sha = os.environ['GITHUB_SHA']
+          assert re.fullmatch('[0-9a-f]{40}', sha)
+          url = 'https://raw.githubusercontent.com/gregkrsak/bowfin-migration-ledger/' + sha + '/.github/scripts/pr9-validate-once.py'
+          with urllib.request.urlopen(url, timeout=20) as response:
+              data = response.read(65537)
+          assert len(data) <= 65536
+          assert hashlib.sha256(data).hexdigest() == 'cf4f3080b27dd30add03b40c3f5681e95aa80cdec6bc29856595de2c05b11cad'
+          target = pathlib.Path(os.environ['RUNNER_TEMP']) / 'pr9-validate-once.py'
+          with target.open('xb') as output:
+              output.write(data)
+          os.execv(sys.executable, [sys.executable, '-I', '-B', str(target)])
+          PY
