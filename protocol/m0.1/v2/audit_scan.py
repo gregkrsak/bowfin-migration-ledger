@@ -36,6 +36,8 @@ lib = _load_library()
 
 
 def validate_policy(document: Any, limits: dict[str, int]) -> list[dict[str, Any]]:
+    budget = lib.WorkBudget(limits)
+    lib.charge_value(budget, document)
     if not isinstance(document, dict):
         lib.fail("E_AUDIT_DOCUMENT", "audit policy must be an object")
     lib.require_keys(document, {"protocol_version", "independently_authored", "families"}, set(), "audit-policy")
@@ -77,19 +79,8 @@ def validate_policy(document: Any, limits: dict[str, int]) -> list[dict[str, Any
         if family["kind"] in {"source_suffix", "path_component"} and units != ["path_component"]:
             lib.fail("E_AUDIT_UNITS", f"{label} path family must use path_component only")
         candidate_keys = family.get("candidate_keys")
-        if candidate_keys is not None:
-            if (
-                not isinstance(candidate_keys, list)
-                or not candidate_keys
-                or len(candidate_keys) > limits["max_occurrences"]
-                or any(not isinstance(key, str) for key in candidate_keys)
-                or len(candidate_keys) != len(set(candidate_keys))
-            ):
-                lib.fail("E_AUDIT_CANDIDATE_FILTER", f"{label}.candidate_keys must be nonempty and unique")
-            for key in candidate_keys:
-                if not isinstance(key, str) or not key.startswith("sha256:"):
-                    lib.fail("E_AUDIT_CANDIDATE_FILTER", f"{label}.candidate_keys contains an invalid key")
-                lib.require_sha256(key[7:], f"{label}.candidate_keys")
+        if "candidate_keys" in family:
+            lib.candidate_key_set(candidate_keys, limits, budget, "E_AUDIT_CANDIDATE_FILTER")
         result.append(dict(family))
     return result
 
@@ -197,15 +188,19 @@ def discover(
 ) -> list[dict[str, Any]]:
     budget = lib.WorkBudget(limits)
     found: dict[str, dict[str, Any]] = {}
+    physical_meanings: dict[str, str] = {}
+    lib.charge_value(budget, families)
     filters = {
-        family["family_id"]: set(family["candidate_keys"])
+        family["family_id"]: lib.candidate_key_set(
+            family["candidate_keys"], limits, budget, "E_AUDIT_CANDIDATE_FILTER"
+        )
         for family in families if "candidate_keys" in family
     }
     selected_filters = {family_id: set() for family_id in filters}
 
     def add(path: str, unit_kind: str, locator: dict[str, Any], namespace: str, original: str, family_id: str) -> None:
         candidate_key = lib.candidate_key(
-            source_repository, source_tree, path, unit_kind, locator, original, limits
+            source_repository, source_tree, path, unit_kind, locator, original, limits, budget
         )
         allowed = filters.get(family_id)
         if allowed is not None:
@@ -228,8 +223,13 @@ def discover(
             "family_id": family_id,
         }
         prior = found.get(key)
+        lib.charge_value(budget, record)
         if prior is not None and prior != record:
             lib.fail("E_AUDIT_COLLISION", f"inconsistent duplicate discovery for {key}")
+        budget.charge(512)
+        if candidate_key in physical_meanings and physical_meanings[candidate_key] != key:
+            lib.fail("E_AUDIT_DUPLICATE", "audit policy assigns multiple meanings to one physical candidate")
+        physical_meanings[candidate_key] = key
         found[key] = record
 
     for path, data in files:
@@ -298,11 +298,9 @@ def discover(
                             }
                             add(path, unit_kind, locator, family["namespace"], original, family["family_id"])
     for family_id, expected in filters.items():
-        if selected_filters[family_id] != expected:
-            lib.fail(
-                "E_AUDIT_CANDIDATE_FILTER",
-                f"{family_id} candidate filter did not resolve exactly",
-            )
+        lib.require_key_population(
+            selected_filters[family_id], expected, budget, "E_AUDIT_CANDIDATE_FILTER"
+        )
     return [found[key] for key in sorted(found)]
 
 

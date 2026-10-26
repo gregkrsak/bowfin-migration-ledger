@@ -135,6 +135,8 @@ def _validate_mapping_document(document: Any, limits: dict[str, int]) -> set[str
 
 
 def _validate_rules_document(document: Any, mapping_ids: set[str], limits: dict[str, int]) -> None:
+    budget = lib.WorkBudget(limits)
+    lib.charge_value(budget, document)
     rows = _document_rows(document, "rules", limits["max_rules"], "classification-rules")
     rule_ids: set[str] = set()
     required = {
@@ -162,21 +164,11 @@ def _validate_rules_document(document: Any, mapping_ids: set[str], limits: dict[
             lib.fail("E_SELECTOR_UNIT", f"unknown mapping or unit kind: {label}")
         path_fields = [name for name in ("path_exact", "path_prefix", "path_suffix") if name in selector]
         candidate_keys = selector.get("candidate_keys")
-        if len(path_fields) + (candidate_keys is not None) != 1:
+        has_keys = "candidate_keys" in selector
+        if len(path_fields) + has_keys != 1:
             lib.fail("E_SELECTOR_PATH", f"{label} requires exactly one path selector or candidate_keys")
-        if candidate_keys is not None:
-            if (
-                not isinstance(candidate_keys, list)
-                or not candidate_keys
-                or len(candidate_keys) > limits["max_occurrences"]
-                or any(not isinstance(key, str) for key in candidate_keys)
-                or len(candidate_keys) != len(set(candidate_keys))
-            ):
-                lib.fail("E_SELECTOR_CANDIDATE", f"invalid candidate_keys: {label}")
-            for key in candidate_keys:
-                if not isinstance(key, str) or not key.startswith("sha256:"):
-                    lib.fail("E_SELECTOR_CANDIDATE", f"invalid candidate key: {label}")
-                lib.require_sha256(key[7:], f"{label}.candidate_keys")
+        if "candidate_keys" in selector:
+            lib.candidate_key_set(candidate_keys, limits, budget, "E_SELECTOR_CANDIDATE")
         else:
             selected = selector[path_fields[0]]
             if path_fields[0] == "path_suffix":
@@ -193,11 +185,11 @@ def _validate_rules_document(document: Any, mapping_ids: set[str], limits: dict[
             else:
                 lib.validate_relpath(selected, limits)
         pointer = selector.get("json_pointer_prefix")
-        if pointer is not None and (not isinstance(pointer, str) or candidate_keys is not None):
+        if "json_pointer_prefix" in selector and (not isinstance(pointer, str) or has_keys):
             lib.fail("E_SELECTOR_POINTER", f"invalid JSON Pointer prefix: {label}")
         if (
             row["role"] not in lib.ROLES
-            or (row["role"] == "historical" and candidate_keys is None and path_fields[0] != "path_exact")
+            or (row["role"] == "historical" and not has_keys and path_fields[0] != "path_exact")
         ):
             lib.fail("E_RULE_ROLE", f"invalid role or broad historical rule: {label}")
         count = row["expected_count"]
@@ -213,6 +205,8 @@ def _validate_rules_document(document: Any, mapping_ids: set[str], limits: dict[
 
 
 def _validate_audit_document(document: Any, limits: dict[str, int]) -> None:
+    budget = lib.WorkBudget(limits)
+    lib.charge_value(budget, document)
     if not isinstance(document, dict):
         lib.fail("E_AUDIT_DOCUMENT", "audit policy must be an object")
     lib.require_keys(document, {"protocol_version", "independently_authored", "families"}, set(), "audit-policy")
@@ -250,19 +244,8 @@ def _validate_audit_document(document: Any, limits: dict[str, int]) -> None:
         if row["kind"] in {"source_suffix", "path_component"} and units != ["path_component"]:
             lib.fail("E_AUDIT_UNITS", f"path family must be path-only: {label}")
         candidate_keys = row.get("candidate_keys")
-        if candidate_keys is not None:
-            if (
-                not isinstance(candidate_keys, list)
-                or not candidate_keys
-                or len(candidate_keys) > limits["max_occurrences"]
-                or any(not isinstance(key, str) for key in candidate_keys)
-                or len(candidate_keys) != len(set(candidate_keys))
-            ):
-                lib.fail("E_AUDIT_CANDIDATE_FILTER", f"invalid candidate_keys: {label}")
-            for key in candidate_keys:
-                if not isinstance(key, str) or not key.startswith("sha256:"):
-                    lib.fail("E_AUDIT_CANDIDATE_FILTER", f"invalid candidate key: {label}")
-                lib.require_sha256(key[7:], f"{label}.candidate_keys")
+        if "candidate_keys" in row:
+            lib.candidate_key_set(candidate_keys, limits, budget, "E_AUDIT_CANDIDATE_FILTER")
 
 
 def validate_compact_input_files(files: dict[str, bytes], limits: dict[str, int]) -> dict[str, Any]:
@@ -546,6 +529,8 @@ def _validate_generated_meaning(
     mappings = compact["documents"]["mappings.json"]["mappings"]
     rules = compact["documents"]["classification-rules.json"]["rules"]
     budget = lib.WorkBudget(limits)
+    lib.charge_value(budget, mappings)
+    lib.charge_value(budget, rules)
     mappings_by_id: dict[str, dict[str, Any]] = {}
     for mapping in mappings:
         budget.charge(1 + len(mapping["mapping_id"]))
@@ -553,15 +538,37 @@ def _validate_generated_meaning(
     rules_by_id: dict[str, dict[str, Any]] = {}
     rules_by_selector: dict[tuple[str, str], list[dict[str, Any]]] = {}
     counts: dict[str, int] = {}
+    populations: dict[str, set[str]] = {}
+    exact: dict[str, set[str]] = {}
     for rule in rules:
         selector = rule["selector"]
-        key = (selector["mapping_id"], selector["unit_kind"])
+        mapping = mappings_by_id[selector["mapping_id"]]
+        # Independent verifier implementation of which raw semantic kind each
+        # namespace discovers. Never import generator selection logic.
+        raw_kind = (
+            "embedded_identity" if mapping["namespace"] in {
+                "engineering_decision", "language_decision", "project_control", "test_identity"
+            } else "machine_identifier" if mapping["namespace"] in {
+                "machine_namespace", "compiler_identity", "environment_variable"
+            } else "raw_text"
+        )
+        physical = lib.physical_kind(selector["unit_kind"])
+        discoverable = physical != "raw_text" or selector["unit_kind"] == raw_kind
+        key = (mapping["original"], physical)
         budget.charge(
             3 + (2 * len(rule["rule_id"])) + (2 * len(key[0])) + (2 * len(key[1]))
         )
         rules_by_id[rule["rule_id"]] = rule
-        rules_by_selector.setdefault(key, []).append(rule)
+        # A zero-count path rule may describe an undiscovered interpretation.
+        # It is not a competitor, but its population obligation still applies.
+        if discoverable:
+            rules_by_selector.setdefault(key, []).append(rule)
         counts[rule["rule_id"]] = 0
+        populations[rule["rule_id"]] = set()
+        if "candidate_keys" in selector:
+            exact[rule["rule_id"]] = lib.candidate_key_set(
+                selector["candidate_keys"], limits, budget, "E_SELECTOR_CANDIDATE"
+            )
     semantic_fields = {
         "role": "role",
         "phase": "phase",
@@ -571,7 +578,12 @@ def _validate_generated_meaning(
         "validation_test_id": "validation_test_id",
         "historical_relationship": "historical_relationship",
     }
+    seen_physical: set[str] = set()
     for row in rows:
+        lib.charge_value(budget, row)
+        if row["candidate_key"] in seen_physical:
+            lib.fail("E_CLASSIFICATION_BINDING", "multiple emitted interpretations of one candidate")
+        seen_physical.add(row["candidate_key"])
         budget.charge(1 + len(row["mapping_id"]))
         mapping = mappings_by_id.get(row["mapping_id"])
         if mapping is None:
@@ -580,7 +592,7 @@ def _validate_generated_meaning(
             _charge_comparison(budget, row[field], mapping[field])
             if row[field] != mapping[field]:
                 lib.fail("E_CLASSIFICATION_BINDING", f"row mapping meaning mismatch: {row['occurrence_key']}")
-        selector_key = (row["mapping_id"], row["unit_kind"])
+        selector_key = (row["original"], lib.physical_kind(row["unit_kind"]))
         budget.charge(1 + len(selector_key[0]) + len(selector_key[1]))
         candidates = rules_by_selector.get(selector_key, [])
         matching: list[dict[str, Any]] = []
@@ -595,7 +607,9 @@ def _validate_generated_meaning(
         if len(matching) != 1 or rule is None:
             lib.fail("E_CLASSIFICATION_BINDING", f"row rule selection mismatch: {row['occurrence_key']}")
         _charge_comparison(budget, matching[0]["rule_id"], row["rule_id"])
-        if matching[0]["rule_id"] != row["rule_id"]:
+        if (matching[0]["rule_id"] != row["rule_id"]
+                or rule["selector"]["mapping_id"] != row["mapping_id"]
+                or rule["selector"]["unit_kind"] != row["unit_kind"]):
             lib.fail("E_CLASSIFICATION_BINDING", f"row rule selection mismatch: {row['occurrence_key']}")
         for row_field, rule_field in semantic_fields.items():
             _charge_comparison(budget, row[row_field], rule[rule_field])
@@ -603,7 +617,13 @@ def _validate_generated_meaning(
                 lib.fail("E_CLASSIFICATION_BINDING", f"row rule meaning mismatch: {row['occurrence_key']}")
         budget.charge(1 + len(row["rule_id"]))
         counts[row["rule_id"]] += 1
+        populations[row["rule_id"]].add(row["candidate_key"])
     for rule in rules:
+        if rule["rule_id"] in exact:
+            lib.require_key_population(
+                populations[rule["rule_id"]], exact[rule["rule_id"]],
+                budget, "E_CLASSIFICATION_BINDING",
+            )
         budget.charge(2 + len(rule["rule_id"]))
         if counts[rule["rule_id"]] != rule["expected_count"]:
             lib.fail("E_CLASSIFICATION_BINDING", f"rule population mismatch: {rule['rule_id']}")
@@ -766,6 +786,8 @@ def verify_package(
     source_tree: str,
     limits: dict[str, int],
 ) -> list[dict[str, Any]]:
+    budget = lib.WorkBudget(limits)
+    physical_keys: set[str] = set()
     lib.assert_no_symlink_ancestors(package)
     if package.is_symlink() or not package.is_dir():
         lib.fail("E_PACKAGE", "package must be a non-symlink directory")
@@ -875,10 +897,14 @@ def verify_package(
                 lib.fail("E_OCCURRENCE_KEY", f"key mismatch at {expected_path}:{row_number}")
             recomputed_candidate = lib.candidate_key(
                 source_repository, source_tree, row["path"], row["unit_kind"],
-                row["locator"], row["original"], limits,
+                row["locator"], row["original"], limits, budget,
             )
             if row["candidate_key"] != recomputed_candidate:
                 lib.fail("E_CANDIDATE_KEY", f"candidate key mismatch at {expected_path}:{row_number}")
+            budget.charge(256)
+            if recomputed_candidate in physical_keys:
+                lib.fail("E_CANDIDATE_DUPLICATE", "multiple emitted rows for one physical candidate")
+            physical_keys.add(recomputed_candidate)
             key = row["occurrence_key"]
             if previous_key is not None and key <= previous_key:
                 lib.fail("E_ROW_ORDER", f"non-increasing key at {expected_path}:{row_number}")
@@ -937,6 +963,39 @@ def verify_package(
     return rows
 
 
+def _audit_family_accepts(candidate: dict[str, Any], family: dict[str, Any], budget: Any) -> bool:
+    """Independently check retained family meaning; no auditor code is imported."""
+    lib.charge_value(budget, candidate)
+    # The full policy/key arrays were charged and indexed once. Charge only the
+    # family fields actually compared per row; do not rescan a large key list.
+    lib.charge_value(budget, [family[name] for name in
+                            ("namespace", "unit_kinds", "literal", "kind")])
+    if (candidate["namespace"] != family["namespace"]
+            or candidate["unit_kind"] not in family["unit_kinds"]):
+        return False
+    original, literal, kind = candidate["original"], family["literal"], family["kind"]
+    if kind == "ascii_casefold_literal":
+        def lower_ascii(text: str) -> str:
+            return "".join(chr(ord(c) + 32) if "A" <= c <= "Z" else c for c in text)
+        return lower_ascii(original) == lower_ascii(literal)
+    if kind == "ascii_digit_suffix":
+        suffix = original[len(literal):]
+        return original.startswith(literal) and bool(suffix) and all("0" <= c <= "9" for c in suffix)
+    if original != literal:
+        return False
+    if kind == "source_suffix":
+        parts = candidate["path"].split("/")
+        loc = candidate["locator"]
+        return (
+            candidate["unit_kind"] == "path_component"
+            and loc["component_index"] == len(parts) - 1
+            and parts[-1].endswith(literal)
+            and loc["component_byte_end"] == len(parts[-1].encode("utf-8"))
+            and loc["component_byte_start"] == loc["component_byte_end"] - len(literal.encode("utf-8"))
+        )
+    return kind in {"literal", "path_component"}
+
+
 def reconcile(
     rows: list[dict[str, Any]],
     audit_path: Path,
@@ -947,11 +1006,12 @@ def reconcile(
     source_export_sha256: str,
     input_export_sha256: str,
     scan_manifest_sha256: str,
+    audit_policy: dict[str, Any],
 ) -> None:
     audit_data = lib.read_bounded_file(audit_path, limits["max_audit_output_bytes"])
     reconcile_bytes(
         rows, audit_data, limits, source_repository, source_commit, source_tree,
-        source_export_sha256, input_export_sha256, scan_manifest_sha256,
+        source_export_sha256, input_export_sha256, scan_manifest_sha256, audit_policy,
     )
 
 
@@ -965,8 +1025,19 @@ def reconcile_bytes(
     source_export_sha256: str,
     input_export_sha256: str,
     scan_manifest_sha256: str,
+    audit_policy: dict[str, Any],
 ) -> None:
     """Reconcile one already-read immutable audit byte sequence."""
+    _validate_audit_document(audit_policy, limits)
+    budget = lib.WorkBudget(limits)
+    lib.charge_value(budget, audit_policy)
+    families = {family["family_id"]: family for family in audit_policy["families"]}
+    filters = {
+        name: lib.candidate_key_set(family["candidate_keys"], limits, budget, "E_AUDIT_CANDIDATE_FILTER")
+        for name, family in families.items() if "candidate_keys" in family
+    }
+    populations: dict[str, set[str]] = {name: set() for name in families}
+    physical_keys: set[str] = set()
     audit = canonical_bytes(
         audit_data, limits, "independent-audit.json", limits["max_audit_output_bytes"]
     )
@@ -1014,12 +1085,24 @@ def reconcile_bytes(
         lib.require_identifier(candidate["namespace"], "audit namespace")
         lib.require_identifier(candidate["family_id"], "audit family_id")
         _nonempty_string(candidate["original"], "audit original")
+        budget.charge(256 + len(candidate["family_id"]))
+        family = families.get(candidate["family_id"])
+        if family is None or not _audit_family_accepts(candidate, family, budget):
+            lib.fail("E_AUDIT_FAMILY_BINDING", "audit row violates its declared family")
         recomputed_candidate = lib.candidate_key(
             source_repository, source_tree, path, candidate["unit_kind"],
-            candidate["locator"], candidate["original"], limits,
+            candidate["locator"], candidate["original"], limits, budget,
         )
         if candidate["candidate_key"] != recomputed_candidate:
             lib.fail("E_AUDIT_CANDIDATE_KEY", "audit physical candidate key mismatch")
+        budget.charge(512)
+        if recomputed_candidate in physical_keys:
+            lib.fail("E_AUDIT_DUPLICATE", "audit assigns multiple meanings to one physical candidate")
+        physical_keys.add(recomputed_candidate)
+        family_id = candidate["family_id"]
+        if family_id in filters and recomputed_candidate not in filters[family_id]:
+            lib.fail("E_AUDIT_CANDIDATE_FILTER", "audit key is outside its declared family population")
+        populations[family_id].add(recomputed_candidate)
         recomputed = lib.occurrence_key(
             source_repository, source_tree, path, candidate["unit_kind"], candidate["locator"],
             candidate["namespace"], candidate["original"], limits,
@@ -1027,6 +1110,10 @@ def reconcile_bytes(
         if candidate["occurrence_key"] != recomputed:
             lib.fail("E_AUDIT_KEY", "audit semantic occurrence key mismatch")
         audit_keys.append(recomputed)
+    for family_id, expected in filters.items():
+        lib.require_key_population(
+            populations[family_id], expected, budget, "E_AUDIT_CANDIDATE_FILTER"
+        )
     if audit["candidate_count"] != len(audit_keys) or len(audit_keys) != len(set(audit_keys)):
         lib.fail("E_AUDIT_DUPLICATE", "audit candidate count or uniqueness mismatch")
     generated_keys = {row["occurrence_key"] for row in rows}
@@ -1374,6 +1461,7 @@ def verify_evidence_binding(
         record["source"]["commit"], record["source"]["tree"],
         record["source"]["export_sha256"], record["inputs"]["export_sha256"],
         index["scan_manifest_sha256"],
+        compact["documents"]["audit-policy.json"],
     )
     source_entries = {entry["path"]: entry for entry in entries["source"]}
     for visual in compact["visuals"]:
@@ -1999,6 +2087,7 @@ def parse_args() -> argparse.Namespace:
     package.add_argument("--source-export-sha256", required=True)
     package.add_argument("--input-export-sha256", required=True)
     package.add_argument("--audit", type=Path)
+    package.add_argument("--audit-policy", type=Path)
     evidence = subcommands.add_parser("evidence")
     evidence.add_argument("--record", required=True, type=Path)
     evidence.add_argument("--package", required=True, type=Path)
@@ -2061,11 +2150,14 @@ def main() -> int:
     if args.command == "package":
         rows = verify_package(args.package, args.source_repository, args.source_tree, limits)
         if args.audit is not None:
+            if args.audit_policy is None:
+                lib.fail("E_AUDIT_POLICY_REQUIRED", "--audit requires --audit-policy")
             index = canonical_document(args.package / "index.json", limits)
             reconcile(
                 rows, args.audit, limits, args.source_repository, args.source_commit,
                 args.source_tree, args.source_export_sha256, args.input_export_sha256,
                 index["scan_manifest_sha256"],
+                canonical_document(args.audit_policy, limits),
             )
     elif args.command == "evidence":
         expected_tooling = {

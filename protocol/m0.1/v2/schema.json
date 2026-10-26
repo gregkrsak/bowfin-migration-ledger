@@ -30,7 +30,8 @@
     "selector": {
       "type": "object", "additionalProperties": false, "required": ["mapping_id", "unit_kind"],
       "properties": {"mapping_id": {"$ref": "#/$defs/identifier"}, "unit_kind": {"enum": ["path_component", "raw_text", "structured_key", "structured_value", "embedded_identity", "machine_identifier"]}, "path_exact": {"$ref": "#/$defs/path"}, "path_prefix": {"$ref": "#/$defs/path"}, "path_suffix": {"type": "string", "minLength": 1, "maxLength": 4096}, "json_pointer_prefix": {"type": "string"}, "candidate_keys": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/candidate_key"}}},
-      "oneOf": [{"required": ["path_exact"]}, {"required": ["path_prefix"]}, {"required": ["path_suffix"]}, {"required": ["candidate_keys"]}]
+      "oneOf": [{"required": ["path_exact"]}, {"required": ["path_prefix"]}, {"required": ["path_suffix"]}, {"required": ["candidate_keys"]}],
+      "allOf": [{"if": {"required": ["candidate_keys"]}, "then": {"not": {"required": ["json_pointer_prefix"]}}}]
     },
     "rule": {
       "type": "object", "additionalProperties": false,

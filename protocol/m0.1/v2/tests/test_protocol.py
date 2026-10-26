@@ -184,7 +184,7 @@ class ProtocolTests(unittest.TestCase):
     def verify_valid(self, built: dict[str, Any]) -> None:
         rows = verify.verify_package(built["package"], "fixture/source", built["source_export"]["tree"], self.limits)
         index = verify.canonical_document(built["package"] / "index.json", self.limits)
-        verify.reconcile(rows, built["audit_path"], self.limits, "fixture/source", built["source_export"]["commit"], built["source_export"]["tree"], lib.export_digest(built["source_export"], self.limits), lib.export_digest(built["input_export"], self.limits), index["scan_manifest_sha256"])
+        verify.reconcile(rows, built["audit_path"], self.limits, "fixture/source", built["source_export"]["commit"], built["source_export"]["tree"], lib.export_digest(built["source_export"], self.limits), lib.export_digest(built["input_export"], self.limits), index["scan_manifest_sha256"], self.fixture["audit_policy"])
 
     def test_valid_authenticated_generation_and_reconciliation(self) -> None:
         self.verify_valid(self.build_valid())
@@ -418,7 +418,12 @@ class ProtocolTests(unittest.TestCase):
             [("history.md", b"Klyxr then Klyxr")], mappings,
             "fixture/source", "2" * 40, self.limits,
         )
-        keys = [candidate["candidate_key"] for candidate in candidates]
+        # Literal independently hashed tuples, not expected keys from discovery.
+        keys = [
+            "sha256:29dea78ad73e28e2adcb86670b6f706d3883382a7a1f967154bea3bc0b344d45",
+            "sha256:53ae86349e3129c81a994b7450facf6eb63a39bda755376b2d272592d7722462",
+        ]
+        self.assertEqual(set(keys), {candidate["candidate_key"] for candidate in candidates})
         rules_document = {"protocol_version": "m0.1-v2", "rules": [
             {
                 "rule_id": "live", "selector": {"mapping_id": "brand", "unit_kind": "raw_text", "candidate_keys": [keys[0]]},
@@ -462,14 +467,356 @@ class ProtocolTests(unittest.TestCase):
             {row["occurrence_key"] for row in audited},
         )
 
+    def os_case(self) -> dict[str, Any]:
+        """Hand-authored source, selectors, and physical-key oracle (no discovery)."""
+        key = "sha256:5d809c253f2b4d865fe874f5e9ebe7e63286077a90e6416d11ac70ea27f4186a"
+        mappings = [
+            {"mapping_id": "cli", "namespace": "cli_invocation", "original": "klyxr", "canonical": "bowfin", "policy": "compatibility"},
+            {"mapping_id": "test", "namespace": "test_identity", "original": "klyxr", "canonical": "bowfin-test", "policy": "replace"},
+            {"mapping_id": "machine", "namespace": "machine_namespace", "original": "klyxr", "canonical": "bowfin-machine", "policy": "replace"},
+        ]
+        kinds = ["raw_text", "embedded_identity", "machine_identifier"]
+        rules, rows = [], []
+        for mapping, kind in zip(mappings, kinds):
+            rule = copy.deepcopy(self.fixture["rules"]["rules"][0])
+            rule.update(rule_id=mapping["mapping_id"], expected_count=1)
+            rule["selector"] = {"mapping_id": mapping["mapping_id"], "unit_kind": kind, "candidate_keys": [key]}
+            row = {
+                "protocol_version": "m0.1-v2", "candidate_key": key,
+                "path": "x.txt", "unit_kind": kind,
+                "locator": {"byte_start": 0, "byte_end": 5},
+                "source_file_sha256": lib.sha256_hex(b"klyxr"), "original": "klyxr",
+                "namespace": mapping["namespace"], "mapping_id": mapping["mapping_id"],
+                "canonical": mapping["canonical"], "rule_id": rule["rule_id"], "context": "klyxr",
+            }
+            row["occurrence_key"] = lib.occurrence_key(
+                "fixture/source", "1" * 40, row["path"], kind, row["locator"],
+                row["namespace"], row["original"], self.limits,
+            )
+            for field in ("role", "phase", "producer", "consumer", "support_policy", "validation_test_id", "historical_relationship"):
+                row[field] = rule[field]
+            rules.append(rule)
+            rows.append(row)
+        return {"key": key, "mappings": mappings, "rules": rules, "rows": rows}
+
+    def os_compact(self, case: dict[str, Any]) -> dict[str, Any]:
+        return {"documents": {
+            "mappings.json": {"protocol_version": "m0.1-v2", "mappings": case["mappings"]},
+            "classification-rules.json": {"protocol_version": "m0.1-v2", "rules": case["rules"]},
+        }}
+
+    def test_physical_vectors_and_all_raw_kinds(self) -> None:
+        vectors = json.loads((FIXTURES / "vectors.json").read_text(encoding="utf-8"))
+        for vector in vectors["physical_candidates"]:
+            value = vector["tuple"]
+            self.assertEqual(
+                vector["canonical_utf8"].encode(),
+                lib.canonical_json_bytes(value, self.limits, trailing_lf=False),
+            )
+            self.assertEqual(vector["expected"], lib.candidate_key(*value, self.limits))
+        case = self.os_case()
+        for row in case["rows"]:
+            self.assertEqual(case["key"], lib.candidate_key(
+                "fixture/source", "1" * 40, "x.txt", row["unit_kind"],
+                row["locator"], "klyxr", self.limits,
+            ))
+        discovered = generate.discover(
+            [("x.txt", b"klyxr")], case["mappings"], "fixture/source", "1" * 40, self.limits
+        )
+        self.assertEqual(3, len(discovered))
+        self.assertEqual({case["key"]}, {row["candidate_key"] for row in discovered})
+        # The three interpretations may coexist before classification, but only
+        # the separately selected one can be emitted.
+        rows = generate.classify(discovered, case["mappings"], case["rules"][:1], self.limits)
+        self.assertEqual(["cli"], [row["mapping_id"] for row in rows])
+        for row in case["rows"]:
+            family = {"family_id": "independent", "kind": "literal", "literal": "klyxr",
+                      "namespace": row["namespace"], "unit_kinds": [row["unit_kind"]],
+                      "candidate_keys": [case["key"]]}
+            audited = audit_scan.discover([("x.txt", b"klyxr")], [family],
+                                          "fixture/source", "1" * 40, self.limits)
+            self.assertEqual([case["key"]], [item["candidate_key"] for item in audited])
+
+    def test_independent_overlap_vectors(self) -> None:
+        vectors = {item["name"]: item for item in
+                   json.loads((FIXTURES / "vectors.json").read_text(encoding="utf-8"))["physical_candidates"]}
+        for name in ("crate", "domain"):
+            original = vectors[name]["tuple"][-1]
+            mappings = [
+                {"mapping_id": "short", "namespace": "cli_invocation", "original": "klyxr", "canonical": "bowfin", "policy": "replace"},
+                {"mapping_id": "long", "namespace": "display_brand", "original": original, "canonical": "Bowfin", "policy": "replace"},
+            ]
+            expected = {vectors["raw"]["expected"], vectors[name]["expected"]}
+            families = [
+                {"family_id": "short", "kind": "literal", "literal": "klyxr", "namespace": "cli_invocation",
+                 "unit_kinds": ["raw_text"], "candidate_keys": [vectors["raw"]["expected"]]},
+                {"family_id": "long", "kind": "literal", "literal": original, "namespace": "display_brand",
+                 "unit_kinds": ["raw_text"], "candidate_keys": [vectors[name]["expected"]]},
+            ]
+            files = [("x.txt", original.encode())]
+            discovered = generate.discover(files, mappings, "fixture/source", "1" * 40, self.limits)
+            audited = audit_scan.discover(files, families, "fixture/source", "1" * 40, self.limits)
+            self.assertEqual(2, len(discovered))
+            self.assertEqual(2, len(audited))
+            self.assertEqual(expected, {row["candidate_key"] for row in discovered})
+            self.assertEqual(expected, {row["candidate_key"] for row in audited})
+
+    def test_retained_cross_interpretation_rejection(self) -> None:
+        case = self.os_case()
+        manifest = lib.scan_manifest([("x.txt", b"klyxr")], self.limits)
+        package = self.workspace / "duplicate-physical"
+        lib.write_package(case["rows"][:2], manifest, package, self.limits)
+        self.assert_code("E_CANDIDATE_DUPLICATE", verify.verify_package,
+                         package, "fixture/source", "1" * 40, self.limits)
+        self.assert_code("E_CLASSIFICATION_BINDING", verify._validate_generated_meaning,
+                         case["rows"][:2], self.os_compact(case), self.limits)
+        # Hidden competing rule, with an otherwise valid one-row package.
+        case["rules"] = case["rules"][:2]
+        case["rules"][1]["expected_count"] = 0
+        # Use a path selector for the hidden competitor: an exact-list
+        # exhaustion failure must not substitute for detecting competition.
+        del case["rules"][1]["selector"]["candidate_keys"]
+        case["rules"][1]["selector"]["path_exact"] = "x.txt"
+        package = self.workspace / "hidden-competitor"
+        lib.write_package(case["rows"][:1], manifest, package, self.limits)
+        rows = verify.verify_package(package, "fixture/source", "1" * 40, self.limits)
+        self.assert_code("E_CLASSIFICATION_BINDING", verify._validate_generated_meaning,
+                         rows, self.os_compact(case), self.limits)
+        # The competitor is a different raw semantic kind, not merely another
+        # namespace in the same unit bucket.
+        self.assertEqual("embedded_identity", case["rules"][1]["selector"]["unit_kind"])
+
+    def test_retained_duplicate_audit_meanings(self) -> None:
+        policy, audit, rows = self.os_audit()
+        case = self.os_case()
+        other = case["rows"][1]
+        policy["families"].append({
+            **policy["families"][0], "family_id": "test",
+            "namespace": "test_identity", "unit_kinds": ["embedded_identity"],
+        })
+        audit["candidates"].append({**{field: other[field] for field in
+            ("candidate_key", "occurrence_key", "path", "unit_kind", "locator", "namespace", "original")},
+            "family_id": "test"})
+        audit["candidate_count"] = 2
+        self.assert_code("E_AUDIT_DUPLICATE", self.os_reconcile, policy, audit, rows + [other])
+        self.assert_code("E_AUDIT_DUPLICATE", audit_scan.discover,
+                         [("x.txt", b"klyxr")], policy["families"],
+                         "fixture/source", "1" * 40, self.limits)
+
+    def os_audit(self) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
+        case = self.os_case()
+        row = case["rows"][0]
+        policy = {"protocol_version": "m0.1-v2", "independently_authored": True, "families": [{
+            "family_id": "cli", "kind": "literal", "literal": "klyxr",
+            "namespace": "cli_invocation", "unit_kinds": ["raw_text"],
+            "candidate_keys": [case["key"]],
+        }]}
+        manifest = lib.scan_manifest([("x.txt", b"klyxr")], self.limits)
+        audit = {
+            "protocol_version": "m0.1-v2", "source_repository": "fixture/source",
+            "source_commit": "2" * 40, "source_tree": "1" * 40,
+            "source_export_sha256": "3" * 64, "input_export_sha256": "4" * 64,
+            "scan_manifest": manifest, "scan_manifest_sha256": lib.scan_manifest_digest(manifest, self.limits),
+            "candidate_count": 1,
+            "candidates": [{field: row[field] for field in
+                ("candidate_key", "occurrence_key", "path", "unit_kind", "locator", "namespace", "original")}],
+        }
+        audit["candidates"][0]["family_id"] = "cli"
+        return policy, audit, [row]
+
+    def os_reconcile(self, policy: dict[str, Any], audit: dict[str, Any], rows: list[dict[str, Any]]) -> None:
+        # Re-encode the mutated report; no stale serialization or outer digest
+        # is used to obtain the intended retained-meaning rejection.
+        verify.reconcile_bytes(
+            rows, lib.canonical_json_bytes(audit, self.limits), self.limits,
+            "fixture/source", "2" * 40, "1" * 40, "3" * 64, "4" * 64,
+            audit["scan_manifest_sha256"], policy,
+        )
+
+    def test_retained_audit_policy_population(self) -> None:
+        policy, audit, rows = self.os_audit()
+        self.os_reconcile(policy, audit, rows)
+        for mutation in ("phantom", "omitted", "undeclared", "wrong-family", "wrong-literal", "wrong-unit", "outside"):
+            p, a, r = copy.deepcopy((policy, audit, rows))
+            code = "E_AUDIT_CANDIDATE_FILTER"
+            if mutation == "phantom":
+                p["families"][0]["candidate_keys"].append("sha256:" + "0" * 64)
+            elif mutation == "omitted":
+                a["candidates"] = []
+                a["candidate_count"] = 0
+                r = []
+            elif mutation == "undeclared":
+                a["candidates"][0]["family_id"] = "unknown"
+                code = "E_AUDIT_FAMILY_BINDING"
+            elif mutation == "wrong-family":
+                p["families"].append({
+                    **p["families"][0], "family_id": "other", "namespace": "display_brand",
+                })
+                a["candidates"][0]["family_id"] = "other"
+                code = "E_AUDIT_FAMILY_BINDING"
+            elif mutation in {"wrong-literal", "wrong-unit"}:
+                if mutation == "wrong-literal":
+                    p["families"][0]["literal"] = "other"
+                else:
+                    p["families"][0]["unit_kinds"] = ["embedded_identity"]
+                code = "E_AUDIT_FAMILY_BINDING"
+            else:
+                p["families"][0]["candidate_keys"] = ["sha256:" + "0" * 64]
+            self.assert_code(code, self.os_reconcile, p, a, r)
+        phantom = copy.deepcopy(policy)
+        phantom["families"][0]["candidate_keys"].append("sha256:" + "0" * 64)
+        self.assert_code("E_AUDIT_CANDIDATE_FILTER", audit_scan.discover,
+                         [("x.txt", b"klyxr")], phantom["families"],
+                         "fixture/source", "1" * 40, self.limits)
+
+    def test_forged_physical_keys(self) -> None:
+        case = self.os_case()
+        rows = copy.deepcopy(case["rows"][:1])
+        rows[0]["candidate_key"] = "sha256:" + "0" * 64
+        package = self.workspace / "forged-physical"
+        lib.write_package(rows, lib.scan_manifest([("x.txt", b"klyxr")], self.limits), package, self.limits)
+        self.assert_code("E_CANDIDATE_KEY", verify.verify_package,
+                         package, "fixture/source", "1" * 40, self.limits)
+        policy, audit, rows = self.os_audit()
+        audit["candidates"][0]["candidate_key"] = "sha256:" + "0" * 64
+        self.assert_code("E_AUDIT_CANDIDATE_KEY", self.os_reconcile, policy, audit, rows)
+
+    def test_selector_presence_and_malformed_key_lists(self) -> None:
+        case = self.os_case()
+        base = case["rules"][0]
+        key = case["key"]
+        cases = [
+            ({"path_exact": "x.txt", "candidate_keys": [key]}, "E_SELECTOR_PATH"),
+            ({"path_exact": "x.txt", "candidate_keys": None}, "E_SELECTOR_PATH"),
+            ({"candidate_keys": [key], "json_pointer_prefix": ""}, "E_SELECTOR_POINTER"),
+            ({"candidate_keys": [key], "json_pointer_prefix": None}, "E_SELECTOR_POINTER"),
+            ({"path_exact": "x.txt", "json_pointer_prefix": None}, "E_SELECTOR_POINTER"),
+        ]
+        for value in (None, [], [key, key], ["bad"], [False], [{}]):
+            cases.append(({"candidate_keys": value}, "E_SELECTOR_CANDIDATE"))
+        for fields, code in cases:
+            rule = copy.deepcopy(base)
+            rule["selector"] = {"mapping_id": "cli", "unit_kind": "raw_text", **fields}
+            document = {"protocol_version": "m0.1-v2", "rules": [rule]}
+            self.assert_code(code, generate.validate_rules, document, case["mappings"], self.limits)
+            self.assert_code(code, verify._validate_rules_document, document, {"cli", "test", "machine"}, self.limits)
+        policy = self.os_audit()[0]
+        for value in (None, [], [key, key], ["bad"], [False], [{}]):
+            bad = copy.deepcopy(policy)
+            bad["families"][0]["candidate_keys"] = value
+            self.assert_code("E_AUDIT_CANDIDATE_FILTER", audit_scan.validate_policy, bad, self.limits)
+            self.assert_code("E_AUDIT_CANDIDATE_FILTER", verify._validate_audit_document, bad, self.limits)
+
+    def test_exact_classification_population_and_collision_descriptor(self) -> None:
+        case = self.os_case()
+        candidates = generate.discover(
+            [("x.txt", b"klyxr")], case["mappings"], "fixture/source", "1" * 40, self.limits
+        )
+        rules = copy.deepcopy(case["rules"][:1])
+        rules[0]["selector"]["candidate_keys"].append("sha256:" + "0" * 64)
+        self.assert_code("E_RULE_POPULATION", generate.classify, candidates, case["mappings"], rules, self.limits)
+        case["rules"] = rules
+        self.assert_code("E_CLASSIFICATION_BINDING", verify._validate_generated_meaning,
+                         case["rows"][:1], self.os_compact(case), self.limits)
+        # Inject a key collision to test the defensive descriptor, without
+        # claiming that a cryptographic collision is feasible.
+        for field, value in (
+            ("unit_kind", "structured_value"), ("path", "other.txt"), ("context", "different"),
+            ("locator", {"byte_start": 1, "byte_end": 6}),
+            ("source_file_sha256", "0" * 64), ("original", "other"),
+        ):
+            changed = copy.deepcopy(candidates[:2])
+            changed[1][field] = value
+            self.assert_code("E_CANDIDATE_COLLISION", generate.classify,
+                             changed, case["mappings"], rules, self.limits)
+
+    def test_new_work_accounting_boundaries(self) -> None:
+        case = self.os_case()
+        small = {**self.limits, "max_processing_steps": 1}
+        document = {"protocol_version": "m0.1-v2", "rules": case["rules"]}
+        self.assert_code("E_PROCESSING_STEPS", generate.validate_rules, document, case["mappings"], small)
+        self.assert_code("E_PROCESSING_STEPS", verify._validate_rules_document, document, {"cli", "test", "machine"}, small)
+        policy = self.os_audit()[0]
+        self.assert_code("E_PROCESSING_STEPS", audit_scan.validate_policy, policy, small)
+        self.assert_code("E_PROCESSING_STEPS", verify._validate_audit_document, policy, small)
+        self.assert_code("E_PROCESSING_STEPS", audit_scan.discover,
+                         [("x.txt", b"klyxr")], policy["families"], "fixture/source", "1" * 40, small)
+        self.assert_code("E_PROCESSING_STEPS", lib.candidate_key,
+                         "fixture/source", "1" * 40, "x.txt", "raw_text", {"byte_start": 0, "byte_end": 5}, "klyxr", small)
+        self.assert_code("E_PROCESSING_STEPS", lib.candidate_key_set,
+                         [case["key"]], self.limits, lib.WorkBudget(small), "E_SELECTOR_CANDIDATE")
+        large_keys = ["sha256:" + format(number, "064x") for number in range(512)]
+        self.assert_code("E_PROCESSING_STEPS", lib.candidate_key_set,
+                         large_keys, self.limits,
+                         lib.WorkBudget({**self.limits, "max_processing_steps": 512 * 4609}),
+                         "E_SELECTOR_CANDIDATE")
+        self.assert_code("E_PROCESSING_STEPS", lib.require_key_population,
+                         {case["key"]}, {case["key"], "sha256:" + "0" * 64},
+                         lib.WorkBudget(small), "E_RULE_POPULATION")
+        self.assert_code("E_PROCESSING_STEPS", lib.charge_value,
+                         lib.WorkBudget(small), lib.physical_descriptor("x" * 4096, "raw_text", {"byte_start": 0, "byte_end": 5}, "klyxr"))
+        # First/last/missing linear membership have explicit operation budgets.
+        for position in ("first", "last", "missing"):
+            selector = {"candidate_keys": large_keys[:256]}
+            row = case["rows"][0].copy()
+            if position == "first":
+                row["candidate_key"] = selector["candidate_keys"][0]
+                cap = 142
+            else:
+                row["candidate_key"] = (selector["candidate_keys"][-1]
+                                        if position == "last" else "sha256:" + "f" * 64)
+                cap = 256 * 143 - 1
+            self.assert_code("E_PROCESSING_STEPS", verify._row_matches_selector,
+                             row, selector, lib.WorkBudget({**self.limits, "max_processing_steps": cap}))
+            generator_selector = {**selector, "mapping_id": row["mapping_id"], "unit_kind": row["unit_kind"]}
+            # CLI mapping comparison costs 7; raw_text comparison costs 17.
+            self.assert_code("E_PROCESSING_STEPS", generate._selector_matches,
+                             generator_selector, row,
+                             lib.WorkBudget({**self.limits, "max_processing_steps": cap + 24}))
+
+    def test_key_construction_exhaustion_and_group_budget_sites(self) -> None:
+        policy = self.os_audit()[0]
+        # Independently calculated from the documented envelope for this literal
+        # one-family fixture: policy list 34,560; key-set construction 4,610.
+        # Empty input makes the final missing-key check the next variable work.
+        for cap, target in ((39169, "candidate_key_set"), (57601, "require_key_population")):
+            with mock.patch.object(lib, target, wraps=getattr(lib, target)) as charged:
+                self.assert_code("E_PROCESSING_STEPS", audit_scan.discover, [], policy["families"],
+                                 "fixture/source", "1" * 40,
+                                 {**self.limits, "max_processing_steps": cap})
+                self.assertEqual(1, charged.call_count)
+        # Equal and unequal sets both precharge the complete comparison envelope.
+        key = self.os_case()["key"]
+        for other in ({key}, {"sha256:" + "0" * 64}):
+            self.assert_code("E_PROCESSING_STEPS", lib.require_key_population,
+                             {key}, other, lib.WorkBudget({**self.limits, "max_processing_steps": 27647}),
+                             "E_RULE_POPULATION")
+        lib.require_key_population({key}, {key},
+            lib.WorkBudget({**self.limits, "max_processing_steps": 27648}), "E_RULE_POPULATION")
+        # Two interpretations reach the same group. The first descriptor costs
+        # 272,448 units, plus 64 for empty rules and 72 for its key. The next
+        # descriptor's outer list consumes 256; its inner precharge must stop.
+        candidates = copy.deepcopy(self.os_case()["rows"][:2])
+        for row in candidates:
+            row["path"] = "x" * 4096
+        with mock.patch.object(lib, "charge_value", wraps=lib.charge_value) as charged:
+            self.assert_code("E_PROCESSING_STEPS", generate.classify, candidates, [], [],
+                             {**self.limits, "max_processing_steps": 272840})
+            descriptors = [call.args[1] for call in charged.call_args_list
+                           if isinstance(call.args[1], list) and len(call.args[1]) == 3
+                           and isinstance(call.args[1][0], list)]
+            self.assertEqual(2, len(descriptors))
+
     def test_independent_auditor_reconciles_exact_keys(self) -> None:
         self.verify_valid(self.build_valid("independent"))
 
     def test_equal_count_different_key(self) -> None:
         built = self.build_valid("different-key")
         audit = verify.canonical_document(built["audit_path"], self.limits)
-        audit["candidates"][0]["locator"][next(key for key in audit["candidates"][0]["locator"] if key.endswith("start"))] += 1
-        candidate = audit["candidates"][0]
+        # Keep the literal-family obligation valid so this control still reaches
+        # exact semantic-key reconciliation, rather than a suffix-family guard.
+        candidate = next(row for row in audit["candidates"] if row["path"] == "notes.txt")
+        candidate["locator"]["byte_start"] += 1
         candidate["candidate_key"] = lib.candidate_key(
             "fixture/source", audit["source_tree"], candidate["path"],
             candidate["unit_kind"], candidate["locator"], candidate["original"], self.limits,
@@ -478,7 +825,7 @@ class ProtocolTests(unittest.TestCase):
         self.write_json(built["audit_path"], audit)
         rows = verify.verify_package(built["package"], "fixture/source", built["source_export"]["tree"], self.limits)
         index = verify.canonical_document(built["package"] / "index.json", self.limits)
-        self.assert_code("E_KEY_SET_MISMATCH", verify.reconcile, rows, built["audit_path"], self.limits, "fixture/source", built["source_export"]["commit"], built["source_export"]["tree"], lib.export_digest(built["source_export"], self.limits), lib.export_digest(built["input_export"], self.limits), index["scan_manifest_sha256"])
+        self.assert_code("E_KEY_SET_MISMATCH", verify.reconcile, rows, built["audit_path"], self.limits, "fixture/source", built["source_export"]["commit"], built["source_export"]["tree"], lib.export_digest(built["source_export"], self.limits), lib.export_digest(built["input_export"], self.limits), index["scan_manifest_sha256"], self.fixture["audit_policy"])
 
     def test_stale_rule_count(self) -> None:
         built = self.build_valid("stale-count")
@@ -925,7 +1272,11 @@ class ProtocolTests(unittest.TestCase):
             return original_read(path, maximum)
 
         with mock.patch.object(verify.lib, "read_bounded_file", side_effect=one_audit_read):
-            verify.verify_evidence_binding(*arguments)
+            with mock.patch.object(verify, "reconcile_bytes", wraps=verify.reconcile_bytes) as reconciled:
+                verify.verify_evidence_binding(*arguments)
+                self.assertEqual(1, reconciled.call_count)
+                self.assertEqual(audit_data, reconciled.call_args.args[1])
+                self.assertEqual(documents["audit-policy.json"], reconciled.call_args.args[-1])
         self.assertEqual(1, audit_reads)
         wrong_tooling = list(arguments)
         wrong_tooling[17] = {**expected_tooling, "commit": "f" * 40}

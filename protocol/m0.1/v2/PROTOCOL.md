@@ -26,7 +26,7 @@ current evidence, or acceptance dependency.
 
 ## 2. Governing identity
 
-This accepted revision is subordinate to:
+The accepted baseline and this unaccepted repair proposal are subordinate to:
 
 | Item | Identity |
 | --- | --- |
@@ -143,7 +143,7 @@ and job URLs never enter deterministic output.
 
 ## 7. Compact inputs
 
-Production compact inputs are not included in this accepted revision. A future
+Production compact inputs are not included in this protocol directory. A future
 separately authorized input set contains:
 
 - `mappings.json` — namespace-qualified original/canonical mappings;
@@ -185,6 +185,11 @@ Selectors are a conjunction of reviewed literal fields only:
   or one nonempty, duplicate-free `candidate_keys` set (required);
 - optional exact `json_pointer_prefix`, permitted only with a path selector.
 
+Optional-field presence is significant: explicit null is not absence. Key lists
+must contain only valid physical-key strings. A key selector cannot contain any
+path selector or a JSON-pointer field, even if that other field is null. Both
+runtime validators and the schema enforce this same language.
+
 There are no regular expressions, globs, code expressions, plugins, or callbacks.
 Historical rules require `path_exact` or exact `candidate_keys`; broad
 historical exemptions reject.
@@ -193,6 +198,10 @@ Every rule records expected selected count, live/compatibility/historical role,
 phase, rationale, representative and boundary context, producer, consumer,
 support/removal policy, validation/test identity, and historical relationship.
 One occurrence must match exactly one rule. Zero or multiple matches reject.
+For classification as well as audit, `candidate_keys` denotes an **exact expected
+population**, not merely permitted membership. Every listed key must resolve to
+that rule's selected physical population; a nonexistent or otherwise unused key
+rejects even when `expected_count` agrees. Counts remain a separate check.
 
 ### 7.3 Independent audit policy
 
@@ -216,6 +225,12 @@ The auditor receives no classification rules, canonical identities, roles,
 phases, or historical exclusions. It reports both physical candidate keys and
 semantic occurrence keys. Completeness is equality of exact occurrence-key sets,
 never counts.
+Discovery and retained-result validation reject competing semantic audit records
+for one physical key. The retained validator resolves each record's family ID,
+checks its namespace, unit kind and literal-family constraints, and requires exact
+per-family key-population equality, including filtered families returning no rows.
+The policy is taken from the authenticated compact-input export in evidence mode;
+agreement with generated rows does not substitute for these policy checks.
 
 ## 8. Occurrence units and precedence
 
@@ -253,6 +268,12 @@ assigning a namespace or any classification meaning. The raw semantic unit kinds
 `raw_text` in this tuple because those distinctions are assigned only during
 classification. All mapping interpretations of the same physical candidate
 therefore share one candidate key.
+The collision guard compares the complete normalized local descriptor (path,
+physical kind, locator, original text), plus source-file hash and context. The
+repository and source tree are fixed by the scan. Permitted differences in raw
+semantic kind do not make a collision; differences in physical kind do. Package
+verification also rejects a second emitted row for an already emitted physical
+key, even when its semantic occurrence key is distinct.
 
 An occurrence key is:
 
@@ -346,9 +367,15 @@ contain the exact required set: `PROTOCOL.md`, `README.md`, `audit_scan.py`,
 
 After structural package verification, the verifier independently relates every
 row back to the compact inputs. Its mapping ID must resolve to the exact retained
-namespace, original, and canonical identities. Exactly one reviewed rule must
-match the row's mapping, unit, path selector, and optional JSON-Pointer prefix;
-the row's role, phase, producer, consumer, support policy, validation identity,
+namespace, original, and canonical identities. The verifier indexes all rules by
+original spelling and normalized physical kind, rather than by the row's chosen
+mapping. It independently accounts for the raw semantic kind discoverable in each
+namespace and examines competing mappings and raw semantic kinds. Exactly one
+applicable reviewed rule must match the physical candidate's path/pointer or key;
+that rule must name the emitted mapping and semantic unit. A hidden competing
+rule rejects even if its declared expected count is zero. An undiscoverable
+zero-count path rule is not a competing interpretation.
+The row's role, phase, producer, consumer, support policy, validation identity,
 historical relationship, rule ID, and per-rule population must agree with that
 rule. A self-consistent rehash after altering classification meaning rejects.
 
@@ -356,7 +383,10 @@ The evidence record also binds the exact independent-audit bytes. Reconciliation
 parses the same single byte buffer whose SHA-256 is recorded; it never reopens the
 audit pathname for semantic validation. It checks source, input-export, and
 scan-manifest identities and requires exact occurrence-key equality with the
-semantically bound package rows.
+semantically bound package rows. It receives the authenticated `audit-policy.json`
+from the same compact-input view and enforces the family/population requirements
+of §7.3 before set reconciliation. A freshly rehashed audit result that omits a
+declared key or invents a family remains invalid.
 
 ## 13. Deterministic versus runtime provenance
 
@@ -372,8 +402,8 @@ is the explicit reviewed input.
 Generator, auditor, and verifier deliberately share the authenticated Git-export
 boundary, fatal filesystem enumeration, source JSON parsing, manifest
 construction, strict JSON, canonical encoding, SHA-256, path validation,
-occurrence-key construction, and bounded file I/O. That shared boundary proves
-which bytes both scanners received; it is a disclosed common-mode surface, not an
+physical- and semantic-key construction, and bounded file I/O. That shared
+boundary proves which bytes both scanners received; it is a disclosed common-mode surface, not an
 independent enumeration claim. Generator rule matching and structured traversal
 are not imported by the auditor. Auditor matching, traversal, and discovery policy
 are not imported by the generator. The verifier does not call either scanner when
@@ -391,9 +421,30 @@ materialization, digit-suffix traversal, offset construction, and structured
 traversal are charged to the processing budget. Package verification charges the
 cumulative serialized-byte budget before each document or chunk read; it never
 first materializes an over-budget package and rejects afterward. Classification-
-meaning verification indexes rules by mapping and unit kind, then charges index
-construction, lookups, selector checks, string comparisons, semantic comparisons,
+meaning verification indexes rules by spelling and normalized physical kind,
+then charges index construction, lookups, selector checks, string comparisons, semantic comparisons,
 and population accounting before or during that work.
+
+The occurrence-semantics repair additionally precharges key-list validation and
+set construction, complete descriptor comparisons, physical-key encoding/hashing,
+and exact-set exhaustion. `charge_value` incrementally charges 64 units per value
+and per string character; container slots cost 64 each, object ordering adds a
+quadratic member-count envelope, and object keys additionally cost 64 times their
+length times the member count. This deliberately covers UTF-8/JSON expansion,
+ordering, hashing and repeated comparisons without encoding or copying first.
+Exact-key set construction validates each bounded, fixed-width key before adding
+it. Exhaustion charges `128 * 72 * (1 + actual_count + declared_count)` before
+comparison, on success and failure alike. Linear selector searches charge each
+comparison, including unsuccessful first/last/missing cases. Processing loops pass
+their existing stage-local `WorkBudget` into physical-key creation; they do not
+reset it for each key. Limits are unchanged. These are conservative logical-work
+accounting rules, not measured CPU or wall-clock guarantees or a new global budget
+across independent stages.
+
+Physical-key agreement between scanners cannot validate their shared primitive.
+The new fixed vectors state hand-selected physical tuples, literal canonical bytes
+and independently computed digests. Audit filters in the mixed-role and overlap
+controls use these fixed expectations, not generator discoveries.
 
 ## 15. Rejection behavior
 
@@ -518,5 +569,17 @@ exception identity, complete occurrence-key identity where different structured
 units legitimately share a locator, fresh fixture state for each mutation,
 classification-meaning budget exhaustion, numeric substitution for Boolean review
 fields, and rejection of non-root compiler-source views.
+
+The proposed occurrence-semantics controls add all three normalized raw kinds;
+independent physical-key vectors and overlapping short/long spellings; two-row
+physical duplicates and a one-row hidden competing path rule with zero expected
+count; retained-audit phantom/missing keys and unknown/wrong families; forged
+physical keys with valid semantic keys; malformed/null selector properties;
+normalized collision descriptors; exact classification populations; and targeted
+key-list, construction, exhaustion, grouping and linear-search budget failures.
+Malformed retained packages are rebuilt with current descriptors; retained audit
+mutations are re-encoded before reconciliation. These source-authored controls
+remain unexecuted pending exact-revision independent review and Greg's separate
+synthetic-execution authorization.
 
 No test execution is authorized by the existence of these files.

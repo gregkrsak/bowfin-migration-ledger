@@ -20,9 +20,9 @@ merge. It does not accept M0.1 or authorize M1.
 6. Only after exact-revision independent review may Greg authorize isolated
    synthetic test execution.
 
-## Accepted interface
+## Interface (including the proposed repair)
 
-The following commands describe the accepted interface. Their presence is not an
+The following commands describe this candidate's interface. Their presence is not an
 authorization to execute the tooling against production inputs or generate
 migration evidence:
 
@@ -68,7 +68,8 @@ python3 -I verify.py package \
   --source-tree <40-hex-tree> \
   --source-export-sha256 <64-hex-digest> \
   --input-export-sha256 <64-hex-digest> \
-  --audit <audit-result.json>
+  --audit <audit-result.json> \
+  --audit-policy <audit-policy.json>
 
 python3 -I verify.py evidence \
   --record <migration-evidence-record.json> \
@@ -129,6 +130,11 @@ python3 -I tests/test_protocol.py
 Production inputs, evidence generation, workflow activation, and phase acceptance
 remain separately gated.
 
+Package mode requires `--audit-policy` whenever `--audit` is supplied. It checks
+the retained audit against that supplied policy, but does not authenticate the
+policy's provenance. Evidence mode instead takes the policy from its authenticated
+compact-input export. Package-mode success is not evidence acceptance.
+
 Compiler-source commands reject a nonempty source view prefix or a source view
 tree different from the repository-root tree. Selected views remain supported for
 tooling and other non-source dependency classes.
@@ -143,8 +149,9 @@ append-only decision successors, every recovery edge's object kind, and strict
 Boolean types. Binding verification now requires independently reviewed source
 change paths (`--expected-source-change-path`, repeated; empty means no changes).
 See PROTOCOL.md §16 for the exact conservative policy and evidence limits. The
-exact revision received independent static review, separately authorized bounded
-synthetic execution, focused independent confirmation, Greg's acceptance, and an
+accepted baseline `0b81e183df466890a779f1bbd777c6c864835a3b` received independent
+static review, separately authorized bounded synthetic execution, focused
+independent confirmation, Greg's acceptance, and an
 ordinary merge. Production inputs, production execution, migration evidence,
 M0.1 acceptance, and M1 remain separately gated.
 
@@ -158,7 +165,14 @@ It exists to distinguish identical legacy spellings used as CLI names, package
 names, repository identities, domains, display brands, test identities, or
 historical prose without treating one spelling as one meaning.
 
-This revision has received no independent review or execution authorization.
+Sarah reviewed initial head `dd81974fcd7733a38ae00f67666df5208f059190` and required
+repair. This follow-up addresses BML-OS01–07: verifier cross-interpretation
+competition, authenticated audit-policy populations, strict selector presence,
+new-work accounting, independent fixed-vector controls, normalized collision
+descriptors, and exact population semantics for classification key lists.
+The initial adverse review is preserved, not rewritten as acceptance of this
+changed revision. The follow-up has not yet received independent confirmation or
+execution authorization.
 Do not execute it, generate production evidence with it, accept M0.1 from it, or
 begin M1. The existing production-input PR remains a separate draft and must be
 repaired only after this protocol revision is independently reviewed and accepted.

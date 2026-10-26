@@ -51,7 +51,23 @@
     {"expected_code": "E_BINDING_ANCESTRY", "mutation_id": "hidden-introduced-parent", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"},
     {"expected_code": "E_OWNER_DECISION", "mutation_id": "owner-decision-meaning-drift", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"},
     {"expected_code": "E_RECOVERY_BUNDLE", "mutation_id": "missing-recovery-object", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"},
-    {"expected_code": "E_MULTIPLE_CLASSIFICATION", "mutation_id": "same-spelling-semantic-overlap", "test_method": "test_candidate_key_separates_physical_discovery_from_semantics"}
+    {"expected_code": "E_MULTIPLE_CLASSIFICATION", "mutation_id": "same-spelling-semantic-overlap", "test_method": "test_candidate_key_separates_physical_discovery_from_semantics"},
+    {"expected_code": "E_CANDIDATE_DUPLICATE", "mutation_id": "retained-two-physical-interpretations", "test_method": "test_retained_cross_interpretation_rejection"},
+    {"expected_code": "E_CLASSIFICATION_BINDING", "mutation_id": "hidden-zero-count-path-competitor", "test_method": "test_retained_cross_interpretation_rejection"},
+    {"expected_code": "E_AUDIT_DUPLICATE", "mutation_id": "audit-duplicate-physical-meaning", "test_method": "test_retained_duplicate_audit_meanings"},
+    {"expected_code": "E_AUDIT_CANDIDATE_FILTER", "mutation_id": "retained-phantom-omitted-outside-audit-key", "test_method": "test_retained_audit_policy_population"},
+    {"expected_code": "E_AUDIT_FAMILY_BINDING", "mutation_id": "retained-undeclared-or-wrong-audit-family", "test_method": "test_retained_audit_policy_population"},
+    {"expected_code": "E_CANDIDATE_KEY", "mutation_id": "forged-physical-package-key", "test_method": "test_forged_physical_keys"},
+    {"expected_code": "E_AUDIT_CANDIDATE_KEY", "mutation_id": "forged-physical-audit-key", "test_method": "test_forged_physical_keys"},
+    {"expected_code": "E_SELECTOR_PATH", "mutation_id": "key-plus-path-including-null", "test_method": "test_selector_presence_and_malformed_key_lists"},
+    {"expected_code": "E_SELECTOR_POINTER", "mutation_id": "key-plus-pointer-or-null-pointer", "test_method": "test_selector_presence_and_malformed_key_lists"},
+    {"expected_code": "E_SELECTOR_CANDIDATE", "mutation_id": "classification-null-empty-duplicate-malformed-keys", "test_method": "test_selector_presence_and_malformed_key_lists"},
+    {"expected_code": "E_AUDIT_CANDIDATE_FILTER", "mutation_id": "audit-null-empty-duplicate-malformed-keys", "test_method": "test_selector_presence_and_malformed_key_lists"},
+    {"expected_code": "E_RULE_POPULATION", "mutation_id": "classification-phantom-key-population", "test_method": "test_exact_classification_population_and_collision_descriptor"},
+    {"expected_code": "E_CLASSIFICATION_BINDING", "mutation_id": "retained-classification-phantom-key-population", "test_method": "test_exact_classification_population_and_collision_descriptor"},
+    {"expected_code": "E_CANDIDATE_COLLISION", "mutation_id": "normalized-physical-descriptor-disagreement", "test_method": "test_exact_classification_population_and_collision_descriptor"},
+    {"expected_code": "E_PROCESSING_STEPS", "mutation_id": "key-validation-encoding-and-membership-budget", "test_method": "test_new_work_accounting_boundaries"},
+    {"expected_code": "E_PROCESSING_STEPS", "mutation_id": "filter-construction-exhaustion-and-second-group-budget", "test_method": "test_key_construction_exhaustion_and_group_budget_sites"}
   ],
   "controls": [
     {"control_id": "single-read-audit-byte-binding", "test_method": "test_evidence_record_binds_actual_exports_and_generated_bytes"},
@@ -60,7 +76,11 @@
     {"control_id": "fresh-fixture-per-mutation", "test_method": "test_missing_surface_and_unsupported_not_applicable"},
     {"control_id": "physical-candidate-semantic-partition", "test_method": "test_candidate_key_separates_physical_discovery_from_semantics"},
     {"control_id": "same-file-mixed-role-partition", "test_method": "test_exact_candidate_keys_split_roles_within_one_file"},
-    {"control_id": "independent-audit-candidate-filter", "test_method": "test_exact_candidate_keys_split_roles_within_one_file"}
+    {"control_id": "independent-audit-candidate-filter", "test_method": "test_exact_candidate_keys_split_roles_within_one_file"},
+    {"control_id": "literal-physical-vectors-and-three-raw-kinds", "test_method": "test_physical_vectors_and_all_raw_kinds"},
+    {"control_id": "independent-short-long-overlap-vectors", "test_method": "test_independent_overlap_vectors"},
+    {"control_id": "authenticated-policy-and-single-buffer-forwarding", "test_method": "test_evidence_record_binds_actual_exports_and_generated_bytes"},
+    {"control_id": "exact-set-comparison-budget-boundary", "test_method": "test_key_construction_exhaustion_and_group_budget_sites"}
   ],
   "protocol_version": "m0.1-v2-fixture"
 }
