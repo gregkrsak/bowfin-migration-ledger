@@ -1,12 +1,13 @@
 # M0.1 v2 Rule-to-Occurrence Ledger Protocol
 
-**Status:** Accepted protocol/tooling revision including the occurrence-semantics
-repair. Reviewed head `23bed495c73b600d0a849b3c336d08a5c6cdd1b1`, tree
+**Status:** Proposed budget-only revision of the accepted protocol/tooling.
+The prior occurrence-semantics repair at reviewed head `23bed495c73b600d0a849b3c336d08a5c6cdd1b1`, tree
 `c642dca4c4b8ae4e08f1250e1862bbe821c43b04`, and protocol subtree
 `d0e0c7419020415ddc7996631db616b2f73a25b3` were accepted by Greg and integrated
 through ordinary merge commit `ef9574336edf2b16aae4308330d581f0bacb6e45`.
-Production inputs and evidence generation remain separately gated. M0.1 remains
-unaccepted and M1 remains unauthorized.
+This changed budget profile is not yet reviewed, executed, or accepted as a
+current tooling dependency. Production inputs and evidence generation remain
+separately gated. M0.1 remains unaccepted and M1 remains unauthorized.
 
 ## 1. Purpose and non-authority
 
@@ -604,3 +605,33 @@ The exact accepted repair received independent static review and one separately
 authorized bounded run in which all 54 authored tests passed. Both one-run
 authorizations are exhausted. The existence or acceptance of these files grants
 no production execution, evidence generation, M0.1 acceptance, or later authority.
+
+## 18. Proposed larger logical-work budget
+
+Greg authorized a substantial finite work-budget increase as the simpler
+alternative to the generator rewrite in draft ledger PR #8. This proposal is
+based on ledger main at `edb0a11851cb1b51727c857d03c045ad1e7daa95`; it does not
+include that rewrite or the paused production-input successor.
+
+The sole limits-field change is `max_processing_steps`: 2,000,000,000 becomes
+100,000,000,000 (50 times larger). This is the existing stage-local WorkBudget
+limit, so it applies to each generator/auditor/verifier stage that uses that
+counter, not to a new aggregate process allowance. Every other limit, matching
+algorithm, charge site, semantic check, schema, and test/fixture remains unchanged.
+The library's exact limits-file SHA-256 pin is updated to the new file identity;
+the identity check itself is unchanged and remains mandatory.
+
+The prior generator's proven raw-text lower bound for the exact fixed compiler
+candidate and PR #5's original 195 mappings is 2,371,040,422 units. The larger
+budget removes that particular numerical impossibility. It is not a measured
+runtime result, a complete upper-bound proof, or a guarantee of production
+success. More logical work is now permitted before rejection; this counter is
+not an elapsed-time, CPU-seconds, or physical-memory limit. Existing byte, file,
+row, nesting, and other safety bounds remain in force.
+
+Prior acceptance and 54-test results in this document describe the earlier
+accepted profile, not this changed revision. The new profile has static-only
+preparation checks and requires independent review and Greg's separate
+acceptance/integration decisions. Raising the limit does not authorize tooling
+or test execution, production scanning, evidence generation, readiness, merge,
+M0.1 completion, M1, or later work. PR #5 and PR #8 remain untouched.

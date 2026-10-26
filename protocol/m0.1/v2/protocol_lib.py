@@ -22,7 +22,7 @@ from typing import Any, Iterable, NoReturn
 
 
 PROTOCOL_VERSION = "m0.1-v2"
-EXPECTED_LIMITS_SHA256 = "2ae8756765340be8e25a5e3cc6688db1bbe382fea33084a435643af76210d8de"
+EXPECTED_LIMITS_SHA256 = "dd5785a0d34019bb37782caf2c5886cb987493eacfd24be1f6d2571adf0cb512"
 UNIT_KINDS = frozenset(
     {
         "path_component",
