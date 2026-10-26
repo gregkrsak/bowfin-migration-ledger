@@ -68,7 +68,27 @@ repair at head `23bed495c73b600d0a849b3c336d08a5c6cdd1b1`, tree
 commit `ef9574336edf2b16aae4308330d581f0bacb6e45` through PR #6. The original
 acceptance and adverse repair history remain preserved.
 
-This acceptance makes that exact protocol/tooling revision eligible as a current
+The subsequent budget-only profile was reviewed and tested at head
+`62a19baf0f67474f0c25c609f9a4300aa11e74d4`, tree
+`27a18b261d8f5325c2414ad9e18193e91b870a37`, and protocol subtree
+`cd514c89fda2d91318c7a63b8b737118141f7b2c`. Greg integrated it through PR #9
+by ordinary merge `4020cb64c1119ccfb4a4bc77b3f39e8b698ba2f5`, whose ordered
+parents and resulting tree match the recorded base and reviewed head. This
+immutable merge identifies the current accepted tooling dependency; a later
+records-only closeout does not substitute its own head as a tested revision.
+
+The profile raises only `max_processing_steps` from 2,000,000,000 to
+100,000,000,000, updates its mandatory digest pin, and documents the change.
+Generator/auditor/verifier algorithms and the 54 predecessor tests are unchanged.
+One separately authorized contained Actions invocation passed all 54 tests;
+Sarah independently confirmed its evidence. This is synthetic evidence, not a
+production runtime estimate or proof that a real scan completes within limits.
+The one-run authorization is exhausted. See the work-budget acceptance record,
+verbatim reviews, and retained validation capture under `decisions/m0.1/`.
+Operational PR #10 is excluded from this acceptance and closeout; its runner is
+not part of the accepted tooling. Its captured state is recorded separately.
+
+This acceptance makes the exact PR #9 tooling revision eligible as a current
 M0.1 dependency. It does not authorize production classification inputs, scanner
 execution against the compiler repository, migration evidence generation, M0.1
 acceptance, M1, or later work. See the preparation authorization and protocol-

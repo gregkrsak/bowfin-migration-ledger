@@ -5,9 +5,19 @@ This directory is reserved for accepted, current migration evidence. Material in
 for use here.
 
 No M0.1 v2 production evidence exists yet. The protocol/tooling revision,
-including the occurrence-semantics repair merged through PR #6, has been accepted.
-That acceptance does not accept PR #5 or its compact inputs and does not authorize
-production scanning, evidence generation, M0.1, or a later phase.
+including the occurrence-semantics repair merged through PR #6 and budget-only
+profile merged through PR #9, has been accepted. The current accepted tooling is
+identified by immutable merge `4020cb64c1119ccfb4a4bc77b3f39e8b698ba2f5`, tree
+`27a18b261d8f5325c2414ad9e18193e91b870a37`, protocol subtree
+`cd514c89fda2d91318c7a63b8b737118141f7b2c`. Its one authorized synthetic run
+passed 54/54; that evidence was independently confirmed, not extended to a real
+production inventory. The one-run authorization is exhausted.
+
+The work-budget closeout stores review and validation records under `decisions/`,
+not here. It adds no production package or C/E/D/P receipt, imports no operational
+workflow/helper from PR #10, and does not accept PR #5 or its compact inputs.
+Production scanning, evidence generation, M0.1, and later phases remain separately
+gated and are not authorized by the tooling acceptance or this closeout.
 
 ## Required layout
 

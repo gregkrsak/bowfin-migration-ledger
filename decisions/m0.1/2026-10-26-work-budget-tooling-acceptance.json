@@ -1,0 +1,284 @@
+{
+  "record_class": "protocol_tooling_budget_acceptance",
+  "record_version": 1,
+  "phase": "M0.1",
+  "record_status": "proposed_records_closeout_of_completed_PR9_tooling_integration",
+  "capture": {
+    "captured_at": "2026-10-26T08:01:28.100Z",
+    "captured_by": "Miles",
+    "method": "Exact GitHub commit/tree/PR and publication readbacks; verbatim preservation of Greg-supplied Sarah reports; byte-identical reuse of the retained validation blob; complete role-attributed chat transcriptions; data-only byte/hash/JSON/ancestry checks.",
+    "verification_limit": "The copied chat bodies, reviewer attribution, GitHub account name, and digests do not independently prove physical human identity or authority. Greg’s sole-owner process role, contextual authorization, report publication, and the separately verified owner-account merge corroborate the disposition."
+  },
+  "subject": {
+    "repository": "gregkrsak/bowfin-migration-ledger",
+    "pull_request": 9,
+    "target_branch": "main",
+    "candidate_branch": "m01-v2-larger-work-budget",
+    "accepted_base_commit": "edb0a11851cb1b51727c857d03c045ad1e7daa95",
+    "accepted_base_tree": "633ab4de8c05f95a5d2672c15b40df2cd5689aff",
+    "reviewed_tested_head": "62a19baf0f67474f0c25c609f9a4300aa11e74d4",
+    "reviewed_tested_tree": "27a18b261d8f5325c2414ad9e18193e91b870a37",
+    "candidate_sole_parent": "edb0a11851cb1b51727c857d03c045ad1e7daa95",
+    "protocol_path": "protocol/m0.1/v2",
+    "protocol_subtree": "cd514c89fda2d91318c7a63b8b737118141f7b2c",
+    "test_module_blob": "8c6e8a241cbc93b947ca9ee29c1efd7d91e05551",
+    "limits_blob": "00859ebf3bf80203e3ade39af7b88e28c39ff604",
+    "limits_sha256": "dd5785a0d34019bb37782caf2c5886cb987493eacfd24be1f6d2571adf0cb512"
+  },
+  "governing_contract": {
+    "repository": "gregkrsak/klyxr",
+    "commit": "609822762abd46c13ecd6187ccc8510695e52b2f",
+    "tree": "ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239",
+    "path": "docs/migration/BOWFIN-NAME-MIGRATION-PLAN.md",
+    "blob": "03cd2c5b584a996ebfb873491f0d2888c984cfb9",
+    "changed_by_closeout": false
+  },
+  "accepted_scope": [
+    "PR #9’s exact three-file tooling profile: limits.json, its mandatory digest pin in protocol_lib.py, and PROTOCOL.md",
+    "max_processing_steps increases from 2,000,000,000 to 100,000,000,000 logical steps per stage-local WorkBudget",
+    "Existing generator/auditor/verifier algorithms, charge sites, all other limits, and the 54 predecessor test methods are unchanged"
+  ],
+  "reviews": [
+    {
+      "stated_reviewer": "Sarah",
+      "supplied_by": "Greg Krsak",
+      "publisher": "Miles",
+      "source_record_id": "Pasted text(20261026-063807).txt",
+      "body_path": "decisions/m0.1/reviews/2026-10-26-work-budget-static-review.md",
+      "body_blob_sha1": "70305d69a11be9e52be4ef04cd80d04ef45d3ae5",
+      "body_byte_count": 11184,
+      "body_sha256": "bf4e5c911aaa89b5a1d2cb5c23a9197d1abc848115923f8f427adf8c15885f24",
+      "disposition": "No blocking findings; recommended one separately authorized bounded synthetic invocation",
+      "publication": {
+        "id": 6409967889,
+        "url": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/9#issuecomment-6409967889",
+        "created_at": "2026-10-26T06:45:06Z",
+        "updated_at": "2026-10-26T06:45:06Z",
+        "body_byte_count": 11883,
+        "body_sha256": "fe9e81e44d513a650b910262d4613e23f8fa95205680ca411338a1a9d267b1aa"
+      },
+      "publication_note": "## Preserved static review — supplied by Greg, published by Miles\n\nThe complete Sarah report below is preserved verbatim from Greg's uploaded text. This attribution records the stated reviewer and actual publication context; it does not claim a separately authenticated Sarah GitHub identity.\n\nSubject: PR #9, head `62a19baf0f67474f0c25c609f9a4300aa11e74d4`, tree `27a18b261d8f5325c2414ad9e18193e91b870a37`.\n\nOriginal report UTF-8 SHA-256: `bf4e5c911aaa89b5a1d2cb5c23a9197d1abc848115923f8f427adf8c15885f24`.\n\nThis comment is a publication copy, not immutable owner acceptance or execution authority. Canonical review/decision capture remains part of closeout before acceptance is finalized.\n\n---\n\n",
+      "chronology_limit": "The preserved review is verbatim, including its review-time draft-state and unposted statements. Miles’s subsequent publication, owner-authorized readiness, and Greg’s later merge are separate events.",
+      "evidence_limit": "Reviewer authorship is process attribution supplied through Greg’s chat; copied text, names, and hashes are not cryptographic proof of human identity."
+    },
+    {
+      "stated_reviewer": "Sarah",
+      "supplied_by": "Greg Krsak",
+      "publisher": "Miles",
+      "source_record_id": "Pasted text(20261026-074144).txt",
+      "body_path": "decisions/m0.1/reviews/2026-10-26-work-budget-execution-confirmation.md",
+      "body_blob_sha1": "83fc7995c871f16f667891ce5689ee310cbde6e2",
+      "body_byte_count": 17300,
+      "body_sha256": "c89f668c8f4952e82f417a21c3dd62feccd3c089267313a197d2561911e24a24",
+      "disposition": "No blocking findings; execution evidence confirmed; recommended Greg’s separate PR #9 acceptance/merge decision",
+      "publication": {
+        "id": 6410919950,
+        "url": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/9#issuecomment-6410919950",
+        "created_at": "2026-10-26T07:49:30Z",
+        "updated_at": "2026-10-26T07:49:30Z",
+        "body_byte_count": 18109,
+        "body_sha256": "366f6dbbcd432bfd8e05530e4ad0d7f0d7c3b2771cc6a1a919769fb3e8b73f29"
+      },
+      "publication_note": "Publication note — Miles, at Greg’s direction\n\nThe complete report below was supplied by Greg from Sarah’s chat and is reproduced verbatim. Sarah is the stated independent reviewer; Greg supplied the source text; Miles is the publisher of this GitHub comment. Sarah did not post this comment. The report’s draft-state and publication statements describe its review-time state; later publication and owner-authorized readiness are separate actions.\n\nSource report: 17,300 UTF-8 bytes; SHA-256 `c89f668c8f4952e82f417a21c3dd62feccd3c089267313a197d2561911e24a24`. These attribution and digest records do not independently authenticate human identity or confer authority. No new execution, production scanning, evidence generation, later-phase work, or agent merge is authorized by this publication.\n\n---\n\n",
+      "chronology_limit": "The preserved review is verbatim, including its review-time draft-state and unposted statements. Miles’s subsequent publication, owner-authorized readiness, and Greg’s later merge are separate events.",
+      "evidence_limit": "Reviewer authorship is process attribution supplied through Greg’s chat; copied text, names, and hashes are not cryptographic proof of human identity."
+    }
+  ],
+  "execution_evidence": {
+    "kind": "externally_executed_synthetic_suite_independently_reconciled",
+    "tested_subject": "62a19baf0f67474f0c25c609f9a4300aa11e74d4",
+    "run_url": "https://github.com/gregkrsak/bowfin-migration-ledger/actions/runs/40283940081",
+    "run_id": 40283940081,
+    "run_attempt": 1,
+    "job_id": 121443126469,
+    "operational_head": "288b0f6c3a052ef32b9b61e2f41f83669ac46e75",
+    "operational_tree": "87af83dbe349098f6c78c1e05801f745b67aefb9",
+    "tested_files": 12,
+    "tested_files_byte_count": 400136,
+    "authored_methods": 54,
+    "reported_unique_methods": 54,
+    "missing_methods": 0,
+    "extra_methods": 0,
+    "duplicate_results": 0,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "exit_status": 0,
+    "output_byte_count": 7091,
+    "output_sha256": "52a4661fd0ee94bf0fa70ceb955ffb73385fa8f79d91f69fa5631ebaf4f5ce97",
+    "unittest_seconds": 0.277,
+    "container_attachment_seconds": 1.328,
+    "python_version": "3.12.15",
+    "execution_image": "python@sha256:6a0e06f5ba0b373d051aabd3fffb9b873f27f9a2a3a14bcbe37dee6f0e3bbc70",
+    "image_id": "sha256:3c4d812a6efe003770aafbdba65f9c1960ba8234ab23a133934205a70bdcda77",
+    "authorization_publication": {
+      "id": 6410301583,
+      "url": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/9#issuecomment-6410301583",
+      "created_at": "2026-10-26T07:08:14Z",
+      "updated_at": "2026-10-26T07:08:14Z",
+      "body_byte_count": 2624,
+      "body_sha256": "20355b9530430b7b4669a580d52fe115c065b74e20f8ecb072b8903751b5eaf9"
+    },
+    "execution_report_publication": {
+      "id": 6410443131,
+      "url": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/9#issuecomment-6410443131",
+      "created_at": "2026-10-26T07:17:26Z",
+      "updated_at": "2026-10-26T07:17:26Z",
+      "body_byte_count": 2655,
+      "body_sha256": "0917c4ed72f2f4c67db05c09d8371aee654e179102c576a744fd3dc28f7dbd06"
+    },
+    "authorization_exhausted": true,
+    "new_invocation_authorized": false,
+    "local_probe": "Reported isolation-setup failure before any local candidate test invocation; not independently observed by Sarah.",
+    "limitations": [
+      "The execution image was acquired by the authorized mutable tag, then resolved to and executed by its recorded immutable digest.",
+      "Containment is supported by inspected configuration and runtime assertions, not universal sandbox certification or personally witnessed execution.",
+      "The successful synthetic suite does not establish production feasibility, production runtime, complete production coverage, or the adequacy of 100 billion logical steps for a real inventory."
+    ]
+  },
+  "retained_validation": {
+    "body_path": "decisions/m0.1/validations/pr9-budget-profile-synthetic-validation.md",
+    "body_blob_sha1": "030b06028f50c544b6311dbd08973bc79988e804",
+    "body_byte_count": 50762,
+    "body_sha256": "bfe4990d7ae5f6db805b0578a095099c74dc2b60598567fbc3e8fcbe137c14b4",
+    "source_repository": "gregkrsak/bowfin-migration-ledger",
+    "source_pull_request": 10,
+    "source_commit": "851069fc4ec7514cb330125619f5ffa4703a60dc",
+    "source_tree": "050ede8d60e0a1d244aeb8c957505817a61225a6",
+    "source_path": "decisions/m0.1/validations/pr9-budget-profile-synthetic-validation.md",
+    "source_url": "https://github.com/gregkrsak/bowfin-migration-ledger/blob/851069fc4ec7514cb330125619f5ffa4703a60dc/decisions/m0.1/validations/pr9-budget-profile-synthetic-validation.md",
+    "copy_mode": "exact existing regular-file blob, no payload rewriting",
+    "preservation_limit": "The retained capture’s prospective authorization and pre-independent-confirmation wording describe its historical capture state. Later review, owner-process, and merge records here do not edit those bytes. No workflow, helper, or operational-branch ancestry is integrated."
+  },
+  "owner_decision": {
+    "owner": "Greg Krsak",
+    "decision": "exact_PR9_tooling_revision_accepted_and_human_merged",
+    "process_context": "Miles recommended accepting PR #9 and offered verbatim review publication plus a ready-for-review transition, explicitly reserving Greg’s human merge and keeping PR #10 unmerged. Greg replied “Authorized.” Miles published the report, verified readback, and marked only PR #9 ready. Greg then reported “Merged”; GitHub independently records the exact PR #9 ordinary merge by gregkrsak. No stand-alone or reusable execution permission is inferred from the short chat response.",
+    "complete_context_bodies": [
+      {
+        "source_record_id": "Active ChatGPT project conversation: Miles’s recommendation immediately before Greg’s readiness authorization",
+        "source_url": null,
+        "stated_author": "Miles",
+        "role": "assistant",
+        "body": "This one clears the review gate, Greg. Sarah found **no blocking findings**, and I agree with her recommendation.\n\nShe independently reconciled all **54 tests**, verified the retained output’s hash, and confirmed the run tested PR #9’s files—not the runner branch’s older copy. No further repair or rerun is indicated.\n\nI checked GitHub: #9 remains draft and unmerged at the reviewed head, `62a19baf…`; `main` is unchanged.\n\nThe distinction remains important:\n\n- **[PR #9](https://github.com/gregkrsak/bowfin-migration-ledger/pull/9)** is the budget-only tooling candidate.\n- **PR #10 stays unmerged**—it holds the runner and preservation records.\n- Passing synthetic tests does not yet demonstrate production-scan feasibility.\n\nMy recommendation: accept #9. With your authorization, I’ll publish Sarah’s report verbatim with attribution and mark #9 ready for your human merge.\n\nWe can put the repair wrench down on this one, buddy.",
+        "body_byte_count": 948,
+        "body_sha256": "42c26108bf34696c6184b3408462e21474dbb36893cbb168addd3151e54847e3"
+      },
+      {
+        "source_record_id": "Active ChatGPT project conversation: Greg’s response to the preceding recommendation",
+        "source_url": null,
+        "stated_author": "Greg Krsak",
+        "role": "user",
+        "body": "Authorized.",
+        "body_byte_count": 11,
+        "body_sha256": "7ed222794b57bfb5b98169506fd7ebe00e5c3119f4e533b932964da5fb784ab4"
+      },
+      {
+        "source_record_id": "Active ChatGPT project conversation: Greg’s subsequent PR #9 merge report",
+        "source_url": null,
+        "stated_author": "Greg Krsak",
+        "role": "user",
+        "body": "Merged",
+        "body_byte_count": 6,
+        "body_sha256": "bd0a06202c440a9ee86f50165aa66886259d89c3d219e2ef47a759cde6a38c00"
+      },
+      {
+        "source_record_id": "Active ChatGPT project conversation: Greg’s records-only closeout directive",
+        "source_url": null,
+        "stated_author": "Greg Krsak",
+        "role": "user",
+        "body": "Let's get the closeout going",
+        "body_byte_count": 28,
+        "body_sha256": "744a385755b95c21a478ccf51172683805a623c0442f96f3d0f767dbd6dae358"
+      }
+    ],
+    "source_url_limit": "No stable URL, turn identifier, or per-turn timestamp was available for the active chat messages. The role-attributed complete bodies and their digests are retained without inventing a public source location.",
+    "merge_corroboration": {
+      "source_url": "https://api.github.com/repos/gregkrsak/bowfin-migration-ledger/pulls/9",
+      "merged": true,
+      "merged_by_login": "gregkrsak",
+      "merged_at": "2026-10-26T07:50:51Z",
+      "merge_commit": "4020cb64c1119ccfb4a4bc77b3f39e8b698ba2f5"
+    }
+  },
+  "integration": {
+    "repository": "gregkrsak/bowfin-migration-ledger",
+    "pull_request": 9,
+    "target_branch": "main",
+    "method": "ordinary_merge_commit",
+    "base_commit_before_merge": "edb0a11851cb1b51727c857d03c045ad1e7daa95",
+    "integrated_head": "62a19baf0f67474f0c25c609f9a4300aa11e74d4",
+    "actual_merge_commit": "4020cb64c1119ccfb4a4bc77b3f39e8b698ba2f5",
+    "ordered_parents": [
+      "edb0a11851cb1b51727c857d03c045ad1e7daa95",
+      "62a19baf0f67474f0c25c609f9a4300aa11e74d4"
+    ],
+    "result_tree": "27a18b261d8f5325c2414ad9e18193e91b870a37",
+    "protocol_subtree": "cd514c89fda2d91318c7a63b8b737118141f7b2c",
+    "verified_actual_merge": true,
+    "verified_tree_matches_reviewed_candidate": true,
+    "main_at_capture": "4020cb64c1119ccfb4a4bc77b3f39e8b698ba2f5",
+    "verification_limit": "This is correspondence for the tooling integration, not an M0.1 C/E/D/P production-evidence receipt. The closeout cannot contain its own future commit or merge identity."
+  },
+  "closeout_scope": {
+    "review_status_at_construction": "independent_closeout_review_pending",
+    "changes": "Four new descriptive records and four status/index documents only. Existing accepted decision/review records and archive payloads remain byte-identical.",
+    "operational_files_imported": false,
+    "tooling_or_test_files_changed": false,
+    "production_inputs_changed": false,
+    "repository_modules_or_tests_executed": false,
+    "actions_dispatched_or_rerun": false
+  },
+  "parked_pr_state_at_capture": [
+    {
+      "pull_request": 5,
+      "head": "8fef7a12cf89d5cdad9d03db187d6060e450bc1d",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "disposition": "unaccepted compact inputs; untouched"
+    },
+    {
+      "pull_request": 8,
+      "head": "9f37ae674a26b1eac18042b95c85e1a090589de7",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "disposition": "unselected algorithm rewrite; untouched"
+    },
+    {
+      "pull_request": 10,
+      "head": "851069fc4ec7514cb330125619f5ffa4703a60dc",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "disposition": "operational/preservation surface, never part of this tooling integration; only the named historical validation blob is reused"
+    }
+  ],
+  "other_refs_at_capture": {
+    "compiler_prod": "3c0a540df7d5ad75510db4ecad80e27fb4d0903a",
+    "compiler_migration_staging": "609822762abd46c13ecd6187ccc8510695e52b2f",
+    "governance_prod": "37d4446153cd761b70ad7fc599db1df994352585",
+    "changed_by_closeout": false
+  },
+  "m0_1_effect": {
+    "protocol_tooling_budget_profile_accepted": true,
+    "production_inputs_accepted": false,
+    "production_execution_authorized": false,
+    "production_evidence_generated": false,
+    "evidence_package_accepted": false,
+    "m0_1_accepted": false,
+    "m0_1_complete": false,
+    "m1_authorized": false
+  },
+  "non_authority": {
+    "executable_approval": false,
+    "resource_authority": false,
+    "merge_authority": false,
+    "reusable_execution_authority": false,
+    "production_scan_authority": false,
+    "later_phase_authority": false,
+    "compiler_or_governance_change_authority": false,
+    "release_or_cutover_authority": false
+  }
+}

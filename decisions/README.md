@@ -26,6 +26,21 @@ evidence, M0.1 acceptance, M1, and later work remain separately gated.
 The occurrence-semantics repair closeout preserves the independent execution
 confirmation, BML-OS12 record-correction readback, exact prescribed correction,
 Greg's acceptance, and the ordinary PR #6 merge. It makes the repaired revision
-the current accepted protocol/tooling dependency. PR #5 and its compact inputs
+the then-current accepted protocol/tooling dependency. PR #5 and its compact inputs
 remain unaccepted and require reconciliation; production execution, migration
 evidence, M0.1, M1, and later work remain separately gated.
+
+The later work-budget closeout preserves the complete static and independent
+execution-evidence reviews, an unchanged copy of the retained PR #9 synthetic
+validation capture, owner authorization and merge context, and actual PR #9 merge
+correspondence. The current accepted tooling is the exact budget-only revision
+integrated at `4020cb64c1119ccfb4a4bc77b3f39e8b698ba2f5`, not the operational
+PR #10 branch or a later records-only head. PR #10's workflow and helper are not
+imported. The historical validation capture retains its original prospective and
+draft-state wording; the later acceptance record resolves chronology without
+rewriting those bytes.
+
+The work-budget acceptance is limited to tooling. Its single synthetic-execution
+authorization is exhausted. PR #5, PR #8, production scanning/evidence, M0.1, M1,
+and later work are not accepted or authorized by this record. Reviewing or
+merging a records-only closeout grants no new execution or later-phase authority.

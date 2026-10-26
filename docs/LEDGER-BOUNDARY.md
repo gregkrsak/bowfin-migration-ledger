@@ -3,8 +3,9 @@
 **Status:** Accepted descriptive-ledger foundation, subordinate to the accepted
 migration contract in `gregkrsak/klyxr`. This repository cannot amend or replace
 that contract. The M0.1 v2 protocol/tooling revision, including the exact
-occurrence-semantics repair merged by ledger PR #6, is accepted; production
-inputs, migration evidence, M0.1, and M1 remain unaccepted.
+occurrence-semantics repair merged by ledger PR #6 and budget-only profile merged
+by ledger PR #9, is accepted; production inputs, migration evidence, M0.1, and M1
+remain unaccepted.
 
 ## 1. Controlling question
 
@@ -218,7 +219,32 @@ accepted revision includes the occurrence-semantics repair at reviewed head
 `c642dca4c4b8ae4e08f1250e1862bbe821c43b04`, and protocol subtree
 `d0e0c7419020415ddc7996631db616b2f73a25b3`, integrated by ordinary merge
 commit `ef9574336edf2b16aae4308330d581f0bacb6e45`. Durable review, owner-decision,
-and merge records for both acceptance steps are preserved under `decisions/m0.1/`.
+and merge records for those acceptance steps remain preserved under `decisions/m0.1/`.
+
+The later budget-only profile was reviewed/tested at
+`62a19baf0f67474f0c25c609f9a4300aa11e74d4`, tree
+`27a18b261d8f5325c2414ad9e18193e91b870a37`, protocol subtree
+`cd514c89fda2d91318c7a63b8b737118141f7b2c`, and integrated through PR #9 by
+ordinary merge `4020cb64c1119ccfb4a4bc77b3f39e8b698ba2f5`. That merge retains
+the exact reviewed tree and has the prior-main and reviewed-head parents in that
+order. The immutable merge identifies the accepted tooling dependency, not the
+head of a later documentation closeout.
+
+Only the stage-local `max_processing_steps` ceiling, its mandatory digest pin,
+and profile documentation changed. The new finite ceiling is 100,000,000,000
+logical steps per WorkBudget, not a process-wide CPU/time/memory allowance.
+Algorithms, charge sites, and all other limits remain unchanged. One contained
+Actions invocation passed the unchanged 54-test synthetic suite; Sarah confirmed
+the external execution evidence independently. No production feasibility follows
+from that result, and the invocation authorization is exhausted.
+
+The work-budget closeout preserves both full reviews, the validation capture,
+owner-process context, and verified merge correspondence under `decisions/m0.1/`.
+The capture is copied byte-for-byte from PR #10's preservation commit; no workflow
+or helper is imported. PR #10 is a separate operational/preservation surface,
+not an accepted tooling dependency. This closeout is not a C/E/D/P production-
+evidence integration receipt and does not repair or accept PR #5 or adopt
+PR #8's scanner rewrite.
 
 No protocol review, test result, tooling merge, or ledger record accepts M0.1 or
 authorizes M1.
