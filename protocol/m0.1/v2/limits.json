@@ -12,7 +12,7 @@
   "max_mappings": 512,
   "max_occurrences": 200000,
   "max_path_bytes": 4096,
-  "max_processing_steps": 2000000000,
+  "max_processing_steps": 100000000000,
   "max_row_bytes": 65536,
   "max_rows_per_chunk": 10000,
   "max_rules": 4096,
