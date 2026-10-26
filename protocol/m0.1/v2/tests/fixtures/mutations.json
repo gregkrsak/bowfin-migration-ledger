@@ -1,5 +1,13 @@
 {
   "mutations": [
+    {"expected_code": "E_PROCESSING_STEPS", "mutation_id": "generator-dispatch-index-budget", "test_method": "test_generator_dispatch_budget_sites"},
+    {"expected_code": "E_PROCESSING_STEPS", "mutation_id": "generator-dispatch-position-budget", "test_method": "test_generator_dispatch_budget_sites"},
+    {"expected_code": "E_PROCESSING_STEPS", "mutation_id": "generator-dispatch-suffix-budget", "test_method": "test_generator_dispatch_budget_sites"},
+    {"expected_code": "E_PROCESSING_STEPS", "mutation_id": "generator-dispatch-binding-budget", "test_method": "test_generator_dispatch_budget_sites"},
+    {"expected_code": "E_PROCESSING_STEPS", "mutation_id": "generator-prehash-file-budget", "test_method": "test_generator_dispatch_budget_sites"},
+    {"expected_code": "E_PROCESSING_STEPS", "mutation_id": "generator-raw-offset-precharge", "test_method": "test_generator_dispatch_budget_sites"},
+    {"expected_code": "E_PROCESSING_STEPS", "mutation_id": "generator-binary-path-offset-precharge", "test_method": "test_generator_dispatch_budget_sites"},
+    {"expected_code": "E_PROCESSING_STEPS", "mutation_id": "generator-dense-prefix-no-match", "test_method": "test_generator_dispatch_dense_prefix_no_match_exhaustion"},
     {"expected_code": "E_BINDING_CONTENT", "mutation_id": "transient-compiler-content", "test_method": "test_compiler_intermediate_content_and_decision_preservation"},
     {"expected_code": "E_BINDING_CONTENT", "mutation_id": "decision-overwrites-evidence", "test_method": "test_compiler_intermediate_content_and_decision_preservation"},
     {"expected_code": "E_BINDING_CONTENT", "mutation_id": "unbound-index-digest", "test_method": "test_authenticated_cedp_ancestry_trees_targets_and_recovery"},
@@ -72,6 +80,11 @@
     {"expected_code": "E_AUDIT_LITERAL", "mutation_id": "cross-component-source-suffix", "test_method": "test_source_suffix_literal_is_one_component"}
   ],
   "controls": [
+    {"control_id": "generator-source-scale-fixed-key-population", "test_method": "test_generator_dispatch_source_scale"},
+    {"control_id": "generator-unicode-hidden-path-json-surfaces", "test_method": "test_generator_dispatch_unicode_intrinsic_surfaces"},
+    {"control_id": "generator-overlaps-duplicate-spellings-order", "test_method": "test_generator_dispatch_multiplicity_and_order"},
+    {"control_id": "generator-short-and-incomplete-tail-literals", "test_method": "test_generator_dispatch_partial_prefixes_and_single_character"},
+    {"control_id": "generator-exact-emission-budget-neighbors", "test_method": "test_generator_dispatch_budget_sites"},
     {"control_id": "single-read-audit-byte-binding", "test_method": "test_evidence_record_binds_actual_exports_and_generated_bytes"},
     {"control_id": "shared-protocol-error-identity", "test_method": "test_protocol_error_identity_is_shared"},
     {"control_id": "complete-occurrence-identity", "test_method": "test_intrinsic_locators_distinguish_multiple_identities"},

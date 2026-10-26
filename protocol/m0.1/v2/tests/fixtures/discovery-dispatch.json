@@ -1,0 +1,228 @@
+{
+  "intrinsic": {
+    "expected": [
+      {
+        "candidate_key": "sha256:776c9f99447df2d3c4f67b1687d8ed9d061dca867f14a4a60b9126ede21f65c7",
+        "locator": {
+          "component_byte_end": 3,
+          "component_byte_start": 0,
+          "component_index": 1
+        },
+        "occurrence_key": "sha256:b3262b9641e178990e269e97fcda47dd4a8d074abb75eb3ab83f29cf1f21d147",
+        "unit_kind": "path_component"
+      },
+      {
+        "candidate_key": "sha256:e275a11e6708b5c512e2a95c4932b1ad4196098b13488d52182a49681f9fb7a1",
+        "locator": {
+          "byte_end": 5,
+          "byte_start": 2
+        },
+        "occurrence_key": "sha256:f0eff76a3d4f55a40b2be5b47fa5e1d65a40716a8387cc5b8efcaf59a9c1eb2b",
+        "unit_kind": "raw_text"
+      },
+      {
+        "candidate_key": "sha256:129bbae2755624c741d2dba6d01e3abcde8ce79cc2386c8bc0ba21cdb586e759",
+        "locator": {
+          "byte_end": 11,
+          "byte_start": 8
+        },
+        "occurrence_key": "sha256:2831cd2dd4a16d1655e15c9b1761ab2b6df8ee50d2ba11fd017572e754798f5a",
+        "unit_kind": "raw_text"
+      },
+      {
+        "candidate_key": "sha256:bd5429b5c186f93210c50665a2529ebec83c2ffd696564462f0f4e48bc98dd5f",
+        "locator": {
+          "json_pointer": "/éa",
+          "value_byte_end": 3,
+          "value_byte_start": 0
+        },
+        "occurrence_key": "sha256:7895db7e095882dea871562c88ee2e9d284aea5c05377003537874f1f28b0359",
+        "unit_kind": "structured_key"
+      },
+      {
+        "candidate_key": "sha256:0301bd4aec5d5499b10e8a9a0cbc374d62b363486a65cf18c4ba3f871dd8cc70",
+        "locator": {
+          "json_pointer": "/éa",
+          "value_byte_end": 3,
+          "value_byte_start": 0
+        },
+        "occurrence_key": "sha256:686b0192894152e4a06d2881d4d6cde79afbf0d131a4175276e583282614b656",
+        "unit_kind": "structured_value"
+      }
+    ],
+    "mapping": {
+      "canonical": "next",
+      "mapping_id": "unicode",
+      "namespace": "display_brand",
+      "original": "éa",
+      "policy": "replace"
+    },
+    "path": ".hidden/éa.json",
+    "repository": "fixture/source",
+    "text": "{\"éa\":\"éa\"}",
+    "tree": "1111111111111111111111111111111111111111"
+  },
+  "matcher": {
+    "expected": [
+      [
+        "pair",
+        1,
+        3
+      ],
+      [
+        "pair",
+        2,
+        4
+      ],
+      [
+        "pair",
+        3,
+        5
+      ],
+      [
+        "triple",
+        1,
+        4
+      ],
+      [
+        "triple",
+        2,
+        5
+      ],
+      [
+        "unicode",
+        5,
+        11
+      ],
+      [
+        "cli",
+        6,
+        11
+      ],
+      [
+        "brand",
+        6,
+        11
+      ],
+      [
+        "crate",
+        6,
+        20
+      ]
+    ],
+    "mappings": [
+      {
+        "mapping_id": "pair",
+        "original": "aa"
+      },
+      {
+        "mapping_id": "triple",
+        "original": "aaa"
+      },
+      {
+        "mapping_id": "unicode",
+        "original": "βklyxr"
+      },
+      {
+        "mapping_id": "cli",
+        "original": "klyxr"
+      },
+      {
+        "mapping_id": "brand",
+        "original": "klyxr"
+      },
+      {
+        "mapping_id": "crate",
+        "original": "klyxr_compiler"
+      }
+    ],
+    "text": "éaaaaβklyxr_compiler"
+  },
+  "protocol_version": "m0.1-v2-fixture",
+  "provenance": "Hand-selected synthetic text and descriptors. Canonical tuples and SHA-256 use standalone json/hashlib, without importing or executing candidate tooling. Not production input or evidence.",
+  "scale": {
+    "character_count": 6064042,
+    "dummy_count": 192,
+    "expected": [
+      {
+        "candidate_key": "sha256:655f2c50a0f2cbed871033691b48d251b9e8447f379d1171d529d9828e8e672e",
+        "locator": {
+          "byte_end": 6064018,
+          "byte_start": 6064013
+        },
+        "mapping_id": "short",
+        "namespace": "cli_invocation",
+        "occurrence_key": "sha256:5ea695d2625308ff2a61daef4ed664877ec9b405e44aa8b71ab87a2156b14e2c",
+        "original": "klyxr",
+        "unit_kind": "raw_text"
+      },
+      {
+        "candidate_key": "sha256:61ebbea33aaaaeb3df12ff9e77018c604d4e69b374a6498d360b5982eed7699d",
+        "locator": {
+          "byte_end": 6064024,
+          "byte_start": 6064019
+        },
+        "mapping_id": "short",
+        "namespace": "cli_invocation",
+        "occurrence_key": "sha256:5ff67721cf01761dd8f2f93dc95ab86fa009550741adeef62531c2c8c52fd38b",
+        "original": "klyxr",
+        "unit_kind": "raw_text"
+      },
+      {
+        "candidate_key": "sha256:0a5dd0a4fc22f2bf4290ece7bd84613556dde948b678b1d7736e25d31ff35d99",
+        "locator": {
+          "byte_end": 6064033,
+          "byte_start": 6064019
+        },
+        "mapping_id": "crate",
+        "namespace": "rust_crate",
+        "occurrence_key": "sha256:c85b4c7be6e24158a584c3e9a196d2965e8018b859c8dbf59a943b8371235d78",
+        "original": "klyxr_compiler",
+        "unit_kind": "raw_text"
+      },
+      {
+        "candidate_key": "sha256:5589f9a2f4a822694eda56af43ff5b2cd3acf405fc634908be9d14a1594639e3",
+        "locator": {
+          "byte_end": 6064041,
+          "byte_start": 6064034
+        },
+        "mapping_id": "control",
+        "namespace": "project_control",
+        "occurrence_key": "sha256:55e228a185d68952bb366015f4245adeb01da8d9beabaa82339669b303c8c685",
+        "original": "KED-035",
+        "unit_kind": "embedded_identity"
+      }
+    ],
+    "expected_old_lower_bound": 2371040422,
+    "mapping_count": 195,
+    "new_work_upper_bound": 40000000,
+    "path": "large.txt",
+    "prefix_character": "x",
+    "repository": "fixture/source",
+    "special_mappings": [
+      {
+        "canonical": "bowfin",
+        "mapping_id": "short",
+        "namespace": "cli_invocation",
+        "original": "klyxr",
+        "policy": "replace"
+      },
+      {
+        "canonical": "bowfin_compiler",
+        "mapping_id": "crate",
+        "namespace": "rust_crate",
+        "original": "klyxr_compiler",
+        "policy": "replace"
+      },
+      {
+        "canonical": "BED-035",
+        "mapping_id": "control",
+        "namespace": "project_control",
+        "original": "KED-035",
+        "policy": "replace"
+      }
+    ],
+    "tail": "\nklyxr klyxr_compiler KED-035\n",
+    "tree": "1111111111111111111111111111111111111111"
+  }
+}

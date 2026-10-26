@@ -181,38 +181,60 @@ def validate_rules(
     return result
 
 
-def _literal_positions(text: str, needle: str, budget: Any) -> Iterator[int]:
-    """Yield overlapping literal matches with every comparison charged."""
-    if not needle:
-        return
-    table = [0] * len(needle)
-    prefix = 0
-    cursor = 1
-    while cursor < len(needle):
-        budget.charge(1)
-        if needle[cursor] == needle[prefix]:
-            prefix += 1
-            table[cursor] = prefix
-            cursor += 1
-        elif prefix:
-            prefix = table[prefix - 1]
-        else:
-            cursor += 1
-    matched = 0
-    for index, character in enumerate(text):
-        while matched:
-            budget.charge(1)
-            if character == needle[matched]:
-                break
-            matched = table[matched - 1]
-        if not matched:
-            budget.charge(1)
-            if character != needle[0]:
+LiteralIndex = dict[str, list[tuple[str, list[dict[str, Any]]]]]
+
+
+def _literal_index(mappings: list[dict[str, Any]], budget: Any) -> LiteralIndex:
+    """Index validated literal spellings, preserving every interpretation.
+
+    Equal spellings share comparisons, never semantic meaning. The index holds
+    references to bounded input strings rather than allocating a node per
+    character. Charge string hashing and index/binding construction before work.
+    """
+    by_original: dict[str, list[dict[str, Any]]] = {}
+    buckets: LiteralIndex = {}
+    for mapping in mappings:
+        original = mapping["original"]
+        budget.charge(8 + 2 * len(original))
+        if not original:
+            continue  # validate_mappings rejects empty originals at admission.
+        bindings = by_original.get(original)
+        if bindings is None:
+            bindings = []
+            by_original[original] = bindings
+            buckets.setdefault(original[0], []).append((original, bindings))
+        bindings.append(mapping)
+    return buckets
+
+
+def _literal_matches(
+    text: str, index: LiteralIndex, budget: Any,
+) -> Iterator[tuple[dict[str, Any], int, int]]:
+    """Inspect each start position once, then compare only relevant literals.
+
+    The first character selects a bucket; every suffix comparison is charged.
+    Emit all short/long overlaps and all bindings for an equal spelling. Dense
+    adversarial prefixes still exhaust the unchanged budget instead of skipping
+    work, sampling candidates, or claiming a universal linear-time bound.
+    """
+    width = len(text)
+    for start, character in enumerate(text):
+        budget.charge(2)  # Position traversal and exact first-character lookup.
+        for original, bindings in index.get(character, ()):
+            budget.charge(2)  # Bucket entry and remaining-length comparison.
+            length = len(original)
+            if length > width - start:
                 continue
-        matched += 1
-        if matched == len(needle):
-            yield index - len(needle) + 1
-            matched = table[matched - 1]
+            offset = 1  # The dispatch lookup already established character zero.
+            while offset < length:
+                budget.charge(3)  # Both character accesses and their comparison.
+                if text[start + offset] != original[offset]:
+                    break
+                offset += 1
+            if offset == length:
+                for mapping in bindings:
+                    budget.charge(1)  # Binding traversal and yielded match.
+                    yield mapping, start, start + length
 
 
 def _byte_offsets(text: str) -> list[int]:
@@ -291,6 +313,7 @@ def discover(
     limits: dict[str, int],
 ) -> list[dict[str, Any]]:
     budget = lib.WorkBudget(limits)
+    literals = _literal_index(mappings, budget)
     candidates: list[dict[str, Any]] = []
 
     def append(item: dict[str, Any]) -> None:
@@ -298,47 +321,49 @@ def discover(
         candidates.append(item)
 
     for path, data in files:
+        budget.charge(2 * len(data))  # File hashing and strict UTF-8 decode work.
         file_sha = lib.sha256_hex(data)
         components = PurePosixPath(path).parts
         try:
             text = data.decode("utf-8", "strict")
         except UnicodeDecodeError:
             text = None
-        text_offsets = _byte_offsets(text) if text is not None else None
         if text is not None:
-            budget.charge(len(text))
-        for mapping in mappings:
-            original = mapping["original"]
-            namespace = mapping["namespace"]
-            mapping_id = mapping["mapping_id"]
-            for component_index, component in enumerate(components):
-                budget.charge(len(component))
-                offsets = _byte_offsets(component)
-                component_bytes = component.encode("utf-8")
-                for position in _literal_positions(component, original, budget):
-                    start, end = offsets[position], offsets[position + len(original)]
-                    locator = {
-                        "component_index": component_index,
-                        "component_byte_start": start,
-                        "component_byte_end": end,
-                    }
-                    append(
-                        _candidate(
-                            source_repository, source_tree, path, "path_component", locator,
-                            namespace, original, mapping_id, file_sha, component_bytes, start, end, limits, budget,
-                        )
+            budget.charge(len(text))  # Precharge the single UTF-8 offset map.
+            text_offsets = _byte_offsets(text)
+        else:
+            text_offsets = None
+
+        for component_index, component in enumerate(components):
+            budget.charge(2 * len(component))  # Offset map and UTF-8 encoding.
+            offsets = _byte_offsets(component)
+            component_bytes = component.encode("utf-8")
+            for mapping, begin, finish in _literal_matches(component, literals, budget):
+                start, end = offsets[begin], offsets[finish]
+                locator = {
+                    "component_index": component_index,
+                    "component_byte_start": start,
+                    "component_byte_end": end,
+                }
+                append(
+                    _candidate(
+                        source_repository, source_tree, path, "path_component", locator,
+                        mapping["namespace"], mapping["original"], mapping["mapping_id"],
+                        file_sha, component_bytes, start, end, limits, budget,
                     )
-            if text is not None and text_offsets is not None:
-                budget.charge(len(text))
-                for position in _literal_positions(text, original, budget):
-                    start, end = text_offsets[position], text_offsets[position + len(original)]
-                    locator = {"byte_start": start, "byte_end": end}
-                    append(
-                        _candidate(
-                            source_repository, source_tree, path, _raw_unit_kind(namespace), locator,
-                            namespace, original, mapping_id, file_sha, data, start, end, limits, budget,
-                        )
+                )
+
+        if text is not None and text_offsets is not None:
+            for mapping, begin, finish in _literal_matches(text, literals, budget):
+                start, end = text_offsets[begin], text_offsets[finish]
+                locator = {"byte_start": start, "byte_end": end}
+                append(
+                    _candidate(
+                        source_repository, source_tree, path, _raw_unit_kind(mapping["namespace"]),
+                        locator, mapping["namespace"], mapping["original"], mapping["mapping_id"],
+                        file_sha, data, start, end, limits, budget,
                     )
+                )
 
         if text is not None and path.endswith(".json"):
             try:
@@ -347,25 +372,23 @@ def discover(
                 parsed = None
             if parsed is not None:
                 for unit_kind, pointer, value in _walk_structured(parsed):
+                    budget.charge(1 + len(pointer) + 2 * len(value))
                     offsets = _byte_offsets(value)
                     value_bytes = value.encode("utf-8")
-                    for mapping in mappings:
-                        original = mapping["original"]
-                        budget.charge(len(value))
-                        for position in _literal_positions(value, original, budget):
-                            start, end = offsets[position], offsets[position + len(original)]
-                            locator = {
-                                "json_pointer": pointer,
-                                "value_byte_start": start,
-                                "value_byte_end": end,
-                            }
-                            append(
-                                _candidate(
-                                    source_repository, source_tree, path, unit_kind, locator,
-                                    mapping["namespace"], original, mapping["mapping_id"], file_sha,
-                                    value_bytes, start, end, limits, budget,
-                                )
+                    for mapping, begin, finish in _literal_matches(value, literals, budget):
+                        start, end = offsets[begin], offsets[finish]
+                        locator = {
+                            "json_pointer": pointer,
+                            "value_byte_start": start,
+                            "value_byte_end": end,
+                        }
+                        append(
+                            _candidate(
+                                source_repository, source_tree, path, unit_kind, locator,
+                                mapping["namespace"], mapping["original"], mapping["mapping_id"],
+                                file_sha, value_bytes, start, end, limits, budget,
                             )
+                        )
     return candidates
 
 
