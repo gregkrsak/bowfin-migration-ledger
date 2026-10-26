@@ -2,10 +2,11 @@
 
 Read [PROTOCOL.md](PROTOCOL.md) before reviewing any code.
 
-This directory is the accepted M0.1 v2 protocol/tooling revision. It contains only
-synthetic fixtures. It contains no production classification inputs and no
-migration evidence. Acceptance of this directory does not accept M0.1 or authorize
-M1.
+The accepted M0.1 v2 baseline is recorded in PROTOCOL.md. This branch proposes an
+unaccepted occurrence-semantics repair to that baseline. It contains only
+synthetic fixtures and no production classification inputs or migration evidence.
+The repair requires independent review, separate owner acceptance, and ordinary
+merge. It does not accept M0.1 or authorize M1.
 
 ## Review sequence
 
@@ -19,9 +20,9 @@ M1.
 6. Only after exact-revision independent review may Greg authorize isolated
    synthetic test execution.
 
-## Accepted interface
+## Interface (including the proposed repair)
 
-The following commands describe the accepted interface. Their presence is not an
+The following commands describe this candidate's interface. Their presence is not an
 authorization to execute the tooling against production inputs or generate
 migration evidence:
 
@@ -67,7 +68,8 @@ python3 -I verify.py package \
   --source-tree <40-hex-tree> \
   --source-export-sha256 <64-hex-digest> \
   --input-export-sha256 <64-hex-digest> \
-  --audit <audit-result.json>
+  --audit <audit-result.json> \
+  --audit-policy <audit-policy.json>
 
 python3 -I verify.py evidence \
   --record <migration-evidence-record.json> \
@@ -128,6 +130,11 @@ python3 -I tests/test_protocol.py
 Production inputs, evidence generation, workflow activation, and phase acceptance
 remain separately gated.
 
+Package mode requires `--audit-policy` whenever `--audit` is supplied. It checks
+the retained audit against that supplied policy, but does not authenticate the
+policy's provenance. Evidence mode instead takes the policy from its authenticated
+compact-input export. Package-mode success is not evidence acceptance.
+
 Compiler-source commands reject a nonempty source view prefix or a source view
 tree different from the repository-root tree. Selected views remain supported for
 tooling and other non-source dependency classes.
@@ -142,8 +149,42 @@ append-only decision successors, every recovery edge's object kind, and strict
 Boolean types. Binding verification now requires independently reviewed source
 change paths (`--expected-source-change-path`, repeated; empty means no changes).
 See PROTOCOL.md §16 for the exact conservative policy and evidence limits. The
-exact revision received independent static review, separately authorized bounded
-synthetic execution, focused independent confirmation, Greg's acceptance, and an
+accepted baseline `0b81e183df466890a779f1bbd777c6c864835a3b` received independent
+static review, separately authorized bounded synthetic execution, focused
+independent confirmation, Greg's acceptance, and an
 ordinary merge. Production inputs, production execution, migration evidence,
 M0.1 acceptance, and M1 remain separately gated.
 
+
+## Proposed occurrence-semantics repair
+
+This draft repair introduces a namespace-free physical `candidate_key`, requires
+one semantic classification per physical candidate, and permits exact
+candidate-key selectors in both classification and independent audit policy.
+It exists to distinguish identical legacy spellings used as CLI names, package
+names, repository identities, domains, display brands, test identities, or
+historical prose without treating one spelling as one meaning.
+
+Sarah reviewed initial head `dd81974fcd7733a38ae00f67666df5208f059190` and required
+repair. This follow-up addresses BML-OS01–07: verifier cross-interpretation
+competition, authenticated audit-policy populations, strict selector presence,
+new-work accounting, independent fixed-vector controls, normalized collision
+descriptors, and exact population semantics for classification key lists.
+Sarah's focused review of the first repair head
+`a9fd31476de8a652919bf1825a4553ebba22daac` resolved OS01, OS03, OS04, OS06, and
+OS07, but retained OS02 because of new blocker OS08; it also recorded OS09 and
+OS10. The next appended repair binds retained filename claims to their actual path
+component bytes, rejects cross-component source-suffix literals, and restores the
+predecessor budget control's intended target. Sarah's static confirmation of head
+`2d822f1228e230505578c0e482219e3b012cac01` resolved OS08–10 and recommended
+bounded synthetic execution. The single authorized run discovered all 54 tests:
+53 passed and `test_independent_overlap_vectors` errored because the `crate`
+fixed vector described the 14-byte literal `klyxr_compiler` with a 13-byte end
+offset and corresponding false candidate key. BML-OS11 records that failed run.
+This appended repair corrects only that vector and this historical status. Neither
+the earlier adverse reviews nor the failed execution is rewritten as acceptance.
+The changed revision has not received independent confirmation or execution
+authorization.
+Do not execute it, generate production evidence with it, accept M0.1 from it, or
+begin M1. The existing production-input PR remains a separate draft and must be
+repaired only after this protocol revision is independently reviewed and accepted.

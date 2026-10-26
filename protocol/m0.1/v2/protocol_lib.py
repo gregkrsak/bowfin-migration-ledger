@@ -714,6 +714,86 @@ def scan_manifest_digest(manifest: list[dict[str, Any]], limits: dict[str, int])
     return sha256_hex(canonical_json_bytes(scan_manifest_document(manifest), limits))
 
 
+def physical_kind(unit_kind: str) -> str:
+    """Normalize representation only, never namespace or classification."""
+    if unit_kind not in UNIT_KINDS:
+        fail("E_UNIT_KIND", f"unknown unit kind: {unit_kind}")
+    return "raw_text" if unit_kind in {"raw_text", "embedded_identity", "machine_identifier"} else unit_kind
+
+
+def charge_value(budget: Any, value: Any) -> None:
+    """Precharge a conservative JSON encode/hash/compare envelope.
+
+    Each character costs 64 units (UTF-8, escaping and repeated passes), each
+    scalar 64; objects pay a quadratic ordering envelope plus each key's
+    length times the member count, and arrays pay a linear envelope.
+    Traversal is incremental; no encoding or container copy precedes charging.
+    """
+    budget.charge(64)
+    if isinstance(value, str):
+        budget.charge(64 * len(value))
+    elif isinstance(value, (dict, list, tuple)):
+        budget.charge(64 * len(value) * (1 + len(value) if isinstance(value, dict) else 1))
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if isinstance(key, str):
+                    budget.charge(64 * len(value) * len(key))
+                charge_value(budget, key)
+                charge_value(budget, item)
+        else:
+            for item in value:
+                charge_value(budget, item)
+
+
+def candidate_key_set(value: Any, limits: dict[str, int], budget: Any, code: str) -> set[str]:
+    """Validate and build one bounded exact-key set, charging before work."""
+    budget.charge(1)
+    if not isinstance(value, list) or not value or len(value) > limits["max_occurrences"]:
+        fail(code, "candidate_keys must be a nonempty bounded array")
+    result: set[str] = set()
+    for key in value:
+        budget.charge(1)
+        if not isinstance(key, str):
+            fail(code, "candidate key must be a string")
+        budget.charge(64 * (1 + len(key)))
+        if (len(key) != 71 or not key.startswith("sha256:")
+                or any(char not in "0123456789abcdef" for char in key[7:])
+                or key in result):
+            fail(code, "invalid or duplicate candidate key")
+        result.add(key)
+    return result
+
+
+def require_key_population(actual: set[str], expected: set[str], budget: Any, code: str) -> None:
+    """Compare bounded fixed-width sets, including the missing-member path."""
+    budget.charge(128 * 72 * (1 + len(actual) + len(expected)))
+    if actual != expected:
+        fail(code, "candidate-key population differs from its exact declaration")
+
+
+def physical_descriptor(path: str, unit_kind: str, locator: dict[str, Any], original: str) -> list[Any]:
+    """Canonical local descriptor; repository/tree are fixed by the scan."""
+    return [path, physical_kind(unit_kind), locator, original]
+
+
+def candidate_key(
+    source_repository: str,
+    source_tree: str,
+    path: str,
+    unit_kind: str,
+    locator: dict[str, Any],
+    original: str,
+    limits: dict[str, int],
+    budget: Any = None,
+) -> str:
+    """Identify a discovered physical candidate without assigning semantic meaning."""
+    if unit_kind not in UNIT_KINDS:
+        fail("E_UNIT_KIND", f"unknown unit kind: {unit_kind}")
+    identity = [source_repository, source_tree, *physical_descriptor(path, unit_kind, locator, original)]
+    charge_value(budget if budget is not None else WorkBudget(limits), identity)
+    return "sha256:" + sha256_hex(canonical_json_bytes(identity, limits, trailing_lf=False))
+
+
 def occurrence_key(
     source_repository: str,
     source_tree: str,

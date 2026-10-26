@@ -36,6 +36,8 @@ lib = _load_library()
 
 
 def validate_policy(document: Any, limits: dict[str, int]) -> list[dict[str, Any]]:
+    budget = lib.WorkBudget(limits)
+    lib.charge_value(budget, document)
     if not isinstance(document, dict):
         lib.fail("E_AUDIT_DOCUMENT", "audit policy must be an object")
     lib.require_keys(document, {"protocol_version", "independently_authored", "families"}, set(), "audit-policy")
@@ -51,7 +53,12 @@ def validate_policy(document: Any, limits: dict[str, int]) -> list[dict[str, Any
         label = f"families[{index}]"
         if not isinstance(family, dict):
             lib.fail("E_AUDIT_FAMILY", f"{label} must be an object")
-        lib.require_keys(family, {"family_id", "kind", "literal", "namespace", "unit_kinds"}, set(), label)
+        lib.require_keys(
+            family,
+            {"family_id", "kind", "literal", "namespace", "unit_kinds"},
+            {"candidate_keys"},
+            label,
+        )
         family_id = lib.require_identifier(family["family_id"], f"{label}.family_id")
         if family_id in identifiers:
             lib.fail("E_AUDIT_ID", f"duplicate family_id: {family_id}")
@@ -63,6 +70,8 @@ def validate_policy(document: Any, limits: dict[str, int]) -> list[dict[str, Any
             lib.fail("E_AUDIT_LITERAL", f"{label}.literal must be nonempty")
         if family["kind"] in {"ascii_casefold_literal", "ascii_digit_suffix"} and any(ord(char) > 127 for char in literal):
             lib.fail("E_AUDIT_ASCII", f"{label} requires an ASCII literal")
+        if family["kind"] == "source_suffix" and ("/" in literal or "\\" in literal):
+            lib.fail("E_AUDIT_LITERAL", f"{label}.literal must be one path-component suffix")
         lib.require_identifier(family["namespace"], f"{label}.namespace")
         units = family["unit_kinds"]
         if not isinstance(units, list) or not units or len(units) != len(set(units)):
@@ -71,6 +80,9 @@ def validate_policy(document: Any, limits: dict[str, int]) -> list[dict[str, Any
             lib.fail("E_AUDIT_UNITS", f"{label} has unknown unit kind")
         if family["kind"] in {"source_suffix", "path_component"} and units != ["path_component"]:
             lib.fail("E_AUDIT_UNITS", f"{label} path family must use path_component only")
+        candidate_keys = family.get("candidate_keys")
+        if "candidate_keys" in family:
+            lib.candidate_key_set(candidate_keys, limits, budget, "E_AUDIT_CANDIDATE_FILTER")
         result.append(dict(family))
     return result
 
@@ -178,13 +190,32 @@ def discover(
 ) -> list[dict[str, Any]]:
     budget = lib.WorkBudget(limits)
     found: dict[str, dict[str, Any]] = {}
+    physical_meanings: dict[str, str] = {}
+    lib.charge_value(budget, families)
+    filters = {
+        family["family_id"]: lib.candidate_key_set(
+            family["candidate_keys"], limits, budget, "E_AUDIT_CANDIDATE_FILTER"
+        )
+        for family in families if "candidate_keys" in family
+    }
+    selected_filters = {family_id: set() for family_id in filters}
 
     def add(path: str, unit_kind: str, locator: dict[str, Any], namespace: str, original: str, family_id: str) -> None:
+        candidate_key = lib.candidate_key(
+            source_repository, source_tree, path, unit_kind, locator, original, limits, budget
+        )
+        allowed = filters.get(family_id)
+        if allowed is not None:
+            budget.charge(1 + len(candidate_key))
+            if candidate_key not in allowed:
+                return
+            selected_filters[family_id].add(candidate_key)
         budget.add_occurrence()
         key = lib.occurrence_key(
             source_repository, source_tree, path, unit_kind, locator, namespace, original, limits
         )
         record = {
+            "candidate_key": candidate_key,
             "occurrence_key": key,
             "path": path,
             "unit_kind": unit_kind,
@@ -194,8 +225,13 @@ def discover(
             "family_id": family_id,
         }
         prior = found.get(key)
+        lib.charge_value(budget, record)
         if prior is not None and prior != record:
             lib.fail("E_AUDIT_COLLISION", f"inconsistent duplicate discovery for {key}")
+        budget.charge(512)
+        if candidate_key in physical_meanings and physical_meanings[candidate_key] != key:
+            lib.fail("E_AUDIT_DUPLICATE", "audit policy assigns multiple meanings to one physical candidate")
+        physical_meanings[candidate_key] = key
         found[key] = record
 
     for path, data in files:
@@ -212,9 +248,9 @@ def discover(
                 continue
             if family["kind"] == "source_suffix":
                 budget.charge(len(path))
-                if path.endswith(family["literal"]):
+                component = components[-1]
+                if component.endswith(family["literal"]):
                     component_index = len(components) - 1
-                    component = components[-1]
                     start = len(component) - len(family["literal"])
                     offsets = _offsets(component)
                     locator = {
@@ -263,6 +299,10 @@ def discover(
                                 "value_byte_end": offsets[end],
                             }
                             add(path, unit_kind, locator, family["namespace"], original, family["family_id"])
+    for family_id, expected in filters.items():
+        lib.require_key_population(
+            selected_filters[family_id], expected, budget, "E_AUDIT_CANDIDATE_FILTER"
+        )
     return [found[key] for key in sorted(found)]
 
 

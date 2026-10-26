@@ -14,11 +14,20 @@
   },
   "canonical_json": {
     "expected_utf8_hex": "7b2261223a5b332c325d2c227a223a317d0a",
-    "value": {"a": [3, 2], "z": 1}
+    "value": {
+      "a": [
+        3,
+        2
+      ],
+      "z": 1
+    }
   },
   "occurrence_key": {
     "expected": "sha256:1f56843d7d92fc11995482680bf072dbc04cdc09053b40603a9ef4c5872380b1",
-    "locator": {"byte_end": 5, "byte_start": 0},
+    "locator": {
+      "byte_end": 5,
+      "byte_start": 0
+    },
     "namespace": "display_brand",
     "original": "Klyxr",
     "path": "a.txt",
@@ -26,5 +35,104 @@
     "tree": "1111111111111111111111111111111111111111",
     "unit_kind": "raw_text"
   },
-  "protocol_version": "m0.1-v2-fixture"
+  "protocol_version": "m0.1-v2-fixture",
+  "physical_candidates": [
+    {
+      "name": "raw",
+      "tuple": [
+        "fixture/source",
+        "1111111111111111111111111111111111111111",
+        "x.txt",
+        "raw_text",
+        {
+          "byte_start": 0,
+          "byte_end": 5
+        },
+        "klyxr"
+      ],
+      "canonical_utf8": "[\"fixture/source\",\"1111111111111111111111111111111111111111\",\"x.txt\",\"raw_text\",{\"byte_end\":5,\"byte_start\":0},\"klyxr\"]",
+      "expected": "sha256:5d809c253f2b4d865fe874f5e9ebe7e63286077a90e6416d11ac70ea27f4186a"
+    },
+    {
+      "name": "second",
+      "tuple": [
+        "fixture/source",
+        "1111111111111111111111111111111111111111",
+        "x.txt",
+        "raw_text",
+        {
+          "byte_start": 11,
+          "byte_end": 16
+        },
+        "klyxr"
+      ],
+      "canonical_utf8": "[\"fixture/source\",\"1111111111111111111111111111111111111111\",\"x.txt\",\"raw_text\",{\"byte_end\":16,\"byte_start\":11},\"klyxr\"]",
+      "expected": "sha256:d146ce4610f31b1412138d18a04926a59e6e015de534daaeb4c8ee8719e9f253"
+    },
+    {
+      "name": "crate",
+      "tuple": [
+        "fixture/source",
+        "1111111111111111111111111111111111111111",
+        "x.txt",
+        "raw_text",
+        {
+          "byte_start": 0,
+          "byte_end": 14
+        },
+        "klyxr_compiler"
+      ],
+      "canonical_utf8": "[\"fixture/source\",\"1111111111111111111111111111111111111111\",\"x.txt\",\"raw_text\",{\"byte_end\":14,\"byte_start\":0},\"klyxr_compiler\"]",
+      "expected": "sha256:c2cf2f57eabdf93dea7b6e2932344e5be0c16cb141c25f9a18ab743bbbce7b13"
+    },
+    {
+      "name": "domain",
+      "tuple": [
+        "fixture/source",
+        "1111111111111111111111111111111111111111",
+        "x.txt",
+        "raw_text",
+        {
+          "byte_start": 0,
+          "byte_end": 9
+        },
+        "klyxr.com"
+      ],
+      "canonical_utf8": "[\"fixture/source\",\"1111111111111111111111111111111111111111\",\"x.txt\",\"raw_text\",{\"byte_end\":9,\"byte_start\":0},\"klyxr.com\"]",
+      "expected": "sha256:63efb07086e190037a1ad397a51f8713f84b5aadd833093b42b89f9902dca502"
+    },
+    {
+      "name": "live",
+      "tuple": [
+        "fixture/source",
+        "2222222222222222222222222222222222222222",
+        "history.md",
+        "raw_text",
+        {
+          "byte_start": 0,
+          "byte_end": 5
+        },
+        "Klyxr"
+      ],
+      "canonical_utf8": "[\"fixture/source\",\"2222222222222222222222222222222222222222\",\"history.md\",\"raw_text\",{\"byte_end\":5,\"byte_start\":0},\"Klyxr\"]",
+      "expected": "sha256:29dea78ad73e28e2adcb86670b6f706d3883382a7a1f967154bea3bc0b344d45"
+    },
+    {
+      "name": "history",
+      "tuple": [
+        "fixture/source",
+        "2222222222222222222222222222222222222222",
+        "history.md",
+        "raw_text",
+        {
+          "byte_start": 11,
+          "byte_end": 16
+        },
+        "Klyxr"
+      ],
+      "canonical_utf8": "[\"fixture/source\",\"2222222222222222222222222222222222222222\",\"history.md\",\"raw_text\",{\"byte_end\":16,\"byte_start\":11},\"Klyxr\"]",
+      "expected": "sha256:53ae86349e3129c81a994b7450facf6eb63a39bda755376b2d272592d7722462"
+    }
+  ],
+  "physical_vector_provenance": "Hand-selected physical tuples; canonical UTF-8 and SHA-256 computed with standalone Python json/hashlib without importing, executing, or deriving expectations from candidate tooling."
 }
