@@ -1,0 +1,26 @@
+{
+  "record_class": "external_observation",
+  "surface_id": "domain-portfolio",
+  "observed_at": "2026-10-25T21:26:49Z",
+  "origin": "Owner declaration retained in project conversation",
+  "declared_bowfin_domains": [
+    "bowfin-lang.com",
+    "bowfin-lang.org",
+    "bowfin-lang.net",
+    "bowfin-lang.info",
+    "bowfin-lang.online"
+  ],
+  "declared_legacy_domains": [
+    "klyxr.com",
+    "klyxr.online"
+  ],
+  "verification": {
+    "registrar_access": false,
+    "dns_snapshot": false,
+    "http_snapshot": false
+  },
+  "limitations": [
+    "Registrar ownership, expiration, DNS, TLS, redirects, and served content were not independently acquired in this tranche.",
+    "Owner declaration is provenance, not current external eligibility."
+  ]
+}
