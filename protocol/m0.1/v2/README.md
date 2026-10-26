@@ -2,11 +2,11 @@
 
 Read [PROTOCOL.md](PROTOCOL.md) before reviewing any code.
 
-The accepted M0.1 v2 baseline is recorded in PROTOCOL.md. This branch proposes an
-unaccepted occurrence-semantics repair to that baseline. It contains only
-synthetic fixtures and no production classification inputs or migration evidence.
-The repair requires independent review, separate owner acceptance, and ordinary
-merge. It does not accept M0.1 or authorize M1.
+The accepted M0.1 v2 revision recorded in PROTOCOL.md includes the
+occurrence-semantics repair merged through PR #6. This directory contains only
+protocol/tooling and synthetic fixtures; it contains no accepted production
+classification inputs or migration evidence. Acceptance does not accept PR #5,
+accept M0.1, or authorize M1.
 
 ## Review sequence
 
@@ -20,9 +20,9 @@ merge. It does not accept M0.1 or authorize M1.
 6. Only after exact-revision independent review may Greg authorize isolated
    synthetic test execution.
 
-## Interface (including the proposed repair)
+## Accepted interface
 
-The following commands describe this candidate's interface. Their presence is not an
+The following commands describe the accepted revision's interface. Their presence is not an
 authorization to execute the tooling against production inputs or generate
 migration evidence:
 
@@ -149,16 +149,17 @@ append-only decision successors, every recovery edge's object kind, and strict
 Boolean types. Binding verification now requires independently reviewed source
 change paths (`--expected-source-change-path`, repeated; empty means no changes).
 See PROTOCOL.md §16 for the exact conservative policy and evidence limits. The
-accepted baseline `0b81e183df466890a779f1bbd777c6c864835a3b` received independent
-static review, separately authorized bounded synthetic execution, focused
-independent confirmation, Greg's acceptance, and an
-ordinary merge. Production inputs, production execution, migration evidence,
-M0.1 acceptance, and M1 remain separately gated.
+original accepted baseline remains preserved in history. The current accepted
+revision is head `23bed495c73b600d0a849b3c336d08a5c6cdd1b1`, tree
+`c642dca4c4b8ae4e08f1250e1862bbe821c43b04`, and protocol subtree
+`d0e0c7419020415ddc7996631db616b2f73a25b3`, integrated by ordinary merge commit
+`ef9574336edf2b16aae4308330d581f0bacb6e45`. Production inputs, production
+execution, migration evidence, M0.1 acceptance, and M1 remain separately gated.
 
 
-## Proposed occurrence-semantics repair
+## Accepted occurrence-semantics repair
 
-This draft repair introduces a namespace-free physical `candidate_key`, requires
+This accepted repair introduces a namespace-free physical `candidate_key`, requires
 one semantic classification per physical candidate, and permits exact
 candidate-key selectors in both classification and independent audit policy.
 It exists to distinguish identical legacy spellings used as CLI names, package
@@ -181,10 +182,14 @@ bounded synthetic execution. The single authorized run discovered all 54 tests:
 53 passed and `test_independent_overlap_vectors` errored because the `crate`
 fixed vector described the 14-byte literal `klyxr_compiler` with a 13-byte end
 offset and corresponding false candidate key. BML-OS11 records that failed run.
-This appended repair corrects only that vector and this historical status. Neither
-the earlier adverse reviews nor the failed execution is rewritten as acceptance.
-The changed revision has not received independent confirmation or execution
-authorization.
-Do not execute it, generate production evidence with it, accept M0.1 from it, or
-begin M1. The existing production-input PR remains a separate draft and must be
-repaired only after this protocol revision is independently reviewed and accepted.
+This appended repair corrected only that vector and preserved the historical
+failure. The repaired revision then passed all 54 authored tests in one separately
+authorized bounded run. Sarah independently reconciled that report against the
+unchanged test module and exact source identities; a subsequent PR-body-only
+record correction did not change the accepted candidate. Greg accepted the exact
+repair, and PR #6 integrated it by ordinary merge commit
+`ef9574336edf2b16aae4308330d581f0bacb6e45`.
+
+Both one-run authorizations are exhausted. Do not generate production evidence,
+accept M0.1, or begin M1 from this acceptance. PR #5 remains a separate unaccepted
+draft whose inputs must be reconciled against this accepted tooling revision.

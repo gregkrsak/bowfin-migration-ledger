@@ -2,8 +2,9 @@
 
 **Status:** Accepted descriptive-ledger foundation, subordinate to the accepted
 migration contract in `gregkrsak/klyxr`. This repository cannot amend or replace
-that contract. The exact M0.1 v2 protocol/tooling revision merged by ledger PR #3
-is accepted; production inputs, migration evidence, M0.1, and M1 remain unaccepted.
+that contract. The M0.1 v2 protocol/tooling revision, including the exact
+occurrence-semantics repair merged by ledger PR #6, is accepted; production
+inputs, migration evidence, M0.1, and M1 remain unaccepted.
 
 ## 1. Controlling question
 
@@ -211,11 +212,13 @@ examines the exact revision statically. Greg may then authorize isolated synthet
 self-test execution of that same revision. Production compact inputs and evidence
 generation require another later authorization after tooling acceptance.
 
-That protocol/tooling sequence completed for reviewed head
-`0b81e183df466890a779f1bbd777c6c864835a3b`, tree
-`c3b7438fbb20ee1debcc8e00490449975f9c2084`, integrated by ordinary merge commit
-`8228246b221ee2c7571e5302a1357e3cfba27787`. Its durable review, owner-decision,
-and merge record is preserved under `decisions/m0.1/`.
+That protocol/tooling sequence first completed through PR #3. The current
+accepted revision includes the occurrence-semantics repair at reviewed head
+`23bed495c73b600d0a849b3c336d08a5c6cdd1b1`, tree
+`c642dca4c4b8ae4e08f1250e1862bbe821c43b04`, and protocol subtree
+`d0e0c7419020415ddc7996631db616b2f73a25b3`, integrated by ordinary merge
+commit `ef9574336edf2b16aae4308330d581f0bacb6e45`. Durable review, owner-decision,
+and merge records for both acceptance steps are preserved under `decisions/m0.1/`.
 
 No protocol review, test result, tooling merge, or ledger record accepts M0.1 or
 authorizes M1.

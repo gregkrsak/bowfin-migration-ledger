@@ -1,0 +1,124 @@
+{
+  "accepted_scope": [
+    "the exact M0.1 v2 occurrence-semantics protocol repair",
+    "the exact namespace-free physical candidate-key model",
+    "the exact classification and independent-audit population semantics",
+    "the exact retained-path, source-suffix, work-accounting, collision, and overlap controls",
+    "the exact repaired synthetic fixtures and 54 authored tests"
+  ],
+  "capture": {
+    "captured_at": "2026-10-26T05:30:14Z",
+    "captured_by": "Miles",
+    "method": "verbatim review preservation, owner-decision transcription, GitHub record readback, and post-merge Git-object verification",
+    "verification_limit": "Copied bodies and digests do not authenticate human identity or authority by themselves; Greg's sole-owner process role, exact acceptance comment, verified human merge, and append-only closeout provide the governing process context."
+  },
+  "closeout_context": {
+    "source_body": "#6 is merged",
+    "source_body_sha256": "029d51abf8c4e9782d0c363c496df1698d6340e0a48082962f2e315799be4d13",
+    "source_record_id": "active ChatGPT project conversation turn",
+    "source_url": null
+  },
+  "excluded_scope": [
+    "acceptance or merge of PR #5 or its compact inputs",
+    "production scanner execution or migration-evidence generation",
+    "M0.1 acceptance or completion",
+    "M1 or later-phase authorization",
+    "compiler or governance repository modification",
+    "release, publication, repository rename, domain cutover, or other external writes"
+  ],
+  "execution_evidence": {
+    "failed_parent_report_url": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/6#issuecomment-6407766961",
+    "failed_parent_result": "54 discovered, 53 passed, one error, exit status 1; BML-OS11 identified",
+    "failed_parent_revision": "2d822f1228e230505578c0e482219e3b012cac01",
+    "passing_report_url": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/6#issuecomment-6407954265",
+    "passing_result": "54 of 54 authored synthetic tests passed with zero failures, errors, or skips and exit status 0",
+    "passing_revision": "23bed495c73b600d0a849b3c336d08a5c6cdd1b1",
+    "scope_limit": "One bounded synthetic run on the recorded CPython 3.12.14 environment; externally reported execution independently reconciled against the pinned source, not production-input, cross-platform, host-attestation, universal-correctness, or migration-acceptance evidence."
+  },
+  "integration": {
+    "base_commit_before_merge": "d3832e24657b7ccd2c118b2aee6832f4d1289ca9",
+    "candidate_branch": "m01-v2-occurrence-semantics-repair",
+    "method": "ordinary_merge_commit",
+    "merge_commit": "ef9574336edf2b16aae4308330d581f0bacb6e45",
+    "merge_parents": [
+      "d3832e24657b7ccd2c118b2aee6832f4d1289ca9",
+      "23bed495c73b600d0a849b3c336d08a5c6cdd1b1"
+    ],
+    "pull_request": 6,
+    "repository": "gregkrsak/bowfin-migration-ledger",
+    "result_tree": "c642dca4c4b8ae4e08f1250e1862bbe821c43b04",
+    "target_branch": "main",
+    "tree_verification": "The verified ordinary merge has the exact prior-main and accepted-head parents and retains the reviewed candidate tree and protocol subtree byte-for-byte.",
+    "verified_merged": true
+  },
+  "m0_1_effect": {
+    "evidence_accepted": false,
+    "m0_1_accepted": false,
+    "m0_1_complete": false,
+    "m1_authorized": false,
+    "occurrence_semantics_repair_accepted": true,
+    "production_execution_authorized": false,
+    "production_inputs_accepted": false,
+    "production_inputs_require_reconciliation": true,
+    "protocol_tooling_accepted": true
+  },
+  "owner_decision": {
+    "acceptance_comment_id": 6408378294,
+    "acceptance_comment_url": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/6#issuecomment-6408378294",
+    "decision": "accepted_and_merged",
+    "owner": "Greg Krsak",
+    "process_context": "Greg accepted the exact repaired identities after bounded execution, independent execution confirmation, deterministic BML-OS12 correction, and maintainer readback; Greg then performed the ordinary merge after exact target and readiness confirmation.",
+    "source_body": "Okay, I accept. What next?",
+    "source_body_sha256": "c9d4efa19f8347f3ee204d42afd4d4cf66d8271d815a2f4624baf091cd9e8d2b",
+    "source_record_id": "active ChatGPT project conversation turn",
+    "source_url": null
+  },
+  "phase": "M0.1",
+  "record_class": "protocol_tooling_repair_acceptance",
+  "record_correction": {
+    "finding": "BML-OS12",
+    "maintainer_verification": "The prescribed sentence was replaced exactly; the complete PR body, candidate identities, failed and passing execution histories, exhausted authorizations, authority boundaries, PR #5 state, and unchanged main were read back before acceptance.",
+    "new_text": "Construction-time static and reviewer-authored data-only checks included:",
+    "old_text": "For the current changed revision, static and reviewer-authored data-only checks only:",
+    "owner_authorized_no_third_review": true,
+    "source_or_test_change": false
+  },
+  "record_version": 1,
+  "reviews": [
+    {
+      "body_blob_sha1": "365a607932b44ead2c2a709f6b6a51d28027d88f",
+      "body_byte_count": 21392,
+      "body_path": "decisions/m0.1/reviews/2026-10-25-occurrence-semantics-execution-confirmation.md",
+      "body_sha256": "72f8d6fff88afabdacefce7db3f202c895482de485f0186cad9a94d587b48bdd",
+      "disposition": "BML-OS05 synthetic execution evidence resolved; BML-OS12 record repair required",
+      "publication_context": "Sarah's complete report was supplied by Greg in the active ChatGPT project conversation and had not been posted to GitHub.",
+      "source_record_id": "Pasted text(20261026-041838).txt",
+      "source_url": null,
+      "stated_reviewer": "Sarah"
+    },
+    {
+      "body_blob_sha1": "fcc8b498190e330895c982b2dd531bd1ff31a555",
+      "body_byte_count": 8949,
+      "body_path": "decisions/m0.1/reviews/2026-10-25-occurrence-semantics-record-correction-readback.md",
+      "body_sha256": "fed18381300ecc5a8aece10949706983b65325b394ce26f71aae185ce1006707",
+      "disposition": "BML-OS12 substantially repaired; one exact sentence replacement remained",
+      "publication_context": "Sarah's complete report was supplied directly by Greg in the active ChatGPT project conversation and had not been posted to GitHub.",
+      "source_record_id": "active ChatGPT project conversation turn",
+      "source_url": null,
+      "stated_reviewer": "Sarah"
+    }
+  ],
+  "subject": {
+    "accepted_base_commit": "d3832e24657b7ccd2c118b2aee6832f4d1289ca9",
+    "candidate_branch": "m01-v2-occurrence-semantics-repair",
+    "protocol_path": "protocol/m0.1/v2",
+    "protocol_subtree": "d0e0c7419020415ddc7996631db616b2f73a25b3",
+    "pull_request": 6,
+    "repository": "gregkrsak/bowfin-migration-ledger",
+    "reviewed_head": "23bed495c73b600d0a849b3c336d08a5c6cdd1b1",
+    "reviewed_tree": "c642dca4c4b8ae4e08f1250e1862bbe821c43b04",
+    "sole_parent": "2d822f1228e230505578c0e482219e3b012cac01",
+    "target_branch": "main",
+    "test_module_blob": "8c6e8a241cbc93b947ca9ee29c1efd7d91e05551"
+  }
+}
