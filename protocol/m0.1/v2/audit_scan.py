@@ -70,6 +70,8 @@ def validate_policy(document: Any, limits: dict[str, int]) -> list[dict[str, Any
             lib.fail("E_AUDIT_LITERAL", f"{label}.literal must be nonempty")
         if family["kind"] in {"ascii_casefold_literal", "ascii_digit_suffix"} and any(ord(char) > 127 for char in literal):
             lib.fail("E_AUDIT_ASCII", f"{label} requires an ASCII literal")
+        if family["kind"] == "source_suffix" and ("/" in literal or "\\" in literal):
+            lib.fail("E_AUDIT_LITERAL", f"{label}.literal must be one path-component suffix")
         lib.require_identifier(family["namespace"], f"{label}.namespace")
         units = family["unit_kinds"]
         if not isinstance(units, list) or not units or len(units) != len(set(units)):
@@ -246,9 +248,9 @@ def discover(
                 continue
             if family["kind"] == "source_suffix":
                 budget.charge(len(path))
-                if path.endswith(family["literal"]):
+                component = components[-1]
+                if component.endswith(family["literal"]):
                     component_index = len(components) - 1
-                    component = components[-1]
                     start = len(component) - len(family["literal"])
                     offsets = _offsets(component)
                     locator = {

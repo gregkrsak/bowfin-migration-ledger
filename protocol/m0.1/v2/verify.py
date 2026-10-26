@@ -241,6 +241,8 @@ def _validate_audit_document(document: Any, limits: dict[str, int]) -> None:
             lib.fail("E_AUDIT_UNITS", f"invalid units: {label}")
         if row["kind"] in {"ascii_casefold_literal", "ascii_digit_suffix"} and any(ord(char) > 127 for char in literal):
             lib.fail("E_AUDIT_ASCII", f"non-ASCII literal: {label}")
+        if row["kind"] == "source_suffix" and ("/" in literal or "\\" in literal):
+            lib.fail("E_AUDIT_LITERAL", f"source suffix must be one path component: {label}")
         if row["kind"] in {"source_suffix", "path_component"} and units != ["path_component"]:
             lib.fail("E_AUDIT_UNITS", f"path family must be path-only: {label}")
         candidate_keys = row.get("candidate_keys")
@@ -656,7 +658,30 @@ def validate_locator(unit_kind: str, locator: Any) -> dict[str, Any]:
     return locator
 
 
-def validate_occurrence(row: Any, limits: dict[str, int]) -> dict[str, Any]:
+def validate_path_component_claim(
+    path: str,
+    locator: dict[str, Any],
+    original: str,
+    limits: dict[str, int],
+    budget: Any = None,
+) -> None:
+    """Require a retained path claim to name its exact component bytes."""
+    work = budget if budget is not None else lib.WorkBudget(limits)
+    lib.charge_value(work, [path, locator, original])
+    components = path.split("/")
+    index = locator["component_index"]
+    if index >= len(components):
+        lib.fail("E_PATH_COMPONENT_BINDING", "path component index is outside the retained path")
+    component = components[index].encode("utf-8")
+    start = locator["component_byte_start"]
+    end = locator["component_byte_end"]
+    if end > len(component) or component[start:end] != original.encode("utf-8"):
+        lib.fail("E_PATH_COMPONENT_BINDING", "path component bytes do not equal original")
+
+
+def validate_occurrence(
+    row: Any, limits: dict[str, int], budget: Any = None
+) -> dict[str, Any]:
     required = {
         "protocol_version", "candidate_key", "occurrence_key", "path", "unit_kind", "locator",
         "source_file_sha256", "original", "canonical", "namespace", "role", "phase",
@@ -671,7 +696,7 @@ def validate_occurrence(row: Any, limits: dict[str, int]) -> dict[str, Any]:
     unit_kind = row["unit_kind"]
     if unit_kind not in lib.UNIT_KINDS or row["role"] not in lib.ROLES:
         lib.fail("E_ROW_ENUM", "occurrence has unknown unit kind or role")
-    lib.validate_relpath(row["path"], limits)
+    path = lib.validate_relpath(row["path"], limits).as_posix()
     validate_locator(unit_kind, row["locator"])
     lib.require_sha256(row["source_file_sha256"], "source_file_sha256")
     candidate_key = row["candidate_key"]
@@ -683,6 +708,10 @@ def validate_occurrence(row: Any, limits: dict[str, int]) -> dict[str, Any]:
         lib.fail("E_OCCURRENCE_KEY", "invalid occurrence key")
     lib.require_sha256(key[7:], "occurrence key")
     _nonempty_string(row["original"], "original")
+    if unit_kind == "path_component":
+        validate_path_component_claim(
+            path, row["locator"], row["original"], limits, budget
+        )
     if row["canonical"] is not None:
         _nonempty_string(row["canonical"], "canonical")
     lib.require_identifier(row["namespace"], "namespace")
@@ -886,7 +915,11 @@ def verify_package(
         for row_number, line in enumerate(data.splitlines(keepends=True), start=1):
             if len(line) > limits["max_row_bytes"]:
                 lib.fail("E_ROW_SIZE", f"oversized row {expected_path}:{row_number}")
-            row = validate_occurrence(lib.strict_json_bytes(line, limits, expected_path, limits["max_row_bytes"]), limits)
+            row = validate_occurrence(
+                lib.strict_json_bytes(line, limits, expected_path, limits["max_row_bytes"]),
+                limits,
+                budget,
+            )
             if line != lib.canonical_json_bytes(row, limits):
                 lib.fail("E_ROW_CANONICAL", f"noncanonical row {expected_path}:{row_number}")
             recomputed = lib.occurrence_key(
@@ -1085,6 +1118,10 @@ def reconcile_bytes(
         lib.require_identifier(candidate["namespace"], "audit namespace")
         lib.require_identifier(candidate["family_id"], "audit family_id")
         _nonempty_string(candidate["original"], "audit original")
+        if candidate["unit_kind"] == "path_component":
+            validate_path_component_claim(
+                path, candidate["locator"], candidate["original"], limits, budget
+            )
         budget.charge(256 + len(candidate["family_id"]))
         family = families.get(candidate["family_id"])
         if family is None or not _audit_family_accepts(candidate, family, budget):

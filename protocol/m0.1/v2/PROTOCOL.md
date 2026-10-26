@@ -214,6 +214,11 @@ Discovery families use only bounded literal forms:
 - literal prefix followed by one or more ASCII digits; or
 - exact source suffix/path component.
 
+A `source_suffix` literal is a suffix of one path component. Forward or backward
+slashes reject during policy validation; the scanner never interprets a suffix as
+spanning directory boundaries. Non-ASCII component suffixes remain valid and use
+UTF-8 byte coordinates.
+
 Each family names its namespace and eligible unit kinds. A family may also name
 an exact, nonempty, duplicate-free `candidate_keys` set. If present, every named
 key must be rediscovered and only those physical candidates are emitted for that
@@ -298,6 +303,14 @@ UTF-8 byte start/end coordinates. Path matches add component index and component
 byte start/end. Structured matches use JSON Pointer plus value-local UTF-8 byte
 start/end. The independently authored scanner can derive the same key without
 sharing generator traversal state.
+
+Retained verification treats path coordinates as an intrinsic claim, before
+classification or audit-family meaning. For every `path_component` row, the
+component index must resolve within the retained relative path, the byte range
+must lie within that component, and the selected UTF-8 bytes must equal
+`original` exactly. Recomputed keys and matching population sets cannot substitute
+for this check: they can bind a self-consistent false tuple. The check consumes
+the current verification-stage work budget before splitting or encoding the path.
 
 ## 10. Chunking, index, and aggregate digest
 
@@ -581,5 +594,12 @@ Malformed retained packages are rebuilt with current descriptors; retained audit
 mutations are re-encoded before reconciliation. These source-authored controls
 remain unexecuted pending exact-revision independent review and Greg's separate
 synthetic-execution authorization.
+
+The BML-OS08–10 follow-up adds an impossible retained filename claim, wrong
+component and wrong span, a valid Unicode-path claim, malformed cross-component
+source suffixes, and a multibyte source-suffix positive. It also retargets the
+predecessor incremental-budget control: an independently stated pre-candidate
+cost permits all rule precharging and index construction, then observes rejection
+on the first candidate descriptor. These controls likewise remain unexecuted.
 
 No test execution is authorized by the existence of these files.

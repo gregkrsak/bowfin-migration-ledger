@@ -170,9 +170,14 @@ repair. This follow-up addresses BML-OS01–07: verifier cross-interpretation
 competition, authenticated audit-policy populations, strict selector presence,
 new-work accounting, independent fixed-vector controls, normalized collision
 descriptors, and exact population semantics for classification key lists.
-The initial adverse review is preserved, not rewritten as acceptance of this
-changed revision. The follow-up has not yet received independent confirmation or
-execution authorization.
+Sarah's focused review of the first repair head
+`a9fd31476de8a652919bf1825a4553ebba22daac` resolved OS01, OS03, OS04, OS06, and
+OS07, but retained OS02 because of new blocker OS08; it also recorded OS09 and
+OS10. The next appended repair binds retained filename claims to their actual path
+component bytes, rejects cross-component source-suffix literals, and restores the
+predecessor budget control's intended target. Neither adverse disposition is
+rewritten as acceptance. The changed revision has not received independent
+confirmation or execution authorization.
 Do not execute it, generate production evidence with it, accept M0.1 from it, or
 begin M1. The existing production-input PR remains a separate draft and must be
 repaired only after this protocol revision is independently reviewed and accepted.

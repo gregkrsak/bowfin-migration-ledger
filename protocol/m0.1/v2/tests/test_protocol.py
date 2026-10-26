@@ -669,6 +669,132 @@ class ProtocolTests(unittest.TestCase):
                          [("x.txt", b"klyxr")], phantom["families"],
                          "fixture/source", "1" * 40, self.limits)
 
+    def test_retained_path_component_claim_truth(self) -> None:
+        def path_row(path: str, locator: dict[str, int], original: str, data: bytes) -> dict[str, Any]:
+            row = copy.deepcopy(self.os_case()["rows"][0])
+            row.update(
+                path=path,
+                unit_kind="path_component",
+                locator=locator,
+                original=original,
+                source_file_sha256=lib.sha256_hex(data),
+                context=original,
+            )
+            row["candidate_key"] = lib.candidate_key(
+                "fixture/source", "1" * 40, path, "path_component", locator,
+                original, self.limits,
+            )
+            row["occurrence_key"] = lib.occurrence_key(
+                "fixture/source", "1" * 40, path, "path_component", locator,
+                row["namespace"], original, self.limits,
+            )
+            return row
+
+        invalid = [
+            ("x.txt", {"component_index": 0, "component_byte_start": 0, "component_byte_end": 5}),
+            ("dir/klyxr.txt", {"component_index": 0, "component_byte_start": 0, "component_byte_end": 5}),
+            ("dir/klyxr.txt", {"component_index": 1, "component_byte_start": 1, "component_byte_end": 6}),
+        ]
+        for number, (path, locator) in enumerate(invalid):
+            data = b"ok\n"
+            row = path_row(path, locator, "klyxr", data)
+            package = self.workspace / f"false-path-claim-{number}"
+            lib.write_package([row], lib.scan_manifest([(path, data)], self.limits), package, self.limits)
+            self.assert_code(
+                "E_PATH_COMPONENT_BINDING", verify.verify_package, package,
+                "fixture/source", "1" * 40, self.limits,
+            )
+
+        valid_path = "caf\u00e9/klyxr.txt"
+        valid_data = b"ok\n"
+        valid_locator = {
+            "component_index": 1, "component_byte_start": 0, "component_byte_end": 5,
+        }
+        valid = path_row(valid_path, valid_locator, "klyxr", valid_data)
+        package = self.workspace / "true-path-claim"
+        lib.write_package(
+            [valid], lib.scan_manifest([(valid_path, valid_data)], self.limits),
+            package, self.limits,
+        )
+        self.assertEqual(
+            [valid["occurrence_key"]],
+            [row["occurrence_key"] for row in verify.verify_package(
+                package, "fixture/source", "1" * 40, self.limits
+            )],
+        )
+
+        def audit_for(row: dict[str, Any], data: bytes) -> tuple[dict[str, Any], dict[str, Any]]:
+            policy = {
+                "protocol_version": "m0.1-v2", "independently_authored": True,
+                "families": [{
+                    "family_id": "path", "kind": "path_component",
+                    "literal": row["original"], "namespace": row["namespace"],
+                    "unit_kinds": ["path_component"],
+                    "candidate_keys": [row["candidate_key"]],
+                }],
+            }
+            manifest = lib.scan_manifest([(row["path"], data)], self.limits)
+            audit = {
+                "protocol_version": "m0.1-v2", "source_repository": "fixture/source",
+                "source_commit": "2" * 40, "source_tree": "1" * 40,
+                "source_export_sha256": "3" * 64, "input_export_sha256": "4" * 64,
+                "scan_manifest": manifest,
+                "scan_manifest_sha256": lib.scan_manifest_digest(manifest, self.limits),
+                "candidate_count": 1,
+                "candidates": [{
+                    **{field: row[field] for field in (
+                        "candidate_key", "occurrence_key", "path", "unit_kind",
+                        "locator", "namespace", "original",
+                    )},
+                    "family_id": "path",
+                }],
+            }
+            return policy, audit
+
+        policy, audit = audit_for(valid, valid_data)
+        self.os_reconcile(policy, audit, [valid])
+        false = path_row("x.txt", invalid[0][1], "klyxr", b"ok\n")
+        policy, audit = audit_for(false, b"ok\n")
+        self.assert_code(
+            "E_PATH_COMPONENT_BINDING", self.os_reconcile,
+            policy, audit, [false],
+        )
+
+    def test_source_suffix_literal_is_one_component(self) -> None:
+        policy = {
+            "protocol_version": "m0.1-v2", "independently_authored": True,
+            "families": [{
+                "family_id": "suffix", "kind": "source_suffix",
+                "literal": "examples/x.klx", "namespace": "source_suffix",
+                "unit_kinds": ["path_component"],
+            }],
+        }
+        for literal in ("examples/x.klx", "examples\\x.klx"):
+            changed = copy.deepcopy(policy)
+            changed["families"][0]["literal"] = literal
+            self.assert_code(
+                "E_AUDIT_LITERAL", audit_scan.validate_policy,
+                changed, self.limits,
+            )
+            self.assert_code(
+                "E_AUDIT_LITERAL", verify._validate_audit_document,
+                changed, self.limits,
+            )
+
+        policy["families"][0]["literal"] = ".b\u00f6w"
+        families = audit_scan.validate_policy(policy, self.limits)
+        verify._validate_audit_document(policy, self.limits)
+        discovered = audit_scan.discover(
+            [("caf\u00e9/na\u00efve.b\u00f6w", b"ok\n")], families,
+            "fixture/source", "1" * 40, self.limits,
+        )
+        self.assertEqual(1, len(discovered))
+        self.assertEqual(".b\u00f6w", discovered[0]["original"])
+        self.assertEqual(
+            {"component_index": 1, "component_byte_start": 6, "component_byte_end": 11},
+            discovered[0]["locator"],
+        )
+
     def test_forged_physical_keys(self) -> None:
         case = self.os_case()
         rows = copy.deepcopy(case["rows"][:1])
@@ -956,7 +1082,23 @@ class ProtocolTests(unittest.TestCase):
             "fixture/source", "1" * 40, self.limits,
         )
         self.assertTrue(candidates)
-        exact_index_cost = (
+        def value_cost(value: Any) -> int:
+            amount = 64
+            if isinstance(value, str):
+                return amount + 64 * len(value)
+            if isinstance(value, (dict, list, tuple)):
+                count = len(value)
+                amount += 64 * count * (1 + count if isinstance(value, dict) else 1)
+                if isinstance(value, dict):
+                    for key, item in value.items():
+                        if isinstance(key, str):
+                            amount += 64 * count * len(key)
+                        amount += value_cost(key) + value_cost(item)
+                else:
+                    amount += sum(value_cost(item) for item in value)
+            return amount
+
+        exact_pre_candidate_cost = value_cost(rules) + (
             sum(1 + len(item["mapping_id"]) for item in mappings)
             + sum(
                 1 + len(rule["selector"]["mapping_id"])
@@ -965,11 +1107,19 @@ class ProtocolTests(unittest.TestCase):
             )
             + sum(1 + len(rule["rule_id"]) for rule in rules)
         )
-        limits = {**self.limits, "max_processing_steps": exact_index_cost}
-        self.assert_code(
-            "E_PROCESSING_STEPS", generate.classify,
-            candidates, mappings, rules, limits,
-        )
+        limits = {**self.limits, "max_processing_steps": exact_pre_candidate_cost}
+        with mock.patch.object(lib, "charge_value", wraps=lib.charge_value) as charged:
+            self.assert_code(
+                "E_PROCESSING_STEPS", generate.classify,
+                candidates, mappings, rules, limits,
+            )
+            descriptor_calls = [
+                call for call in charged.call_args_list
+                if isinstance(call.args[1], list)
+                and len(call.args[1]) == 3
+                and isinstance(call.args[1][0], list)
+            ]
+            self.assertEqual(1, len(descriptor_calls))
 
     def test_direct_compact_input_field_validation(self) -> None:
         files = {name: lib.canonical_json_bytes(value, self.limits) for name, value in self.compact_documents().items()}

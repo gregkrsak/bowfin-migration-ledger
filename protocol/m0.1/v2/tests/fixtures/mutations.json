@@ -67,7 +67,9 @@
     {"expected_code": "E_CLASSIFICATION_BINDING", "mutation_id": "retained-classification-phantom-key-population", "test_method": "test_exact_classification_population_and_collision_descriptor"},
     {"expected_code": "E_CANDIDATE_COLLISION", "mutation_id": "normalized-physical-descriptor-disagreement", "test_method": "test_exact_classification_population_and_collision_descriptor"},
     {"expected_code": "E_PROCESSING_STEPS", "mutation_id": "key-validation-encoding-and-membership-budget", "test_method": "test_new_work_accounting_boundaries"},
-    {"expected_code": "E_PROCESSING_STEPS", "mutation_id": "filter-construction-exhaustion-and-second-group-budget", "test_method": "test_key_construction_exhaustion_and_group_budget_sites"}
+    {"expected_code": "E_PROCESSING_STEPS", "mutation_id": "filter-construction-exhaustion-and-second-group-budget", "test_method": "test_key_construction_exhaustion_and_group_budget_sites"},
+    {"expected_code": "E_PATH_COMPONENT_BINDING", "mutation_id": "retained-impossible-wrong-component-or-span-path-claim", "test_method": "test_retained_path_component_claim_truth"},
+    {"expected_code": "E_AUDIT_LITERAL", "mutation_id": "cross-component-source-suffix", "test_method": "test_source_suffix_literal_is_one_component"}
   ],
   "controls": [
     {"control_id": "single-read-audit-byte-binding", "test_method": "test_evidence_record_binds_actual_exports_and_generated_bytes"},
@@ -80,7 +82,10 @@
     {"control_id": "literal-physical-vectors-and-three-raw-kinds", "test_method": "test_physical_vectors_and_all_raw_kinds"},
     {"control_id": "independent-short-long-overlap-vectors", "test_method": "test_independent_overlap_vectors"},
     {"control_id": "authenticated-policy-and-single-buffer-forwarding", "test_method": "test_evidence_record_binds_actual_exports_and_generated_bytes"},
-    {"control_id": "exact-set-comparison-budget-boundary", "test_method": "test_key_construction_exhaustion_and_group_budget_sites"}
+    {"control_id": "exact-set-comparison-budget-boundary", "test_method": "test_key_construction_exhaustion_and_group_budget_sites"},
+    {"control_id": "valid-unicode-path-component-binding", "test_method": "test_retained_path_component_claim_truth"},
+    {"control_id": "multibyte-source-suffix", "test_method": "test_source_suffix_literal_is_one_component"},
+    {"control_id": "post-index-first-candidate-budget-boundary", "test_method": "test_incremental_processing_limit"}
   ],
   "protocol_version": "m0.1-v2-fixture"
 }
