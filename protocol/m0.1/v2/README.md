@@ -175,9 +175,16 @@ Sarah's focused review of the first repair head
 OS07, but retained OS02 because of new blocker OS08; it also recorded OS09 and
 OS10. The next appended repair binds retained filename claims to their actual path
 component bytes, rejects cross-component source-suffix literals, and restores the
-predecessor budget control's intended target. Neither adverse disposition is
-rewritten as acceptance. The changed revision has not received independent
-confirmation or execution authorization.
+predecessor budget control's intended target. Sarah's static confirmation of head
+`2d822f1228e230505578c0e482219e3b012cac01` resolved OS08–10 and recommended
+bounded synthetic execution. The single authorized run discovered all 54 tests:
+53 passed and `test_independent_overlap_vectors` errored because the `crate`
+fixed vector described the 14-byte literal `klyxr_compiler` with a 13-byte end
+offset and corresponding false candidate key. BML-OS11 records that failed run.
+This appended repair corrects only that vector and this historical status. Neither
+the earlier adverse reviews nor the failed execution is rewritten as acceptance.
+The changed revision has not received independent confirmation or execution
+authorization.
 Do not execute it, generate production evidence with it, accept M0.1 from it, or
 begin M1. The existing production-input PR remains a separate draft and must be
 repaired only after this protocol revision is independently reviewed and accepted.

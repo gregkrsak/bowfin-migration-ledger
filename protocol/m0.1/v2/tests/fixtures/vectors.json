@@ -78,12 +78,12 @@
         "raw_text",
         {
           "byte_start": 0,
-          "byte_end": 13
+          "byte_end": 14
         },
         "klyxr_compiler"
       ],
-      "canonical_utf8": "[\"fixture/source\",\"1111111111111111111111111111111111111111\",\"x.txt\",\"raw_text\",{\"byte_end\":13,\"byte_start\":0},\"klyxr_compiler\"]",
-      "expected": "sha256:ddd531ec4aa9535714eb77b8cd36bd553b8b3c2371701635507a6319d4210bc5"
+      "canonical_utf8": "[\"fixture/source\",\"1111111111111111111111111111111111111111\",\"x.txt\",\"raw_text\",{\"byte_end\":14,\"byte_start\":0},\"klyxr_compiler\"]",
+      "expected": "sha256:c2cf2f57eabdf93dea7b6e2932344e5be0c16cb141c25f9a18ab743bbbce7b13"
     },
     {
       "name": "domain",
