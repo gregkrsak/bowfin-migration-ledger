@@ -4,10 +4,10 @@ This directory is reserved for accepted, current migration evidence. Material in
 `archive/unaccepted/**` is historical preservation and is permanently ineligible
 for use here.
 
-No M0.1 v2 production evidence exists yet. The protocol/tooling preparation PR
-has been accepted and merged, but that acceptance does not authorize production
-inputs, scanner execution against the compiler repository, evidence generation,
-or phase acceptance.
+No M0.1 v2 production evidence exists yet. The protocol/tooling revision,
+including the occurrence-semantics repair merged through PR #6, has been accepted.
+That acceptance does not accept PR #5 or its compact inputs and does not authorize
+production scanning, evidence generation, M0.1, or a later phase.
 
 ## Required layout
 

@@ -22,3 +22,10 @@ The protocol/tooling acceptance closeout preserves the final independent review,
 Greg's exact-revision acceptance, and the ordinary PR #3 merge. It accepts only
 the recorded protocol/tooling revision. Production compact inputs, migration
 evidence, M0.1 acceptance, M1, and later work remain separately gated.
+
+The occurrence-semantics repair closeout preserves the independent execution
+confirmation, BML-OS12 record-correction readback, exact prescribed correction,
+Greg's acceptance, and the ordinary PR #6 merge. It makes the repaired revision
+the current accepted protocol/tooling dependency. PR #5 and its compact inputs
+remain unaccepted and require reconciliation; production execution, migration
+evidence, M0.1, M1, and later work remain separately gated.

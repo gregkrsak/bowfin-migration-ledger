@@ -60,12 +60,13 @@ corresponding evidence binding. There is no informal relevant-drift exception.
 
 ## Accepted M0.1 v2 protocol/tooling boundary
 
-The exact M0.1 v2 protocol/tooling revision received independent static review,
-bounded synthetic execution, focused independent confirmation, Greg's acceptance,
-and ordinary merge through PR #3. The accepted content is the reviewed head
-`0b81e183df466890a779f1bbd777c6c864835a3b`, tree
-`c3b7438fbb20ee1debcc8e00490449975f9c2084`, integrated by merge commit
-`8228246b221ee2c7571e5302a1357e3cfba27787`.
+The original M0.1 v2 protocol/tooling revision was accepted through PR #3. The
+current accepted content includes the independently reviewed occurrence-semantics
+repair at head `23bed495c73b600d0a849b3c336d08a5c6cdd1b1`, tree
+`c642dca4c4b8ae4e08f1250e1862bbe821c43b04`, and protocol subtree
+`d0e0c7419020415ddc7996631db616b2f73a25b3`, integrated by ordinary merge
+commit `ef9574336edf2b16aae4308330d581f0bacb6e45` through PR #6. The original
+acceptance and adverse repair history remain preserved.
 
 This acceptance makes that exact protocol/tooling revision eligible as a current
 M0.1 dependency. It does not authorize production classification inputs, scanner

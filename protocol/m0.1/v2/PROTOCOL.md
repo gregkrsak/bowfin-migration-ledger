@@ -1,12 +1,11 @@
 # M0.1 v2 Rule-to-Occurrence Ledger Protocol
 
-**Status:** The accepted baseline is reviewed head
-`0b81e183df466890a779f1bbd777c6c864835a3b`, tree
-`c3b7438fbb20ee1debcc8e00490449975f9c2084`, integrated through ordinary merge
-commit `8228246b221ee2c7571e5302a1357e3cfba27787`. This branch proposes an
-unaccepted occurrence-semantics repair to that baseline. It requires independent
-review, separate owner acceptance, and ordinary merge before it can replace the
-accepted revision. No production execution is authorized. M0.1 remains
+**Status:** Accepted protocol/tooling revision including the occurrence-semantics
+repair. Reviewed head `23bed495c73b600d0a849b3c336d08a5c6cdd1b1`, tree
+`c642dca4c4b8ae4e08f1250e1862bbe821c43b04`, and protocol subtree
+`d0e0c7419020415ddc7996631db616b2f73a25b3` were accepted by Greg and integrated
+through ordinary merge commit `ef9574336edf2b16aae4308330d581f0bacb6e45`.
+Production inputs and evidence generation remain separately gated. M0.1 remains
 unaccepted and M1 remains unauthorized.
 
 ## 1. Purpose and non-authority
@@ -26,7 +25,7 @@ current evidence, or acceptance dependency.
 
 ## 2. Governing identity
 
-The accepted baseline and this unaccepted repair proposal are subordinate to:
+This accepted revision is subordinate to:
 
 | Item | Identity |
 | --- | --- |
@@ -583,7 +582,7 @@ units legitimately share a locator, fresh fixture state for each mutation,
 classification-meaning budget exhaustion, numeric substitution for Boolean review
 fields, and rejection of non-root compiler-source views.
 
-The proposed occurrence-semantics controls add all three normalized raw kinds;
+The accepted occurrence-semantics controls add all three normalized raw kinds;
 independent physical-key vectors and overlapping short/long spellings; two-row
 physical duplicates and a one-row hidden competing path rule with zero expected
 count; retained-audit phantom/missing keys and unknown/wrong families; forged
@@ -591,15 +590,17 @@ physical keys with valid semantic keys; malformed/null selector properties;
 normalized collision descriptors; exact classification populations; and targeted
 key-list, construction, exhaustion, grouping and linear-search budget failures.
 Malformed retained packages are rebuilt with current descriptors; retained audit
-mutations are re-encoded before reconciliation. These source-authored controls
-remain unexecuted pending exact-revision independent review and Greg's separate
-synthetic-execution authorization.
+mutations are re-encoded before reconciliation.
 
 The BML-OS08–10 follow-up adds an impossible retained filename claim, wrong
 component and wrong span, a valid Unicode-path claim, malformed cross-component
 source suffixes, and a multibyte source-suffix positive. It also retargets the
 predecessor incremental-budget control: an independently stated pre-candidate
 cost permits all rule precharging and index construction, then observes rejection
-on the first candidate descriptor. These controls likewise remain unexecuted.
+on the first candidate descriptor. BML-OS11 corrected the fixed crate-overlap
+vector without weakening population enforcement.
 
-No test execution is authorized by the existence of these files.
+The exact accepted repair received independent static review and one separately
+authorized bounded run in which all 54 authored tests passed. Both one-run
+authorizations are exhausted. The existence or acceptance of these files grants
+no production execution, evidence generation, M0.1 acceptance, or later authority.
