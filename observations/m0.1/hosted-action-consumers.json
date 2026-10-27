@@ -1,0 +1,12 @@
+{
+  "record_class": "external_observation",
+  "surface_id": "hosted-action-consumers",
+  "observed_at": "2026-10-25T21:26:49Z",
+  "origin": "M0.1 production-input construction",
+  "search_performed": false,
+  "known_consumers": [],
+  "limitations": [
+    "No organization-wide or public-code consumer search was performed.",
+    "An empty known-consumer list is not evidence that no hosted-Action consumers exist."
+  ]
+}
