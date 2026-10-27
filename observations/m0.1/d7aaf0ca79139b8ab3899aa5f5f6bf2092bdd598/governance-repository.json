@@ -1,0 +1,65 @@
+{
+  "record_class": "external_observation",
+  "surface_id": "governance-repository",
+  "candidate_commit": "d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598",
+  "observed_at": "2026-10-27T14:35:01Z",
+  "origin": "GitHub REST API and exact governance-tree reads through the configured GitHub connector",
+  "repository": {
+    "full_name": "gregkrsak/klyxr-ai-governance",
+    "default_branch": "prod",
+    "visibility": "public",
+    "archived": false,
+    "has_pages": false,
+    "updated_at": "2026-10-22T03:09:45Z",
+    "pushed_at": "2026-10-22T03:09:45Z",
+    "size_kib": 280,
+    "merge_configuration": {
+      "allow_merge_commit": true,
+      "allow_squash_merge": true,
+      "allow_rebase_merge": true,
+      "allow_auto_merge": false,
+      "delete_branch_on_merge": false,
+      "allow_update_branch": false
+    }
+  },
+  "revision": {
+    "branch": "prod",
+    "commit": "37d4446153cd761b70ad7fc599db1df994352585",
+    "tree": "dab0ee3d04e3c478d818a7dc15f7a502303a356d"
+  },
+  "branches": [
+    {"name":"docs/miles-phase-4-friendship","commit":"caefe04d76ca696ea451178776b299f804c368f5","protected":false},
+    {"name":"fix/arnold-voice-identity-isolation","commit":"584b491b78e2f4584efe8003a6effa4282dd163b","protected":false},
+    {"name":"fix/miles-phase4-calibration","commit":"49947fca0d7646876392a90313a28eae400ac05f","protected":false},
+    {"name":"fix/miles-project-instructions-8000","commit":"7dc6cc3b61e3b156953dd0397424dc36a1b4b950","protected":false},
+    {"name":"fix/test-miles-4-followup-findings","commit":"d5fb0094eef90dbf8c310d68bbb0d43cb910d79e","protected":false},
+    {"name":"prod","commit":"37d4446153cd761b70ad7fc599db1df994352585","protected":false}
+  ],
+  "charters": [
+    {"path":"agents/arnold/CHARTER.md","blob":"b04c4ba5251fdcacb5278ba26c0aaf8a06b4db7e","size":16810},
+    {"path":"agents/miles/CHARTER.md","blob":"d93be8a189f5b37c1d899fe556fdb45b5de6cce4","size":64937},
+    {"path":"agents/robert/CHARTER.md","blob":"7fdc57faab3755c9d3ab1b0e2af65764a2cd5d5f","size":20838},
+    {"path":"agents/sarah/CHARTER.md","blob":"4df5839f388b50b5689c101f20fc845fb157700c","size":26637}
+  ],
+  "charter_bytes": {
+    "embedded_in_this_snapshot": false,
+    "binding": "Exact Git blob identity, byte size, repository, commit, tree, and path",
+    "reason": "Avoid duplicating 129222 immutable charter bytes while retaining exact retrievability."
+  },
+  "rulesets": [],
+  "administrative_controls": {
+    "branch_protection": "unverified",
+    "branch_protection_reason": "GitHub returned HTTP 403 Resource not accessible by integration for prod."
+  },
+  "freshness": {
+    "max_age_seconds": 86400,
+    "evaluation_points": ["owner_acceptance", "pre_integration"],
+    "invalidating_events": ["governance_prod_changed", "governance_repository_settings_changed"]
+  },
+  "limitations": [
+    "Branch-list protected=false does not prove the absence of classic branch protection; the administration endpoint was inaccessible.",
+    "Charter content is bound by exact Git identities and sizes but is not duplicated in this observation.",
+    "Any governance prod change invalidates this observation.",
+    "This observation confers no acceptance, readiness, execution, or merge authority."
+  ]
+}
