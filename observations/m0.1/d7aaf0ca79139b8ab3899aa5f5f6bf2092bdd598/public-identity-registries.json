@@ -1,0 +1,110 @@
+{
+  "record_class": "external_observation",
+  "surface_id": "public-identity-registries",
+  "candidate_commit": "d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598",
+  "observed_at": "2026-10-27T14:35:01Z",
+  "origin": "Point-in-time reads of official public registry endpoints, authenticated GitHub repository search, and bounded web search",
+  "classes": ["trademark_registry", "package_registry", "editor_tooling_registry", "application_store", "social_identity"],
+  "queried": [
+    {
+      "class": "trademark_registry",
+      "service": "USPTO public search",
+      "query": "BOWFIN",
+      "status": "unavailable",
+      "result": "No durable machine-readable USPTO search result was acquired.",
+      "claim": "No trademark absence or availability conclusion is made."
+    },
+    {
+      "class": "package_registry",
+      "service": "npm public registry",
+      "endpoint": "https://registry.npmjs.org/bowfin",
+      "status": "occupied",
+      "result": {"name":"bowfin","latest":"0.0.0","versions":["0.0.0"],"created":"2020-01-22T12:14:19.738Z","modified":"2022-04-12T04:07:40.587Z","maintainer":"digitalssr"}
+    },
+    {
+      "class": "package_registry",
+      "service": "crates.io sparse index",
+      "endpoint": "https://index.crates.io/bo/wf/bowfin",
+      "status": "no_exact_index_entry_observed",
+      "http_status": 404,
+      "claim": "The exact sparse-index object was absent; reservation or future availability is not established."
+    },
+    {
+      "class": "package_registry",
+      "service": "PyPI JSON API",
+      "endpoint": "https://pypi.org/pypi/bowfin/json",
+      "status": "no_exact_project_response_observed",
+      "http_status": 404,
+      "claim": "A 404 does not establish that the normalized project name is claimable."
+    },
+    {
+      "class": "editor_tooling_registry",
+      "service": "Package Control",
+      "endpoint": "https://packagecontrol.io/packages/Bowfin",
+      "status": "no_exact_package_page_observed",
+      "http_status": 404
+    },
+    {
+      "class": "editor_tooling_registry",
+      "service": "Visual Studio Marketplace public gallery API",
+      "query": "bowfin",
+      "status": "no_results_observed",
+      "result_count": 0
+    },
+    {
+      "class": "editor_tooling_registry",
+      "service": "Open VSX public query API",
+      "query": "bowfin",
+      "status": "inconclusive",
+      "result": "The endpoint returned an apparently unfiltered catalogue response; it is not used as absence evidence."
+    },
+    {
+      "class": "application_store",
+      "service": "Apple Search API",
+      "query": "bowfin, entity=software, country=US",
+      "status": "results_observed",
+      "result_count": 9,
+      "notable_identity": {"track_id":6743841302,"track_name":"Pacific Fleet Submarine Museum","bundle_id":"org.bowfin","seller":"Pacific Fleet Submarine Memorial Association Inc"},
+      "claim": "Search results were not semantically classified as name conflicts; the bundle identifier is retained because it exactly contains bowfin."
+    },
+    {
+      "class": "application_store",
+      "service": "Google Play public search page",
+      "query": "bowfin, apps, en_US, US",
+      "status": "inconclusive",
+      "result": "The returned dynamic page did not yield a trustworthy structured result list."
+    },
+    {
+      "class": "social_identity",
+      "service": "GitHub repository search",
+      "query": "bowfin",
+      "status": "results_observed",
+      "returned_count": 16,
+      "exact_name_examples": ["mewil/bowfin", "Digital-SSR/bowfin", "patricianaui/Bowfin", "patricianaui2/Bowfin"],
+      "project_owned_result": "gregkrsak/bowfin-migration-ledger"
+    }
+  ],
+  "bounded_web_search": {
+    "queries": [
+      "site:tsdr.uspto.gov BOWFIN trademark",
+      "bowfin on crates.io, npm, and PyPI official domains",
+      "Bowfin on Package Control, Visual Studio Marketplace, and Open VSX official domains",
+      "Bowfin on Apple App Store, Google Play, and GitHub"
+    ],
+    "returned_results": 0,
+    "use": "Supplemental discovery only; zero search-engine results are not treated as absence evidence."
+  },
+  "freshness": {
+    "max_age_seconds": null,
+    "point_in_time_only": true,
+    "evaluation_points": ["owner_acceptance", "pre_integration"],
+    "invalidating_events": ["registry_observation_acquired", "public_identity_changed"]
+  },
+  "limitations": [
+    "Trademark status remains unavailable; no legal clearance or non-conflict conclusion is made.",
+    "Registry endpoint behavior does not prove that a name is claimable, transferable, or policy-compliant.",
+    "Store and social searches are incomplete and jurisdiction-, locale-, index-, and time-dependent.",
+    "The exact unscoped npm package name bowfin is occupied and must not be represented as available.",
+    "This observation confers no acceptance, readiness, execution, or merge authority."
+  ]
+}
