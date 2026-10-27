@@ -1,0 +1,212 @@
+{
+  "record_class": "execution_output_preservation",
+  "protocol_version": "m0.1-v2",
+  "phase": "M0.1",
+  "status": "candidate_evidence_not_accepted",
+  "preserved_at": "2026-10-27T01:29:50Z",
+  "purpose": "Preserve the exact existing bytes from the separately authorized successful replacement bounded execution for independent inspection without regeneration or semantic acceptance.",
+  "source": {
+    "repository": "gregkrsak/klyxr",
+    "commit": "609822762abd46c13ecd6187ccc8510695e52b2f",
+    "tree": "ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239",
+    "view_prefix": "",
+    "view_tree": "ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239",
+    "export_sha256": "9d95ad1b86857ce8e4d644c5c60a3e3c54ef286683ecbdc934babda2f3be0329"
+  },
+  "compact_inputs": {
+    "repository": "gregkrsak/bowfin-migration-ledger",
+    "commit": "90de48b66711ce48cdd5b3562536a12adc89734f",
+    "tree": "68d8dd84e9ba02dabf5b70e1143a02d1ff6196a1",
+    "view_prefix": "evidence/m0.1/609822762abd46c13ecd6187ccc8510695e52b2f/inputs",
+    "view_tree": "e58803b562b8c5c5b1b9fe7b7beee14235520765",
+    "export_sha256": "efa78c53515b65f71c619a11b5450c6645577c463831387784eaef55e6212cd6"
+  },
+  "accepted_tooling": {
+    "repository": "gregkrsak/bowfin-migration-ledger",
+    "integration_commit": "4020cb64c1119ccfb4a4bc77b3f39e8b698ba2f5",
+    "tree": "27a18b261d8f5325c2414ad9e18193e91b870a37",
+    "view_prefix": "protocol/m0.1/v2",
+    "view_tree": "cd514c89fda2d91318c7a63b8b737118141f7b2c",
+    "export_sha256": "f9ce04a82245cf1ca09e6f2beb9085e9685dafe1ecacbadec1c4342181502177"
+  },
+  "governing_contract": {
+    "repository": "gregkrsak/klyxr",
+    "commit": "609822762abd46c13ecd6187ccc8510695e52b2f",
+    "tree": "ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239",
+    "path": "docs/migration/BOWFIN-NAME-MIGRATION-PLAN.md",
+    "blob": "03cd2c5b584a996ebfb873491f0d2888c984cfb9"
+  },
+  "durable_records": {
+    "first_authorization": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/12#issuecomment-6420745606",
+    "failed_first_attempt": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/12#issuecomment-6420917480",
+    "replacement_authorization": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/12#issuecomment-6424475784",
+    "successful_replacement_report": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/12#issuecomment-6424692606",
+    "package_mode_clarification": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/12#issuecomment-6431452497"
+  },
+  "execution": {
+    "runtime": "CPython 3.12.14",
+    "isolated_mode": true,
+    "environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "PYTHONHASHSEED": "0",
+      "TZ": "UTC"
+    },
+    "start": "2026-10-26T18:46:22Z",
+    "end": "2026-10-26T18:54:54Z",
+    "wall_interval_seconds": 512,
+    "invocations": [
+      {
+        "program": "generate.py",
+        "mode": "generate",
+        "count": 1,
+        "exit_status": 0
+      },
+      {
+        "program": "audit_scan.py",
+        "mode": "independent_audit",
+        "count": 1,
+        "exit_status": 0
+      },
+      {
+        "program": "verify.py",
+        "mode": "package",
+        "count": 1,
+        "exit_status": 0
+      }
+    ],
+    "retry_count": 0,
+    "literal_shell_command_strings_retained": false,
+    "command_record_limitation": "The durable execution report and preserved exports identify the programs, modes, exact dependencies, inputs, outputs, environment, chronology, and exit statuses. Byte-for-byte literal shell command strings were not retained and are not claimed."
+  },
+  "verification_boundary": {
+    "reported_success": [
+      "package structural and key consistency",
+      "retained audit-policy constraints",
+      "authenticated source and input references",
+      "exact generated-versus-audit occurrence-key reconciliation"
+    ],
+    "evidence_mode_executed": false,
+    "freshness_mode_executed": false,
+    "semantic_row_to_compact_input_binding_established": false,
+    "clarification": "BML-INP-09 corrects the original report's broader semantic-input-binding statement."
+  },
+  "closed_preserved_file_set": {
+    "file_count": 16,
+    "total_bytes": 7475000,
+    "files": [
+      {
+        "path": "evidence/m0.1/609822762abd46c13ecd6187ccc8510695e52b2f/generated/index.json",
+        "byte_count": 577,
+        "sha256": "df1fa03ba9a7512990084bb338f288e1ee0b6db29f992beed18f8e07f25a955a",
+        "git_blob_sha1": "820f032709ddda2601422e135f7cbed1fafeeeee"
+      },
+      {
+        "path": "evidence/m0.1/609822762abd46c13ecd6187ccc8510695e52b2f/generated/occurrences/0000.jsonl",
+        "byte_count": 5704065,
+        "sha256": "84d451e07757d19c91f7dd572a694eecb1d323cff18922782855c96139fea594",
+        "git_blob_sha1": "a754ad871b09fd924444707e892011bb79bbc0ab"
+      },
+      {
+        "path": "evidence/m0.1/609822762abd46c13ecd6187ccc8510695e52b2f/generated/publication.json",
+        "byte_count": 307,
+        "sha256": "c684295560d4b5f0230c8509b932bd0374940684a9e6630c21a9a2a84e5491b4",
+        "git_blob_sha1": "6afd96f639606c855e92f5cbba902255cdc5829f"
+      },
+      {
+        "path": "evidence/m0.1/609822762abd46c13ecd6187ccc8510695e52b2f/generated/scan-manifest.json",
+        "byte_count": 59505,
+        "sha256": "d1da1d5197929b7b8a06c2925356fc4312a4da86cb1414360373dfa70bba8cc1",
+        "git_blob_sha1": "f24d60dcc6cd0f48e4faeb300cb7269aced51a8b"
+      },
+      {
+        "path": "evidence/m0.1/609822762abd46c13ecd6187ccc8510695e52b2f/generated/summary.json",
+        "byte_count": 822,
+        "sha256": "c7ed5dfc66295f19109340980227fd636ef2ba6f8cd236b2c01b122a7c0f1605",
+        "git_blob_sha1": "273ceca4805a31bbc4a82da15e396f758969e337"
+      },
+      {
+        "path": "evidence/m0.1/609822762abd46c13ecd6187ccc8510695e52b2f/reports/exports/input-export.json",
+        "byte_count": 3796,
+        "sha256": "efa78c53515b65f71c619a11b5450c6645577c463831387784eaef55e6212cd6",
+        "git_blob_sha1": "d28235b13534dd1330291a6741ddfaf0fcc11b1a"
+      },
+      {
+        "path": "evidence/m0.1/609822762abd46c13ecd6187ccc8510695e52b2f/reports/exports/source-export.json",
+        "byte_count": 60043,
+        "sha256": "9d95ad1b86857ce8e4d644c5c60a3e3c54ef286683ecbdc934babda2f3be0329",
+        "git_blob_sha1": "418628d41a8c93d54bca87ae296bff06643327a1"
+      },
+      {
+        "path": "evidence/m0.1/609822762abd46c13ecd6187ccc8510695e52b2f/reports/exports/tooling-export.json",
+        "byte_count": 5350,
+        "sha256": "f9ce04a82245cf1ca09e6f2beb9085e9685dafe1ecacbadec1c4342181502177",
+        "git_blob_sha1": "b50eb31f7db9a4d4b4025fe730751ec563812359"
+      },
+      {
+        "path": "evidence/m0.1/609822762abd46c13ecd6187ccc8510695e52b2f/reports/independent-audit.json",
+        "byte_count": 1640362,
+        "sha256": "afd67ddaeb3408b92567b851bc0ecd1426e775d8de38c8948fc639bc11b6e1eb",
+        "git_blob_sha1": "45b9f7f5ba786ccf44fd96644682b6ffda9c5d26"
+      },
+      {
+        "path": "evidence/m0.1/609822762abd46c13ecd6187ccc8510695e52b2f/reports/run.log",
+        "byte_count": 173,
+        "sha256": "395c105ba1307880d1f9038110a196bda7beaafd529d15be9fa05ee06b99fdcf",
+        "git_blob_sha1": "8f316a14a0637639a060edd53bc9c4b4f5cc25c0"
+      },
+      {
+        "path": "evidence/m0.1/609822762abd46c13ecd6187ccc8510695e52b2f/reports/streams/audit.stderr",
+        "byte_count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+      },
+      {
+        "path": "evidence/m0.1/609822762abd46c13ecd6187ccc8510695e52b2f/reports/streams/audit.stdout",
+        "byte_count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+      },
+      {
+        "path": "evidence/m0.1/609822762abd46c13ecd6187ccc8510695e52b2f/reports/streams/generate.stderr",
+        "byte_count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+      },
+      {
+        "path": "evidence/m0.1/609822762abd46c13ecd6187ccc8510695e52b2f/reports/streams/generate.stdout",
+        "byte_count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+      },
+      {
+        "path": "evidence/m0.1/609822762abd46c13ecd6187ccc8510695e52b2f/reports/streams/verify.stderr",
+        "byte_count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+      },
+      {
+        "path": "evidence/m0.1/609822762abd46c13ecd6187ccc8510695e52b2f/reports/streams/verify.stdout",
+        "byte_count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+      }
+    ]
+  },
+  "non_authority": {
+    "preservation_is_acceptance": false,
+    "execution_authority_created": false,
+    "input_acceptance_created": false,
+    "evidence_acceptance_created": false,
+    "merge_authority_created": false,
+    "m0_1_completion_created": false,
+    "m1_authority_created": false
+  },
+  "limitations": [
+    "This record preserves reported execution outputs; it does not independently prove that the recorded process produced them.",
+    "The exact bytes require independent post-transfer hashing and semantic inspection.",
+    "No evidence-mode or freshness-mode result exists from the preserved invocation.",
+    "The literal shell command strings were not retained.",
+    "The first failed attempt remains separately preserved in the durable GitHub record sequence."
+  ]
+}
