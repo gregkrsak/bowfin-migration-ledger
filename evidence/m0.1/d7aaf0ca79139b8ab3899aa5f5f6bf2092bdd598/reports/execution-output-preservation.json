@@ -1,0 +1,233 @@
+{
+  "record_class": "execution_output_preservation",
+  "protocol_version": "m0.1-v2",
+  "phase": "M0.1",
+  "status": "candidate_evidence_not_accepted",
+  "preserved_at": "2026-10-30T18:01:51Z",
+  "purpose": "Preserve the exact existing bytes from the separately authorized bounded post-input-integration proof for direct independent inspection without regeneration, retry, or semantic acceptance.",
+  "source": {
+    "repository": "gregkrsak/klyxr",
+    "commit": "d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598",
+    "tree": "ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239",
+    "accepted_base_commit": "609822762abd46c13ecd6187ccc8510695e52b2f",
+    "view_prefix": "",
+    "view_tree": "ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239",
+    "export_sha256": "1bfad676bc313bcbf470ef93a26367b06c9a3acb75a4d4eabce8e638cc270263"
+  },
+  "compact_inputs": {
+    "repository": "gregkrsak/bowfin-migration-ledger",
+    "integration_commit": "241e1fd4047120e64fa35bb2e2ceccedccf3bfef",
+    "tree": "65fff756882280c92da520d522970e5b9a4b2b61",
+    "accepted_pr_head": "d47a9c8de8b3c670a7434c919b00b82e93da154d",
+    "view_prefix": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/inputs",
+    "view_tree": "5f017c7a5837980d3cd1a070794ffe5a1a0c4065",
+    "export_sha256": "7cb8983bbc7f3adcfc43d4228fb343d23829fdd7568d62c06a7fd9bb359ebf2d"
+  },
+  "accepted_tooling": {
+    "repository": "gregkrsak/bowfin-migration-ledger",
+    "integration_commit": "4020cb64c1119ccfb4a4bc77b3f39e8b698ba2f5",
+    "tree": "27a18b261d8f5325c2414ad9e18193e91b870a37",
+    "view_prefix": "protocol/m0.1/v2",
+    "view_tree": "cd514c89fda2d91318c7a63b8b737118141f7b2c",
+    "export_sha256": "f9ce04a82245cf1ca09e6f2beb9085e9685dafe1ecacbadec1c4342181502177"
+  },
+  "governing_contract": {
+    "repository": "gregkrsak/klyxr",
+    "commit": "609822762abd46c13ecd6187ccc8510695e52b2f",
+    "tree": "ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239",
+    "path": "docs/migration/BOWFIN-NAME-MIGRATION-PLAN.md",
+    "blob": "03cd2c5b584a996ebfb873491f0d2888c984cfb9"
+  },
+  "durable_records": {
+    "bounded_execution_report": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/15#issuecomment-6528136244",
+    "independent_review_publication_status": "delivered_in_chat_not_yet_preserved",
+    "owner_preservation_authorization": "Greg explicitly authorized append-only preservation in chat after receiving the independent review."
+  },
+  "execution": {
+    "runtime": "CPython 3.12.14",
+    "isolated_mode": true,
+    "environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "PYTHONHASHSEED": "0",
+      "TZ": "UTC"
+    },
+    "start": "2026-10-30T16:32:44Z",
+    "end": "2026-10-30T16:41:12Z",
+    "wall_interval_seconds": 508,
+    "invocations": [
+      {
+        "program": "generate.py",
+        "mode": "generate",
+        "count": 1,
+        "exit_status": 0
+      },
+      {
+        "program": "audit_scan.py",
+        "mode": "independent_audit",
+        "count": 1,
+        "exit_status": 0
+      },
+      {
+        "program": "verify.py",
+        "mode": "package",
+        "count": 1,
+        "exit_status": 0
+      }
+    ],
+    "retry_count": 0,
+    "expanded_command_trace_retained": true,
+    "trace_path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/trace.log",
+    "stage_exit_log_path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/run.log"
+  },
+  "verification_boundary": {
+    "reported_success": [
+      "deterministic package construction",
+      "independent candidate discovery",
+      "package structural and key consistency",
+      "retained audit-policy constraints",
+      "authenticated source and input references",
+      "exact generated-versus-audit occurrence-key reconciliation"
+    ],
+    "evidence_mode_executed": false,
+    "binding_mode_executed": false,
+    "semantic_row_to_compact_input_binding_established": false,
+    "full_migration_evidence_record_created": false
+  },
+  "deterministic_comparison": {
+    "prior_preserved_source_commit": "609822762abd46c13ecd6187ccc8510695e52b2f",
+    "package_files_byte_identical": true,
+    "audit_candidate_array_reported_byte_identical": true,
+    "audit_header_changed_fields": [
+      "source commit",
+      "source export SHA-256",
+      "input export SHA-256"
+    ],
+    "independent_review_reconstruction_status": "reported audit digest independently reconstructed from the prior candidates and the three new header values"
+  },
+  "closed_preserved_file_set": {
+    "file_count": 17,
+    "total_bytes": 7478660,
+    "files": [
+      {
+        "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/generated/index.json",
+        "byte_count": 577,
+        "sha256": "df1fa03ba9a7512990084bb338f288e1ee0b6db29f992beed18f8e07f25a955a",
+        "git_blob_sha1": "820f032709ddda2601422e135f7cbed1fafeeeee"
+      },
+      {
+        "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/generated/occurrences/0000.jsonl",
+        "byte_count": 5704065,
+        "sha256": "84d451e07757d19c91f7dd572a694eecb1d323cff18922782855c96139fea594",
+        "git_blob_sha1": "a754ad871b09fd924444707e892011bb79bbc0ab"
+      },
+      {
+        "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/generated/publication.json",
+        "byte_count": 307,
+        "sha256": "c684295560d4b5f0230c8509b932bd0374940684a9e6630c21a9a2a84e5491b4",
+        "git_blob_sha1": "6afd96f639606c855e92f5cbba902255cdc5829f"
+      },
+      {
+        "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/generated/scan-manifest.json",
+        "byte_count": 59505,
+        "sha256": "d1da1d5197929b7b8a06c2925356fc4312a4da86cb1414360373dfa70bba8cc1",
+        "git_blob_sha1": "f24d60dcc6cd0f48e4faeb300cb7269aced51a8b"
+      },
+      {
+        "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/generated/summary.json",
+        "byte_count": 822,
+        "sha256": "c7ed5dfc66295f19109340980227fd636ef2ba6f8cd236b2c01b122a7c0f1605",
+        "git_blob_sha1": "273ceca4805a31bbc4a82da15e396f758969e337"
+      },
+      {
+        "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/input-export.json",
+        "byte_count": 5177,
+        "sha256": "7cb8983bbc7f3adcfc43d4228fb343d23829fdd7568d62c06a7fd9bb359ebf2d",
+        "git_blob_sha1": "c59bdf3c9913adf3a3af8db6c3b9f20498140b0c"
+      },
+      {
+        "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/source-export.json",
+        "byte_count": 58783,
+        "sha256": "1bfad676bc313bcbf470ef93a26367b06c9a3acb75a4d4eabce8e638cc270263",
+        "git_blob_sha1": "0f98837ff7df5ac3a595f82b5193d670ba768f39"
+      },
+      {
+        "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/tooling-export.json",
+        "byte_count": 5350,
+        "sha256": "f9ce04a82245cf1ca09e6f2beb9085e9685dafe1ecacbadec1c4342181502177",
+        "git_blob_sha1": "b50eb31f7db9a4d4b4025fe730751ec563812359"
+      },
+      {
+        "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/independent-audit.json",
+        "byte_count": 1640362,
+        "sha256": "5a7871b65560969e28f5d1de7f05246f395b6e433d7885579652b8b2ccf666fd",
+        "git_blob_sha1": "a2f36d679f378c153d813989523e3996c5941816"
+      },
+      {
+        "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/run.log",
+        "byte_count": 190,
+        "sha256": "4845b38e10c493c5dc310c6c9864ebe57113e016a4c7035d1ae75d548bccd1f8",
+        "git_blob_sha1": "d08adcc8dd0ea9273802a566b18e5fe0420a4dc6"
+      },
+      {
+        "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/trace.log",
+        "byte_count": 3522,
+        "sha256": "4c77ef31223e21fea8e7421cfc0df253179928a3e91bf732b73ce55d49679fe8",
+        "git_blob_sha1": "00b8481b1ec8b11e0a28a23554dc9f7d485160fb"
+      },
+      {
+        "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/streams/audit.stderr",
+        "byte_count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+      },
+      {
+        "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/streams/audit.stdout",
+        "byte_count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+      },
+      {
+        "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/streams/generate.stderr",
+        "byte_count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+      },
+      {
+        "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/streams/generate.stdout",
+        "byte_count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+      },
+      {
+        "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/streams/verify.stderr",
+        "byte_count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+      },
+      {
+        "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/streams/verify.stdout",
+        "byte_count": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+      }
+    ]
+  },
+  "non_authority": {
+    "preservation_is_acceptance": false,
+    "execution_authority_created": false,
+    "input_acceptance_created": false,
+    "evidence_acceptance_created": false,
+    "compiler_candidate_acceptance_created": false,
+    "merge_authority_created": false,
+    "m0_1_completion_created": false,
+    "m1_authority_created": false
+  },
+  "limitations": [
+    "This record preserves reported execution outputs; it does not independently prove that the recorded process produced them.",
+    "The preserved bytes require independent post-transfer Git-blob, byte-count, SHA-256, and semantic inspection.",
+    "No evidence-mode or binding-mode result exists from the preserved invocation.",
+    "The independent review was delivered in chat and is not itself made durable by this preservation record.",
+    "Preservation does not accept E, accept compiler candidate C, authorize compiler PR #98, complete M0.1, or authorize M1."
+  ]
+}
