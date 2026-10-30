@@ -1,0 +1,158 @@
+{
+  "authorization": {
+    "authorized_by": "Greg Krsak",
+    "evidence_invocation_limit": 1,
+    "invocations_consumed": 1,
+    "publication_authorized": true,
+    "reusable": false,
+    "status": "exhausted"
+  },
+  "execution": {
+    "argv": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12",
+      "-I",
+      "roots/tooling-t/protocol/m0.1/v2/verify.py",
+      "evidence",
+      "--record",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/record.json",
+      "--package",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/generated",
+      "--source-root",
+      "roots/source-c",
+      "--source-export",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/source-export.json",
+      "--base-root",
+      "roots/base-b",
+      "--base-export",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/accepted-base-export.json",
+      "--contract-root",
+      "roots/base-b",
+      "--contract-export",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/governing-contract-export.json",
+      "--tooling-root",
+      "roots/tooling-t",
+      "--tooling-export",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/tooling-export.json",
+      "--observation-root",
+      "roots/scaffold-s",
+      "--observation-export",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/observation-export.json",
+      "--review-root",
+      "roots/scaffold-s",
+      "--review-export",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/review-export.json",
+      "--input-root",
+      "roots/input-i",
+      "--input-export",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/input-export.json",
+      "--audit",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/independent-audit.json",
+      "--expected-tooling-repository",
+      "gregkrsak/bowfin-migration-ledger",
+      "--expected-tooling-commit",
+      "4020cb64c1119ccfb4a4bc77b3f39e8b698ba2f5",
+      "--expected-tooling-tree",
+      "27a18b261d8f5325c2414ad9e18193e91b870a37",
+      "--expected-tooling-view-prefix",
+      "protocol/m0.1/v2",
+      "--expected-tooling-view-tree",
+      "cd514c89fda2d91318c7a63b8b737118141f7b2c",
+      "--expected-tooling-export-sha256",
+      "f9ce04a82245cf1ca09e6f2beb9085e9685dafe1ecacbadec1c4342181502177"
+    ],
+    "completion_evidence": {
+      "basis": "The sole launcher completed, no verifier process remained at readback, stdout and stderr were both empty, the verifier returns 0 after successful evidence verification, handled protocol rejection exits 2 after writing to stderr, and an unhandled Python failure writes a traceback to stderr.",
+      "direct_runner_envelope_retained": false,
+      "exit_code_inference": true
+    },
+    "end_utc": "2026-10-30T23:01:50.933268307Z",
+    "environment": {
+      "clear_before_launch": true,
+      "set": {
+        "LANG": "C",
+        "LC_ALL": "C",
+        "TZ": "UTC"
+      }
+    },
+    "exit_classification": "structural_verification_passed",
+    "exit_code": 0,
+    "invocation_count": 1,
+    "retry_count": 0,
+    "run_id": "M0.1-EVIDENCE-01",
+    "start_utc": "2026-10-30T23:00:20.653875885Z",
+    "wall_duration": {
+      "seconds": 90.279392422,
+      "semantics": "conservative elapsed interval from the retained pre-launch timestamp through the first retained timestamped completion observation; it includes launcher and observation overhead"
+    }
+  },
+  "freshness": {
+    "eligible_at_preflight": true,
+    "evaluated_by_evidence_mode": false,
+    "expires_at": "2026-10-31T03:39:14Z",
+    "structural_success_is_not_freshness": true
+  },
+  "identities": {
+    "containing_map_commit": "c882318def0c17a9bd11a96d28dbb68ff9067c54",
+    "containing_map_tree": "a4351c6d685841209e54f50724076ee67f085d64",
+    "map_blob_sha1": "a2cdcf43d704442e6b27dd601ad2f8f628cfd1d9",
+    "map_sha256": "301ed1b498b0d5cf1abd8ed8be15665f4c2e8f61f18aed0ee38f2d5af41b6a3d",
+    "prepared_subject_commit": "568047f573a8896462bacacb57af9ed7353b55ef",
+    "prepared_subject_tree": "0c564a9db13574442551170f241a64c3e5238c38"
+  },
+  "non_authority": {
+    "acceptance": false,
+    "approval": false,
+    "custody": false,
+    "cutover": false,
+    "m0_1_completion": false,
+    "merge_permission": false,
+    "next_phase": false,
+    "ready_state_transition": false,
+    "release": false,
+    "replay_admission": false,
+    "semantic_acceptance": false
+  },
+  "preflight": {
+    "completed_before_invocation": true,
+    "result": "passed",
+    "static_only": true,
+    "verified": [
+      "PR #17 state, target, draft status, and exact map head",
+      "map commit, tree, sole parent, path scope, blob, byte count, and SHA-256",
+      "owner authorization identity, one-run limit, and three-file publication scope",
+      "runtime path, Python version, executable SHA-256, verifier, protocol library, and limits identities",
+      "all six materialized roots, read-only modes, absence of Git metadata, symlinks, and special files",
+      "all seven authenticated export path sets, modes, byte counts, SHA-256s, and Git blobs",
+      "physical empty review directory and canonical empty review-tree identity",
+      "record, package, audit, export, and input identities",
+      "empty capture root with all three capture paths absent",
+      "unexpired source and governance observations with no known named invalidating event"
+    ]
+  },
+  "protocol_version": "m0.1-v2",
+  "record_class": "evidence_verification_result",
+  "runtime": {
+    "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12",
+    "executable_sha256": "fa67443527ed9647f760d807e2a38f26340757123e643c4639cf273ed15d5ea7",
+    "isolated_mode": true,
+    "python_version": "3.12.14",
+    "tooling_commit": "4020cb64c1119ccfb4a4bc77b3f39e8b698ba2f5",
+    "tooling_tree": "27a18b261d8f5325c2414ad9e18193e91b870a37",
+    "tooling_view_tree": "cd514c89fda2d91318c7a63b8b737118141f7b2c"
+  },
+  "streams": {
+    "stderr": {
+      "byte_count": 0,
+      "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/streams/evidence-run-01.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "stdout": {
+      "byte_count": 0,
+      "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/streams/evidence-run-01.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "version": 1
+}

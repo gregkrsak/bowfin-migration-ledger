@@ -1,0 +1,194 @@
+{
+  "record_class": "external_observation",
+  "surface_id": "source-repository-hosting",
+  "candidate": {
+    "commit": "d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598",
+    "tree": "ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239",
+    "sole_parent": "609822762abd46c13ecd6187ccc8510695e52b2f",
+    "branch": "m01-v2-compiler-candidate-anchor",
+    "pull_request": 98
+  },
+  "observed_at": "2026-10-29T15:39:14Z",
+  "origin": "GitHub REST API through the configured GitHub connector and exact authenticated source-tree reads",
+  "repository": {
+    "full_name": "gregkrsak/klyxr",
+    "default_branch": "prod",
+    "visibility": "public",
+    "archived": false,
+    "has_pages": false,
+    "updated_at": "2026-10-22T01:00:09Z",
+    "pushed_at": "2026-10-27T13:54:02Z",
+    "size_kib": 7772,
+    "merge_configuration": {
+      "allow_merge_commit": true,
+      "allow_squash_merge": true,
+      "allow_rebase_merge": true,
+      "allow_auto_merge": false,
+      "delete_branch_on_merge": false,
+      "allow_update_branch": false
+    }
+  },
+  "candidate_commit": {
+    "message": "chore: establish M0.1 compiler candidate anchor",
+    "author_date": "2026-10-27T13:53:08Z",
+    "committer_date": "2026-10-27T13:53:08Z",
+    "signature_verified": false,
+    "signature_reason": "unsigned"
+  },
+  "candidate_pull_request": {
+    "number": 98,
+    "state": "open",
+    "draft": true,
+    "merged": false,
+    "head_branch": "m01-v2-compiler-candidate-anchor",
+    "head_commit": "d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598",
+    "base_branch": "bowfin-migration-staging",
+    "base_commit": "609822762abd46c13ecd6187ccc8510695e52b2f",
+    "github_test_merge": "0bbcb63693f4ee98b39f55d0cf0e29f0a0a003f8",
+    "mergeable": true,
+    "mergeable_state": "clean",
+    "commits": 1,
+    "changed_files": 0,
+    "additions": 0,
+    "deletions": 0
+  },
+  "branches": [
+    {
+      "name": "bowfin-m0-amendment-2-ledger-protocol",
+      "commit": "0ca819ab9f627f586df453c7a97a55c9a9694bf3",
+      "protected": false
+    },
+    {
+      "name": "bowfin-m0-migration-contract",
+      "commit": "3abe14b9ef12817d9abce5a71a24a11657303b03",
+      "protected": false
+    },
+    {
+      "name": "bowfin-m0-owner-merge-gate",
+      "commit": "f36bd21301d291a561bd6de50680ae4042d8a302",
+      "protected": false
+    },
+    {
+      "name": "bowfin-m0-pre-m1-readiness",
+      "commit": "2e652681bf207e8ba5a4ac43f8df04a5e9653b79",
+      "protected": false
+    },
+    {
+      "name": "bowfin-m1-machine-compatibility",
+      "commit": "3c0a540df7d5ad75510db4ecad80e27fb4d0903a",
+      "protected": false
+    },
+    {
+      "name": "bowfin-m2-toolchain-identity",
+      "commit": "3c0a540df7d5ad75510db4ecad80e27fb4d0903a",
+      "protected": false
+    },
+    {
+      "name": "bowfin-m3-source-extension",
+      "commit": "3c0a540df7d5ad75510db4ecad80e27fb4d0903a",
+      "protected": false
+    },
+    {
+      "name": "bowfin-m4-docs-governance",
+      "commit": "3c0a540df7d5ad75510db4ecad80e27fb4d0903a",
+      "protected": false
+    },
+    {
+      "name": "bowfin-m5-visual-identity",
+      "commit": "3c0a540df7d5ad75510db4ecad80e27fb4d0903a",
+      "protected": false
+    },
+    {
+      "name": "bowfin-m6-public-cutover",
+      "commit": "3c0a540df7d5ad75510db4ecad80e27fb4d0903a",
+      "protected": false
+    },
+    {
+      "name": "bowfin-m7-stabilization",
+      "commit": "3c0a540df7d5ad75510db4ecad80e27fb4d0903a",
+      "protected": false
+    },
+    {
+      "name": "bowfin-migration-staging",
+      "commit": "609822762abd46c13ecd6187ccc8510695e52b2f",
+      "protected": false
+    },
+    {
+      "name": "docs/documentation-as-contract",
+      "commit": "b0d0d2c86196dbd07192a079cd650dead4dd3d7a",
+      "protected": false
+    },
+    {
+      "name": "ked-035-approved-mir-execution-equivalence",
+      "commit": "837fc99e2bbb241077d4b65b32a4103b6bf99362",
+      "protected": false
+    },
+    {
+      "name": "m01-v2-compiler-candidate-anchor",
+      "commit": "d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598",
+      "protected": false
+    },
+    {
+      "name": "prod",
+      "commit": "3c0a540df7d5ad75510db4ecad80e27fb4d0903a",
+      "protected": false
+    },
+    {
+      "name": "sentinel-0-reference-application",
+      "commit": "e213b110a442d62e406be40c5dc594c84994f6b6",
+      "protected": false
+    }
+  ],
+  "tracked_workflows": [
+    {
+      "path": ".github/workflows/build.yml",
+      "blob": "6544bc32bab99bc23f816cd82b4d5d2260f1b395",
+      "size": 757
+    },
+    {
+      "path": ".github/workflows/docs.yml",
+      "blob": "84cacf68adb68dd15d1b15125ae87e5bc7e6dc66",
+      "size": 853
+    },
+    {
+      "path": ".github/workflows/tests.yml",
+      "blob": "01799ad65763276ee63a24113c6319d2858ae0e5",
+      "size": 1207
+    },
+    {
+      "path": ".github/workflows/verify.yml",
+      "blob": "e31e8156ce7177faa8c4346e487932f0a59b54b7",
+      "size": 952
+    }
+  ],
+  "rulesets": [],
+  "releases": [],
+  "administrative_controls": {
+    "branch_protection": "unverified",
+    "branch_protection_reason": "GitHub returned HTTP 403 Resource not accessible by integration for both prod and bowfin-migration-staging.",
+    "actions_policy": "unverified",
+    "workflow_collection": "unavailable_through_connector",
+    "workflow_inventory_basis": "Exact candidate tree entries"
+  },
+  "freshness": {
+    "max_age_seconds": 129600,
+    "evaluation_points": [
+      "owner_acceptance",
+      "pre_integration"
+    ],
+    "invalidating_events": [
+      "source_repository_settings_changed",
+      "source_repository_branches_changed",
+      "source_repository_workflows_changed",
+      "source_repository_releases_changed",
+      "candidate_pull_request_changed",
+      "checkpoint_assessment_unavailable"
+    ]
+  },
+  "limitations": [
+    "Branch-list protected=false values do not prove the absence of classic branch protection; the administration endpoint was inaccessible.",
+    "Repository Actions policy and the workflow-list endpoint were unavailable through the connector.",
+    "The snapshot does not establish future mergeability, rename redirects, raw-link redirects, or hosted-Action consumers.",
+    "This observation confers no acceptance, readiness, execution, or merge authority."
+  ]
+}

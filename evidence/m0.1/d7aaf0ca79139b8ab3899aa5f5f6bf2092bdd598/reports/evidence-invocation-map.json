@@ -1,0 +1,392 @@
+{
+  "authority": {
+    "execution_authorized": false,
+    "map_preparation_authorized_by": "Greg Krsak",
+    "map_preparation_only": true,
+    "required_future_owner_authorization": {
+      "must_name_containing_map_commit": true,
+      "must_name_map_blob": true,
+      "must_name_map_sha256": true,
+      "must_specify_report_publication": true,
+      "permitted_evidence_invocations": 1,
+      "reusable": false
+    }
+  },
+  "capture": {
+    "capture_root": "capture",
+    "precondition": "all capture paths absent and capture root otherwise empty",
+    "result_record": "capture/evidence-run-01.result.json",
+    "stderr": "capture/evidence-run-01.stderr",
+    "stdout": "capture/evidence-run-01.stdout",
+    "write_policy": "create once; never truncate, replace, append, or reuse"
+  },
+  "execution": {
+    "argv": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12",
+      "-I",
+      "roots/tooling-t/protocol/m0.1/v2/verify.py",
+      "evidence",
+      "--record",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/record.json",
+      "--package",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/generated",
+      "--source-root",
+      "roots/source-c",
+      "--source-export",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/source-export.json",
+      "--base-root",
+      "roots/base-b",
+      "--base-export",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/accepted-base-export.json",
+      "--contract-root",
+      "roots/base-b",
+      "--contract-export",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/governing-contract-export.json",
+      "--tooling-root",
+      "roots/tooling-t",
+      "--tooling-export",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/tooling-export.json",
+      "--observation-root",
+      "roots/scaffold-s",
+      "--observation-export",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/observation-export.json",
+      "--review-root",
+      "roots/scaffold-s",
+      "--review-export",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/review-export.json",
+      "--input-root",
+      "roots/input-i",
+      "--input-export",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/input-export.json",
+      "--audit",
+      "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/independent-audit.json",
+      "--expected-tooling-repository",
+      "gregkrsak/bowfin-migration-ledger",
+      "--expected-tooling-commit",
+      "4020cb64c1119ccfb4a4bc77b3f39e8b698ba2f5",
+      "--expected-tooling-tree",
+      "27a18b261d8f5325c2414ad9e18193e91b870a37",
+      "--expected-tooling-view-prefix",
+      "protocol/m0.1/v2",
+      "--expected-tooling-view-tree",
+      "cd514c89fda2d91318c7a63b8b737118141f7b2c",
+      "--expected-tooling-export-sha256",
+      "f9ce04a82245cf1ca09e6f2beb9085e9685dafe1ecacbadec1c4342181502177"
+    ],
+    "command": "evidence",
+    "concurrency": 1,
+    "cwd": "<RUN_ROOT>",
+    "environment": {
+      "clear_before_launch": true,
+      "set": {
+        "LANG": "C",
+        "LC_ALL": "C",
+        "TZ": "UTC"
+      }
+    },
+    "evidence_invocation_limit": 1,
+    "launcher": {
+      "dynamic_expansion": false,
+      "process_replacement_required": true,
+      "shell_logic_permitted": false,
+      "shell_pipeline_permitted": false,
+      "stderr_redirection_only": "capture/evidence-run-01.stderr",
+      "stdout_redirection_only": "capture/evidence-run-01.stdout"
+    },
+    "network_policy": "no network calls, live acquisition, or connector use during the invocation",
+    "no_retry_applies_to": [
+      "success",
+      "protocol rejection",
+      "unexpected exit",
+      "signal",
+      "timeout",
+      "runner failure",
+      "infrastructure failure"
+    ],
+    "run_id": "M0.1-EVIDENCE-01",
+    "stdin": "closed",
+    "timeout_seconds": 3600
+  },
+  "freshness": {
+    "evidence_mode_evaluates_freshness": false,
+    "expired_or_invalidated_preflight_action": "stop with zero evidence invocations",
+    "owner_acceptance_and_pre_integration_are_independent": true,
+    "source_and_governance_expire_at": "2026-10-31T03:39:14Z",
+    "structural_success_is_not_freshness": true
+  },
+  "inputs": {
+    "exports": {
+      "accepted_base": {
+        "blob_sha1": "418628d41a8c93d54bca87ae296bff06643327a1",
+        "byte_count": 60043,
+        "path": "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/accepted-base-export.json",
+        "sha256": "9d95ad1b86857ce8e4d644c5c60a3e3c54ef286683ecbdc934babda2f3be0329"
+      },
+      "governing_contract": {
+        "blob_sha1": "418628d41a8c93d54bca87ae296bff06643327a1",
+        "byte_count": 60043,
+        "path": "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/governing-contract-export.json",
+        "sha256": "9d95ad1b86857ce8e4d644c5c60a3e3c54ef286683ecbdc934babda2f3be0329"
+      },
+      "inputs": {
+        "blob_sha1": "c59bdf3c9913adf3a3af8db6c3b9f20498140b0c",
+        "byte_count": 5177,
+        "path": "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/input-export.json",
+        "sha256": "7cb8983bbc7f3adcfc43d4228fb343d23829fdd7568d62c06a7fd9bb359ebf2d"
+      },
+      "observations": {
+        "blob_sha1": "25d8738ae7a9e0960ac16f89e30a0598e53f819c",
+        "byte_count": 4147,
+        "path": "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/observation-export.json",
+        "sha256": "1e52c1df9416705fd1fcb60e56cb5e3beec1ca94bc544b4591b5c006bd11e58a"
+      },
+      "reviews": {
+        "blob_sha1": "f83ff7f6bba2017fa26e1c7d83912d5c5ea673e8",
+        "byte_count": 2711,
+        "path": "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/review-export.json",
+        "sha256": "8e021b653249c768e572da6883836cdf359b6f01ae7710cd3e7611f015141b29"
+      },
+      "source": {
+        "blob_sha1": "0f98837ff7df5ac3a595f82b5193d670ba768f39",
+        "byte_count": 58783,
+        "path": "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/source-export.json",
+        "sha256": "1bfad676bc313bcbf470ef93a26367b06c9a3acb75a4d4eabce8e638cc270263"
+      },
+      "tooling": {
+        "blob_sha1": "b50eb31f7db9a4d4b4025fe730751ec563812359",
+        "byte_count": 5350,
+        "path": "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/exports/tooling-export.json",
+        "sha256": "f9ce04a82245cf1ca09e6f2beb9085e9685dafe1ecacbadec1c4342181502177"
+      }
+    },
+    "independent_audit": {
+      "blob_sha1": "a2f36d679f378c153d813989523e3996c5941816",
+      "byte_count": 1640362,
+      "path": "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/independent-audit.json",
+      "sha256": "5a7871b65560969e28f5d1de7f05246f395b6e433d7885579652b8b2ccf666fd"
+    },
+    "package": {
+      "aggregate_sha256": "0d7afe99553093aa60fbca5ee259061b71d6240c411f7adfdde03afe8543b045",
+      "files": {
+        "index.json": {
+          "blob_sha1": "820f032709ddda2601422e135f7cbed1fafeeeee",
+          "byte_count": 577,
+          "sha256": "df1fa03ba9a7512990084bb338f288e1ee0b6db29f992beed18f8e07f25a955a"
+        },
+        "occurrences/0000.jsonl": {
+          "blob_sha1": "a754ad871b09fd924444707e892011bb79bbc0ab",
+          "byte_count": 5704065,
+          "row_count": 3980,
+          "sha256": "84d451e07757d19c91f7dd572a694eecb1d323cff18922782855c96139fea594"
+        },
+        "publication.json": {
+          "blob_sha1": "6afd96f639606c855e92f5cbba902255cdc5829f",
+          "byte_count": 307,
+          "sha256": "c684295560d4b5f0230c8509b932bd0374940684a9e6630c21a9a2a84e5491b4"
+        },
+        "scan-manifest.json": {
+          "blob_sha1": "f24d60dcc6cd0f48e4faeb300cb7269aced51a8b",
+          "byte_count": 59505,
+          "sha256": "d1da1d5197929b7b8a06c2925356fc4312a4da86cb1414360373dfa70bba8cc1"
+        },
+        "summary.json": {
+          "blob_sha1": "273ceca4805a31bbc4a82da15e396f758969e337",
+          "byte_count": 822,
+          "sha256": "c7ed5dfc66295f19109340980227fd636ef2ba6f8cd236b2c01b122a7c0f1605"
+        }
+      },
+      "path": "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/generated"
+    },
+    "record": {
+      "blob_sha1": "20f0ac7a03ad3e79d51f80b699254bc8363fc266",
+      "byte_count": 4347,
+      "path": "roots/subject-h/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/record.json",
+      "sha256": "4bbb11ef7b46188cd62fdcc7ab30055578a57d3f72955385c9668c2049da595c"
+    }
+  },
+  "materialization": {
+    "git_metadata_inside_any_root": false,
+    "logical_root": "<RUN_ROOT>",
+    "prepared_instance": "/workspace/scratch/2debe97770c0/m01-evidence-run-568047f",
+    "relocation_rule": "the logical root may move only if every normalized relative path, file identity, mode, root identity, and empty-directory condition is revalidated before authorization",
+    "roots": {
+      "base_b": {
+        "commit": "609822762abd46c13ecd6187ccc8510695e52b2f",
+        "entry_count": 277,
+        "export_sha256": "9d95ad1b86857ce8e4d644c5c60a3e3c54ef286683ecbdc934babda2f3be0329",
+        "path": "roots/base-b",
+        "repository": "gregkrsak/klyxr",
+        "tree": "ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239",
+        "view_prefix": "",
+        "view_tree": "ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239"
+      },
+      "input_i": {
+        "commit": "241e1fd4047120e64fa35bb2e2ceccedccf3bfef",
+        "entry_count": 8,
+        "export_sha256": "7cb8983bbc7f3adcfc43d4228fb343d23829fdd7568d62c06a7fd9bb359ebf2d",
+        "path": "roots/input-i",
+        "repository": "gregkrsak/bowfin-migration-ledger",
+        "tree": "65fff756882280c92da520d522970e5b9a4b2b61",
+        "view_prefix": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/inputs",
+        "view_tree": "5f017c7a5837980d3cd1a070794ffe5a1a0c4065"
+      },
+      "scaffold_s": {
+        "commit": "de99bac136bfdcbe08dcf6ad775afde0989b0928",
+        "observation_entry_count": 5,
+        "observation_export_sha256": "1e52c1df9416705fd1fcb60e56cb5e3beec1ca94bc544b4591b5c006bd11e58a",
+        "observation_view_prefix": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/observations",
+        "observation_view_tree": "92ca8b1f796714b30b2b413e0f5b54417d5a0bd0",
+        "path": "roots/scaffold-s",
+        "repository": "gregkrsak/bowfin-migration-ledger",
+        "review_directory_must_exist": true,
+        "review_directory_must_have_zero_entries": true,
+        "review_entry_count": 0,
+        "review_export_sha256": "8e021b653249c768e572da6883836cdf359b6f01ae7710cd3e7611f015141b29",
+        "review_view_prefix": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reviews",
+        "review_view_tree": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+        "tree": "1a0bd0a3e1a380c3a0dc18513352530034ce59aa"
+      },
+      "source_c": {
+        "commit": "d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598",
+        "entry_count": 277,
+        "export_sha256": "1bfad676bc313bcbf470ef93a26367b06c9a3acb75a4d4eabce8e638cc270263",
+        "path": "roots/source-c",
+        "repository": "gregkrsak/klyxr",
+        "tree": "ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239",
+        "view_prefix": "",
+        "view_tree": "ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239"
+      },
+      "subject_h": {
+        "commit": "568047f573a8896462bacacb57af9ed7353b55ef",
+        "parent": "de99bac136bfdcbe08dcf6ad775afde0989b0928",
+        "parent_count": 1,
+        "path": "roots/subject-h",
+        "repository": "gregkrsak/bowfin-migration-ledger",
+        "role": "direct immutable record, package, audit, and export materialization; not passed as an authenticated repository root",
+        "tree": "0c564a9db13574442551170f241a64c3e5238c38"
+      },
+      "tooling_t": {
+        "commit": "4020cb64c1119ccfb4a4bc77b3f39e8b698ba2f5",
+        "entry_count": 12,
+        "export_sha256": "f9ce04a82245cf1ca09e6f2beb9085e9685dafe1ecacbadec1c4342181502177",
+        "path": "roots/tooling-t",
+        "repository": "gregkrsak/bowfin-migration-ledger",
+        "tree": "27a18b261d8f5325c2414ad9e18193e91b870a37",
+        "view_prefix": "protocol/m0.1/v2",
+        "view_tree": "cd514c89fda2d91318c7a63b8b737118141f7b2c"
+      }
+    },
+    "roots_read_only_before_execution": true,
+    "special_files_inside_roots": false,
+    "symlinks_inside_roots": false
+  },
+  "non_authority": {
+    "acceptance": false,
+    "approval": false,
+    "custody": false,
+    "cutover": false,
+    "execution": false,
+    "merge_permission": false,
+    "next_phase": false,
+    "release": false,
+    "replay_admission": false,
+    "semantic_acceptance": false
+  },
+  "preflight": {
+    "failure_action": "stop with zero evidence invocations and report the mismatch",
+    "project_tooling_may_run_during_preflight": false,
+    "required_checks": [
+      "PR #17 remains open, draft, unmerged, targeted to main, and at the exact reviewed map successor commit",
+      "the map successor has sole parent 568047f573a8896462bacacb57af9ed7353b55ef and changes only this map path",
+      "the owner authorization names the exact containing map commit, map blob, map SHA-256, one invocation, and publication scope",
+      "the runtime path, version, and SHA-256 match this map",
+      "every materialized root path exists, is read-only, contains no Git metadata, symlink, or special file, and matches its authenticated export path set, modes, byte counts, SHA-256s, and Git blobs",
+      "the review directory exists physically and contains zero entries",
+      "the record, package, audit, exports, verifier, protocol library, and limits file match every identity in this map",
+      "all capture paths are absent and no prior invocation record exists",
+      "the source and governance observations are unexpired and no named invalidating event is known"
+    ]
+  },
+  "prohibited_actions": [
+    "generate.py",
+    "audit_scan.py",
+    "verify.py package",
+    "verify.py freshness",
+    "verify.py binding",
+    "tests/test_protocol.py",
+    "compiler execution",
+    "Rust execution",
+    "workflow execution",
+    "live external refresh",
+    "network acquisition",
+    "PR #98 mutation",
+    "ready-state transition",
+    "merge",
+    "M0.1 completion",
+    "M1 or later-phase work"
+  ],
+  "protocol_version": "m0.1-v2",
+  "record_class": "evidence_invocation_map",
+  "report_publication": {
+    "authorized": false,
+    "future_successor_parent": "the exact independently reviewed containing map commit",
+    "permitted_added_paths_if_separately_authorized": [
+      "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/evidence-verification-run-01.json",
+      "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/streams/evidence-run-01.stdout",
+      "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/streams/evidence-run-01.stderr"
+    ],
+    "prohibited_mutations": [
+      "record.json",
+      "generated package",
+      "independent audit",
+      "authenticated exports",
+      "observations",
+      "reviews",
+      "compact inputs",
+      "accepted tooling"
+    ],
+    "result_record_must_bind": [
+      "containing map commit and tree",
+      "map blob and SHA-256",
+      "prepared subject H commit and tree",
+      "exact argv and runtime identity",
+      "start and end UTC instants",
+      "wall duration",
+      "exit classification and exit code",
+      "stdout and stderr byte counts, SHA-256s, and Git blobs",
+      "authorization exhaustion",
+      "all non-authority boundaries"
+    ]
+  },
+  "result_classification": {
+    "exit_0": "structural verification passed; no freshness or acceptance follows",
+    "exit_2": "protocol rejection; retain complete evidence and do not retry",
+    "other_exit_or_signal": "unexpected or environmental failure; retain complete evidence and do not retry",
+    "timeout": "terminated sole invocation; retain complete evidence and do not retry"
+  },
+  "runtime": {
+    "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12",
+    "executable_sha256": "fa67443527ed9647f760d807e2a38f26340757123e643c4639cf273ed15d5ea7",
+    "isolated_mode_required": true,
+    "limits": {
+      "blob_sha1": "00859ebf3bf80203e3ade39af7b88e28c39ff604",
+      "byte_count": 685,
+      "path": "roots/tooling-t/protocol/m0.1/v2/limits.json",
+      "sha256": "dd5785a0d34019bb37782caf2c5886cb987493eacfd24be1f6d2571adf0cb512"
+    },
+    "protocol_library": {
+      "blob_sha1": "7c34cc34d6d70c6d1a08006ceb2a63ca1f501d0f",
+      "byte_count": 44701,
+      "path": "roots/tooling-t/protocol/m0.1/v2/protocol_lib.py",
+      "sha256": "0d48a22571cde789a36bcb77dd65846d756de4a1af7dc4549ca8d402621a2568"
+    },
+    "python_version": "3.12.14",
+    "verifier": {
+      "blob_sha1": "e8492b02a262773c697f0c32f5fc22090ad84ec9",
+      "byte_count": 113952,
+      "path": "roots/tooling-t/protocol/m0.1/v2/verify.py",
+      "sha256": "eb4936bfac9b30332919cd6293428c28cf1ff4cb0bddc72b4194f5aed3c9343f"
+    }
+  },
+  "version": 1
+}
