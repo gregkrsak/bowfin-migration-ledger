@@ -1,0 +1,103 @@
+{
+  "authority": {
+    "authorized_by": "Greg Krsak",
+    "authorization_source": "Direct owner instruction in chat: Ok, proceed.",
+    "scope": [
+      "publish Sarah's complete independent review verbatim on PR #17",
+      "add this single append-only clarification without mutating the original result or any other existing object"
+    ],
+    "execution_authorized": false,
+    "merge_authorized": false,
+    "ready_state_transition_authorized": false
+  },
+  "clarification": {
+    "actual_exit_code": null,
+    "actual_exit_code_status": "unavailable_within_retained_evidence",
+    "directly_retained_facts": [
+      "the published invocation description and exact argv",
+      "the two captured stream byte sequences and their authenticated identities",
+      "the recorded timestamps and conservative elapsed interval",
+      "the unchanged one-run publication ancestry and three-file scope"
+    ],
+    "independent_conclusion": "The actual exit status is unavailable within the retained evidence boundary. Structural verification success is not independently established.",
+    "inferred_outcome": {
+      "exit_code": 0,
+      "status": "credible_but_not_confirmed",
+      "support": "Normal verifier completion returns 0, handled protocol rejection writes to stderr and exits 2, ordinary unhandled Python failures write a traceback to stderr, and both retained streams are empty.",
+      "counterexample": "A silent abnormal termination such as SIGKILL can leave both streams empty while producing no retained exit-status observation."
+    },
+    "original_record_fields_requiring_qualified_interpretation": [
+      "execution.exit_code",
+      "execution.exit_classification",
+      "execution.completion_evidence"
+    ],
+    "reported_process_controls": [
+      "static preflight completed and passed before invocation",
+      "one invocation was performed",
+      "zero retries were performed",
+      "the non-reusable authorization is exhausted"
+    ],
+    "structural_verification_status": "unconfirmed",
+    "verifier_failure_established": false
+  },
+  "independent_review": {
+    "body_byte_count": 16301,
+    "body_sha256": "5b81ce1d7b6a4f3537dc0b2ef5da43b76e527b3e399eb9a3d2bd330c1d5420da",
+    "comment_id": 6535544448,
+    "comment_url": "https://github.com/gregkrsak/bowfin-migration-ledger/pull/17#issuecomment-6535544448",
+    "disposition": "EXECUTION RESULT NOT ESTABLISHED WITHIN THE RETAINED EVIDENCE BOUNDARY",
+    "finding": {
+      "classification": "Major / Confirmed execution-evidence limitation",
+      "id": "BML-E17R-01"
+    },
+    "publication_readback": "exact byte-for-byte match"
+  },
+  "invocation": {
+    "authorization_exhausted": true,
+    "invocation_count": 1,
+    "no_retry": true,
+    "retry_count": 0,
+    "run_id": "M0.1-EVIDENCE-01"
+  },
+  "non_authority": {
+    "acceptance": false,
+    "approval": false,
+    "custody": false,
+    "cutover": false,
+    "m0_1_completion": false,
+    "merge_permission": false,
+    "next_phase": false,
+    "ready_state_transition": false,
+    "release": false,
+    "replay_admission": false,
+    "semantic_acceptance": false
+  },
+  "preservation": {
+    "append_only": true,
+    "existing_bytes_mutated": false,
+    "original_result_preserved": true,
+    "rerun_performed": false
+  },
+  "record_class": "evidence_verification_result_clarification",
+  "subjects": {
+    "invocation_map": {
+      "blob_sha1": "a2cdcf43d704442e6b27dd601ad2f8f628cfd1d9",
+      "commit": "c882318def0c17a9bd11a96d28dbb68ff9067c54",
+      "sha256": "301ed1b498b0d5cf1abd8ed8be15665f4c2e8f61f18aed0ee38f2d5af41b6a3d",
+      "tree": "a4351c6d685841209e54f50724076ee67f085d64"
+    },
+    "original_result": {
+      "blob_sha1": "fee17c95549a3b53384258c4dca3854f26fcdb36",
+      "byte_count": 6897,
+      "path": "evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/reports/evidence-verification-run-01.json",
+      "publication_commit": "d66205aea71e0a4e7d20139c46ec93016d3ff448",
+      "publication_tree": "732359cdec80527b76aafb77345e0804232794c6",
+      "sha256": "4d20c08543038f6c984e372bffca58ca0fd95fa8078b763de023c9cabd179b63"
+    },
+    "prepared_subject": {
+      "commit": "568047f573a8896462bacacb57af9ed7353b55ef",
+      "tree": "0c564a9db13574442551170f241a64c3e5238c38"
+    }
+  },
+  "version": 1
+}
