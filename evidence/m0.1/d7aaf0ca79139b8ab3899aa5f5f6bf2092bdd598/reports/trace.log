@@ -1,0 +1,28 @@
+++ date -u +%Y-%m-%dT%H:%M:%SZ
++ start_time=2026-10-30T16:32:44Z
+++ date -u +%s
++ start_epoch=1793377964
++ printf 'RUN_START=%s\n' 2026-10-30T16:32:44Z
+++ python3 --version
++ printf 'PYTHON=%s\n' 'Python 3.12.14'
++ printf 'STAGE=generate\n'
++ python3 -I /workspace/scratch/2debe97770c0/m01-proof.xyXbvF/tooling-repository/protocol/m0.1/v2/generate.py --source-root /workspace/scratch/2debe97770c0/m01-proof.xyXbvF/source --source-export /workspace/scratch/2debe97770c0/m01-proof.xyXbvF/exports/source-export.json --source-repository gregkrsak/klyxr --source-commit d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598 --source-tree ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239 --source-view-prefix '' --source-view-tree ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239 --input-root /workspace/scratch/2debe97770c0/m01-proof.xyXbvF/input-repository --input-export /workspace/scratch/2debe97770c0/m01-proof.xyXbvF/exports/input-export.json --input-repository gregkrsak/bowfin-migration-ledger --input-commit 241e1fd4047120e64fa35bb2e2ceccedccf3bfef --input-tree 65fff756882280c92da520d522970e5b9a4b2b61 --input-view-prefix evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/inputs --input-view-tree 5f017c7a5837980d3cd1a070794ffe5a1a0c4065 --output /workspace/scratch/2debe97770c0/m01-proof.xyXbvF/results/package
++ generate_exit=0
++ printf 'GENERATE_EXIT=%s\n' 0
++ '[' 0 -ne 0 ']'
++ printf 'STAGE=audit\n'
++ python3 -I /workspace/scratch/2debe97770c0/m01-proof.xyXbvF/tooling-repository/protocol/m0.1/v2/audit_scan.py --source-root /workspace/scratch/2debe97770c0/m01-proof.xyXbvF/source --source-export /workspace/scratch/2debe97770c0/m01-proof.xyXbvF/exports/source-export.json --source-repository gregkrsak/klyxr --source-commit d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598 --source-tree ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239 --source-view-prefix '' --source-view-tree ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239 --input-root /workspace/scratch/2debe97770c0/m01-proof.xyXbvF/input-repository --input-export /workspace/scratch/2debe97770c0/m01-proof.xyXbvF/exports/input-export.json --input-repository gregkrsak/bowfin-migration-ledger --input-commit 241e1fd4047120e64fa35bb2e2ceccedccf3bfef --input-tree 65fff756882280c92da520d522970e5b9a4b2b61 --input-view-prefix evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/inputs --input-view-tree 5f017c7a5837980d3cd1a070794ffe5a1a0c4065 --output /workspace/scratch/2debe97770c0/m01-proof.xyXbvF/results/audit.json
++ audit_exit=0
++ printf 'AUDIT_EXIT=%s\n' 0
++ '[' 0 -ne 0 ']'
++ printf 'STAGE=verify-package\n'
++ python3 -I /workspace/scratch/2debe97770c0/m01-proof.xyXbvF/tooling-repository/protocol/m0.1/v2/verify.py package --package /workspace/scratch/2debe97770c0/m01-proof.xyXbvF/results/package --source-repository gregkrsak/klyxr --source-commit d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598 --source-tree ebaf5e4b7b6a7a09acc693db52e3cdc5e0ec2239 --source-export-sha256 1bfad676bc313bcbf470ef93a26367b06c9a3acb75a4d4eabce8e638cc270263 --input-export-sha256 7cb8983bbc7f3adcfc43d4228fb343d23829fdd7568d62c06a7fd9bb359ebf2d --audit /workspace/scratch/2debe97770c0/m01-proof.xyXbvF/results/audit.json --audit-policy /workspace/scratch/2debe97770c0/m01-proof.xyXbvF/input-repository/evidence/m0.1/d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598/inputs/audit-policy.json
++ verify_exit=0
++ printf 'VERIFY_EXIT=%s\n' 0
+++ date -u +%Y-%m-%dT%H:%M:%SZ
++ end_time=2026-10-30T16:41:12Z
+++ date -u +%s
++ end_epoch=1793378472
++ printf 'RUN_END=%s\n' 2026-10-30T16:41:12Z
++ printf 'WALL_SECONDS=%s\n' 508
++ exit 0
