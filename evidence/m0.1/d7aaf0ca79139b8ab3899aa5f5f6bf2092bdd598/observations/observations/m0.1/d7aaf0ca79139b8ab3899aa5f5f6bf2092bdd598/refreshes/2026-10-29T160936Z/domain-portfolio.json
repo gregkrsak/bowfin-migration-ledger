@@ -1,0 +1,256 @@
+{
+  "record_class": "external_observation",
+  "surface_id": "domain-portfolio",
+  "candidate_commit": "d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598",
+  "observed_at": "2026-10-29T16:09:36Z",
+  "origin": "Owner-declared portfolio reconciled against public registry RDAP and Google Public DNS JSON responses",
+  "declared_bowfin_domains": [
+    "bowfin-lang.com",
+    "bowfin-lang.org",
+    "bowfin-lang.net",
+    "bowfin-lang.info",
+    "bowfin-lang.online"
+  ],
+  "declared_legacy_domains": [
+    "klyxr.com",
+    "klyxr.online"
+  ],
+  "domains": [
+    {
+      "name": "bowfin-lang.com",
+      "portfolio_class": "bowfin",
+      "rdap": {
+        "registration": "2026-10-23T18:07:31Z",
+        "expiration": "2027-10-23T18:07:31Z",
+        "last_changed": "2026-10-23T18:07:31Z",
+        "status": [
+          "client transfer prohibited"
+        ],
+        "registrar": "Name.com, Inc.",
+        "iana_registrar_id": "625",
+        "dnssec_delegation_signed": false
+      },
+      "dns": {
+        "resolver": "Google Public DNS JSON API",
+        "status": 0,
+        "a": [
+          "91.195.240.94"
+        ],
+        "aaaa": [],
+        "mx": [],
+        "nameservers": [
+          "ns1bcp.name.com.",
+          "ns2lns.name.com.",
+          "ns3cfp.name.com.",
+          "ns4sxy.name.com."
+        ]
+      }
+    },
+    {
+      "name": "bowfin-lang.org",
+      "portfolio_class": "bowfin",
+      "rdap": {
+        "registration": "2026-10-23T18:07:17.944Z",
+        "expiration": "2027-10-23T18:07:17.944Z",
+        "last_changed": "2026-10-28T18:07:32.037Z",
+        "status": [
+          "client transfer prohibited"
+        ],
+        "registrar": "Name.com, Inc.",
+        "iana_registrar_id": "625",
+        "dnssec_delegation_signed": false
+      },
+      "dns": {
+        "resolver": "Google Public DNS JSON API",
+        "status": 0,
+        "a": [
+          "91.195.240.94"
+        ],
+        "aaaa": [],
+        "mx": [],
+        "nameservers": [
+          "ns1bcp.name.com.",
+          "ns2lns.name.com.",
+          "ns3cfp.name.com.",
+          "ns4sxy.name.com."
+        ]
+      }
+    },
+    {
+      "name": "bowfin-lang.net",
+      "portfolio_class": "bowfin",
+      "rdap": {
+        "registration": "2026-10-23T18:07:25Z",
+        "expiration": "2027-10-23T18:07:25Z",
+        "last_changed": "2026-10-23T18:07:25Z",
+        "status": [
+          "client transfer prohibited"
+        ],
+        "registrar": "Name.com, Inc.",
+        "iana_registrar_id": "625",
+        "dnssec_delegation_signed": false
+      },
+      "dns": {
+        "resolver": "Google Public DNS JSON API",
+        "status": 0,
+        "a": [
+          "91.195.240.94"
+        ],
+        "aaaa": [],
+        "mx": [],
+        "nameservers": [
+          "ns1bcp.name.com.",
+          "ns2lns.name.com.",
+          "ns3cfp.name.com.",
+          "ns4sxy.name.com."
+        ]
+      }
+    },
+    {
+      "name": "bowfin-lang.info",
+      "portfolio_class": "bowfin",
+      "rdap": {
+        "registration": "2026-10-23T18:07:28.387Z",
+        "expiration": "2027-10-23T18:07:28.387Z",
+        "last_changed": "2026-10-28T18:07:48.411Z",
+        "status": [
+          "client transfer prohibited"
+        ],
+        "registrar": "Name.com, Inc.",
+        "iana_registrar_id": "625",
+        "dnssec_delegation_signed": false
+      },
+      "dns": {
+        "resolver": "Google Public DNS JSON API",
+        "status": 0,
+        "a": [
+          "91.195.240.94"
+        ],
+        "aaaa": [],
+        "mx": [],
+        "nameservers": [
+          "ns1bcp.name.com.",
+          "ns2lns.name.com.",
+          "ns3cfp.name.com.",
+          "ns4sxy.name.com."
+        ]
+      }
+    },
+    {
+      "name": "bowfin-lang.online",
+      "portfolio_class": "bowfin",
+      "rdap": {
+        "registration": "2026-10-23T18:07:21.418Z",
+        "expiration": "2027-10-23T18:07:21.418Z",
+        "last_changed": "2026-10-28T18:07:59.153Z",
+        "status": [
+          "client transfer prohibited"
+        ],
+        "registrar": "Name.com, Inc.",
+        "iana_registrar_id": "625",
+        "dnssec_delegation_signed": false
+      },
+      "dns": {
+        "resolver": "Google Public DNS JSON API",
+        "status": 0,
+        "a": [
+          "91.195.240.94"
+        ],
+        "aaaa": [],
+        "mx": [],
+        "nameservers": [
+          "ns1bcp.name.com.",
+          "ns2lns.name.com.",
+          "ns3cfp.name.com.",
+          "ns4sxy.name.com."
+        ]
+      }
+    },
+    {
+      "name": "klyxr.com",
+      "portfolio_class": "legacy",
+      "rdap": {
+        "registration": "2026-09-26T19:15:49Z",
+        "expiration": "2027-09-26T19:15:49Z",
+        "last_changed": "2026-09-26T19:15:49Z",
+        "status": [
+          "client transfer prohibited"
+        ],
+        "registrar": "Name.com, Inc.",
+        "iana_registrar_id": "625",
+        "dnssec_delegation_signed": false
+      },
+      "dns": {
+        "resolver": "Google Public DNS JSON API",
+        "status": 0,
+        "a": [
+          "91.195.240.94"
+        ],
+        "aaaa": [],
+        "mx": [],
+        "nameservers": [
+          "ns1bcp.name.com.",
+          "ns2lns.name.com.",
+          "ns3cfp.name.com.",
+          "ns4sxy.name.com."
+        ]
+      }
+    },
+    {
+      "name": "klyxr.online",
+      "portfolio_class": "legacy",
+      "rdap": {
+        "registration": "2026-09-26T19:15:46.067Z",
+        "expiration": "2027-09-26T19:15:46.067Z",
+        "last_changed": "2026-10-01T19:16:05.561Z",
+        "status": [
+          "client transfer prohibited"
+        ],
+        "registrar": "Name.com, Inc.",
+        "iana_registrar_id": "625",
+        "dnssec_delegation_signed": false
+      },
+      "dns": {
+        "resolver": "Google Public DNS JSON API",
+        "status": 0,
+        "a": [
+          "91.195.240.94"
+        ],
+        "aaaa": [],
+        "mx": [],
+        "nameservers": [
+          "ns1bcp.name.com.",
+          "ns2lns.name.com.",
+          "ns3cfp.name.com.",
+          "ns4sxy.name.com."
+        ]
+      }
+    }
+  ],
+  "http_tls_observation": {
+    "status": "unavailable",
+    "reason": "The execution environment's outbound proxy terminated probes at 127.0.0.1 and returned uniform proxy responses; those responses are not treated as origin-server evidence."
+  },
+  "freshness": {
+    "max_age_seconds": 604800,
+    "point_in_time_only": false,
+    "evaluation_points": [
+      "owner_acceptance",
+      "pre_integration"
+    ],
+    "invalidating_events": [
+      "domain_portfolio_changed",
+      "dns_changed",
+      "registrar_status_changed",
+      "checkpoint_assessment_unavailable"
+    ]
+  },
+  "limitations": [
+    "Public RDAP establishes registry data, not account ownership or control by Greg Krsak.",
+    "No registrar-account access was used.",
+    "TLS, redirect behavior, and served content remain unverified.",
+    "The seven-day maximum bounds advisory portfolio, RDAP, and DNS facts; it grants no legal clearance or M6 operational authority.",
+    "At owner acceptance and pre-integration, every retained domain must be requeried through the same public RDAP and DNS surfaces. A difference supplies the corresponding named event; inability to complete any required comparison supplies checkpoint_assessment_unavailable and fails closed.",
+    "This observation confers no acceptance, readiness, execution, or merge authority."
+  ]
+}

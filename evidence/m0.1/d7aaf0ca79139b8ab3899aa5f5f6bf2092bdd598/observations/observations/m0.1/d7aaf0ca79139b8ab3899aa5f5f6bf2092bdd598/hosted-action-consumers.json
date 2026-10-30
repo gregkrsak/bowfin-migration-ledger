@@ -1,0 +1,43 @@
+{
+  "record_class": "external_observation",
+  "surface_id": "hosted-action-consumers",
+  "candidate_commit": "d7aaf0ca79139b8ab3899aa5f5f6bf2092bdd598",
+  "observed_at": "2026-10-27T14:35:01Z",
+  "origin": "Authenticated GitHub default-branch code search",
+  "search_performed": true,
+  "searches": [
+    {
+      "query": "uses: gregkrsak/klyxr",
+      "returned_results": 2,
+      "classification": "false_positive_internal_text",
+      "paths": ["gregkrsak/klyxr:docs/ai/LANGUAGE_DECISIONS.md", "gregkrsak/klyxr:docs/ai/KLYXR_AI_CONTEXT_BUNDLE.md"],
+      "reason": "The search backend matched uses: and gregkrsak/klyxr in separate prose fragments; neither result was a workflow uses directive."
+    },
+    {
+      "query": "gregkrsak/klyxr@",
+      "returned_results": 0,
+      "classification": "no_indexed_matches_observed"
+    },
+    {
+      "query": "github.com/gregkrsak/klyxr",
+      "returned_results": "many",
+      "classification": "internal_and_governance_references",
+      "reason": "Returned examples were project README badges, engineering records, compiler documentation, and governance charters—not hosted-Action consumption."
+    }
+  ],
+  "known_external_consumers": [],
+  "conclusion": "No external hosted-Action consumer was identified by the bounded searches. This is not evidence that none exists.",
+  "freshness": {
+    "max_age_seconds": null,
+    "point_in_time_only": true,
+    "evaluation_points": ["owner_acceptance", "pre_integration"],
+    "invalidating_events": ["consumer_observation_acquired", "hosted_consumer_changed", "github_code_index_changed"]
+  },
+  "limitations": [
+    "GitHub code search covers indexed default-branch content and can omit unindexed, private, fork, deleted, non-default-branch, generated, or syntactically varied consumers.",
+    "Search tokenization produced false positives for one exact-looking query.",
+    "No organization-wide administrative dependency graph was available.",
+    "An empty known-external-consumer list is not an absence finding.",
+    "This observation confers no acceptance, readiness, execution, or merge authority."
+  ]
+}
