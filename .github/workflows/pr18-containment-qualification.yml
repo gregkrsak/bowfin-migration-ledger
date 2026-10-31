@@ -1,0 +1,156 @@
+# INERT REVIEW TEMPLATE: not installed under .github/workflows/.
+# Later activation needs a separate reviewed workflow-only bootstrap and owner order.
+name: PR18 containment qualifications only
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_workflow_sha:
+        description: Exact installed workflow commit from the separate owner order
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr18-containment-qualification
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
+
+jobs:
+  ordinary:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.repository == 'gregkrsak/bowfin-migration-ledger' &&
+      github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
+      github.sha == inputs.expected_workflow_sha &&
+      github.workflow_sha == inputs.expected_workflow_sha
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Acquire pinned launcher and perform ordinary qualification once
+        run: |
+          sudo -n /usr/bin/env -i \
+            PATH=/usr/sbin:/usr/bin:/sbin:/bin LANG=C LC_ALL=C TZ=UTC \
+            GITHUB_REPOSITORY="$GITHUB_REPOSITORY" GITHUB_RUN_ID="$GITHUB_RUN_ID" \
+            GITHUB_RUN_ATTEMPT="$GITHUB_RUN_ATTEMPT" GITHUB_JOB="$GITHUB_JOB" \
+            GITHUB_SHA="$GITHUB_SHA" GITHUB_WORKFLOW="$GITHUB_WORKFLOW" \
+            GITHUB_REF="$GITHUB_REF" GITHUB_EVENT_NAME="$GITHUB_EVENT_NAME" \
+            GITHUB_WORKFLOW_REF="$GITHUB_WORKFLOW_REF" GITHUB_WORKFLOW_SHA="$GITHUB_WORKFLOW_SHA" \
+            RUNNER_OS="$RUNNER_OS" RUNNER_ARCH="$RUNNER_ARCH" \
+            ImageOS="$ImageOS" ImageVersion="$ImageVersion" \
+            /usr/bin/python3 -I - qualify <<'PY'
+          import hashlib, os, sys, time, urllib.request
+          started = time.monotonic()
+          commit = '1fd58aa6a46b646418a8eb258c9102e5f8045672'
+          expected_sha256 = '8792a1abde9d35b355445bfb436db6c5db5f01fac22d2bab0be11da782ef1606'
+          expected_blob = '233c6ef63514b4b5fe15fb7e099086c19350c3ba'
+          expected_bytes = 36268
+          url = ('https://raw.githubusercontent.com/gregkrsak/bowfin-migration-ledger/'
+                 + commit + '/operations/m0.1/evidence-supervisor/qualification/runner.py')
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, *args, **kwargs):
+                  raise RuntimeError('redirect refused')
+          opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+          with opener.open(url, timeout=15) as response:
+              raw = response.read(131073)
+          assert len(raw) == expected_bytes <= 131072
+          assert hashlib.sha256(raw).hexdigest() == expected_sha256
+          assert hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest() == expected_blob
+          path = '/var/tmp/bowfin-pr18-launcher.py'
+          fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+          with os.fdopen(fd, 'wb') as stream:
+              stream.write(raw)
+              stream.flush()
+              os.fsync(stream.fileno())
+          with open(path, 'rb') as stream:
+              assert stream.read(131073) == raw
+          assert time.monotonic() - started < 30
+          env = dict(os.environ, JOB_STARTED_MONOTONIC=str(started),
+                     BOWFIN_LAUNCHER_COMMIT=commit, BOWFIN_LAUNCHER_SHA256=expected_sha256,
+                     BOWFIN_LAUNCHER_BLOB=expected_blob)
+          os.execve('/usr/bin/python3', ['/usr/bin/python3', '-I', path, sys.argv[1]], env)
+          PY
+      - name: Upload only the closed ordinary capture (transport, not acceptance)
+        timeout-minutes: 1
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: pr18-qualification-${{ github.run_id }}-1-qualify
+          path: /var/tmp/bowfin-pr18-export/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+
+  watchdog:
+    needs: ordinary
+    if: >-
+      success() && github.event_name == 'workflow_dispatch' &&
+      github.repository == 'gregkrsak/bowfin-migration-ledger' &&
+      github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
+      github.sha == inputs.expected_workflow_sha &&
+      github.workflow_sha == inputs.expected_workflow_sha
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Acquire pinned launcher and perform watchdog qualification once
+        run: |
+          sudo -n /usr/bin/env -i \
+            PATH=/usr/sbin:/usr/bin:/sbin:/bin LANG=C LC_ALL=C TZ=UTC \
+            GITHUB_REPOSITORY="$GITHUB_REPOSITORY" GITHUB_RUN_ID="$GITHUB_RUN_ID" \
+            GITHUB_RUN_ATTEMPT="$GITHUB_RUN_ATTEMPT" GITHUB_JOB="$GITHUB_JOB" \
+            GITHUB_SHA="$GITHUB_SHA" GITHUB_WORKFLOW="$GITHUB_WORKFLOW" \
+            GITHUB_REF="$GITHUB_REF" GITHUB_EVENT_NAME="$GITHUB_EVENT_NAME" \
+            GITHUB_WORKFLOW_REF="$GITHUB_WORKFLOW_REF" GITHUB_WORKFLOW_SHA="$GITHUB_WORKFLOW_SHA" \
+            RUNNER_OS="$RUNNER_OS" RUNNER_ARCH="$RUNNER_ARCH" \
+            ImageOS="$ImageOS" ImageVersion="$ImageVersion" \
+            /usr/bin/python3 -I - qualify-watchdog <<'PY'
+          import hashlib, os, sys, time, urllib.request
+          started = time.monotonic()
+          commit = '1fd58aa6a46b646418a8eb258c9102e5f8045672'
+          expected_sha256 = '8792a1abde9d35b355445bfb436db6c5db5f01fac22d2bab0be11da782ef1606'
+          expected_blob = '233c6ef63514b4b5fe15fb7e099086c19350c3ba'
+          expected_bytes = 36268
+          url = ('https://raw.githubusercontent.com/gregkrsak/bowfin-migration-ledger/'
+                 + commit + '/operations/m0.1/evidence-supervisor/qualification/runner.py')
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, *args, **kwargs):
+                  raise RuntimeError('redirect refused')
+          opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+          with opener.open(url, timeout=15) as response:
+              raw = response.read(131073)
+          assert len(raw) == expected_bytes <= 131072
+          assert hashlib.sha256(raw).hexdigest() == expected_sha256
+          assert hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest() == expected_blob
+          path = '/var/tmp/bowfin-pr18-launcher.py'
+          fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+          with os.fdopen(fd, 'wb') as stream:
+              stream.write(raw)
+              stream.flush()
+              os.fsync(stream.fileno())
+          with open(path, 'rb') as stream:
+              assert stream.read(131073) == raw
+          assert time.monotonic() - started < 30
+          env = dict(os.environ, JOB_STARTED_MONOTONIC=str(started),
+                     BOWFIN_LAUNCHER_COMMIT=commit, BOWFIN_LAUNCHER_SHA256=expected_sha256,
+                     BOWFIN_LAUNCHER_BLOB=expected_blob)
+          os.execve('/usr/bin/python3', ['/usr/bin/python3', '-I', path, sys.argv[1]], env)
+          PY
+      - name: Upload only the closed watchdog capture (transport, not acceptance)
+        timeout-minutes: 1
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: pr18-qualification-${{ github.run_id }}-1-qualify-watchdog
+          path: /var/tmp/bowfin-pr18-export/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
