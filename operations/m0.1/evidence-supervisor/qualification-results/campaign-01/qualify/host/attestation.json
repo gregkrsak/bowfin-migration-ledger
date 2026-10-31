@@ -1,0 +1,93 @@
+{
+  "binaries": [
+    {
+      "bytes": 8020928,
+      "command": "/usr/bin/python3",
+      "resolved": "/usr/bin/python3.12",
+      "sha256": "e50d468e8b0adfb05733f5b87b3cff34829c4a8c1aea50c865aa8bdfe4bb150f"
+    },
+    {
+      "bytes": 43134496,
+      "command": "/usr/bin/docker",
+      "resolved": "/usr/bin/docker",
+      "sha256": "6435ff9214bf8e0931078fb0980809728cac0a54a526d4f28a26d3e48132b58d"
+    },
+    {
+      "bytes": 1501304,
+      "command": "/usr/bin/systemctl",
+      "resolved": "/usr/bin/systemctl",
+      "sha256": "37ec607113f55f1b385b4fa75588a43402aec0de57927500763b267713f10f63"
+    },
+    {
+      "bytes": 96864,
+      "command": "/usr/bin/busctl",
+      "resolved": "/usr/bin/busctl",
+      "sha256": "55de316380235403dee2a22a24d1cd6106b461d967b857c9d25ffb80f41f2dc2"
+    },
+    {
+      "bytes": 80800,
+      "command": "/usr/bin/journalctl",
+      "resolved": "/usr/bin/journalctl",
+      "sha256": "0b08431236d5c8249b42994c00b401b3c093dee837e0465a53658057820d05b7"
+    },
+    {
+      "bytes": 44299016,
+      "command": "/usr/bin/containerd",
+      "resolved": "/usr/bin/containerd",
+      "sha256": "fc185d75979d92a4f8de99b76293dca7fe81142e9c5fd01d7da59f786f0fc8d1"
+    },
+    {
+      "bytes": 9719248,
+      "command": "/usr/bin/runc",
+      "resolved": "/usr/bin/runc",
+      "sha256": "1248fee8f9a0dc5382f888990d669e2bd225045869b9246f848a1681161abc96"
+    }
+  ],
+  "boot_id": "1ace7a48-46d9-47f3-8160-71a589d7de53",
+  "capture_deadline_monotonic": 1396.728357154,
+  "docker": {
+    "Architecture": "x86_64",
+    "CgroupDriver": "systemd",
+    "CgroupVersion": "2",
+    "Driver": "overlay2",
+    "OSType": "linux",
+    "SecurityOptions": [
+      "name=apparmor",
+      "name=seccomp,profile=builtin",
+      "name=cgroupns"
+    ],
+    "ServerVersion": "28.0.4"
+  },
+  "kernel": "7.0.0-1017-azure",
+  "launcher": {
+    "blob": "233c6ef63514b4b5fe15fb7e099086c19350c3ba",
+    "bytes": 36268,
+    "commit": "1fd58aa6a46b646418a8eb258c9102e5f8045672",
+    "sha256": "8792a1abde9d35b355445bfb436db6c5db5f01fac22d2bab0be11da782ef1606"
+  },
+  "metadata": {
+    "GITHUB_EVENT_NAME": "workflow_dispatch",
+    "GITHUB_JOB": "ordinary",
+    "GITHUB_REF": "refs/heads/main",
+    "GITHUB_REPOSITORY": "gregkrsak/bowfin-migration-ledger",
+    "GITHUB_RUN_ATTEMPT": "1",
+    "GITHUB_RUN_ID": "41209928358",
+    "GITHUB_SHA": "14ad3bba0ec0dbd416262d41b6529c211fda0a64",
+    "GITHUB_WORKFLOW": "PR18 containment qualifications only",
+    "GITHUB_WORKFLOW_REF": "gregkrsak/bowfin-migration-ledger/.github/workflows/pr18-containment-qualification.yml@refs/heads/main",
+    "GITHUB_WORKFLOW_SHA": "14ad3bba0ec0dbd416262d41b6529c211fda0a64",
+    "ImageOS": "ubuntu24",
+    "ImageVersion": "20261026.354.1",
+    "RUNNER_ARCH": "X64",
+    "RUNNER_OS": "Linux"
+  },
+  "mode": "qualify",
+  "mountinfo": "28 1 8:1 / / rw,relatime shared:1 - ext4 /dev/root rw,discard,journal_async_commit,nobarrier,errors=remount-ro,commit=30,data=writeback\n29 28 0:7 / /dev rw,nosuid,noexec,relatime shared:2 - devtmpfs devtmpfs rw,size=7429224k,nr_inodes=1857306,mode=755,inode64\n30 28 0:25 / /proc rw,nosuid,nodev,noexec,relatime shared:5 - proc proc rw\n31 28 0:26 / /sys rw,nosuid,nodev,noexec,relatime shared:6 - sysfs sysfs rw\n32 31 0:8 / /sys/kernel/security rw,nosuid,nodev,noexec,relatime shared:7 - securityfs securityfs rw\n33 29 0:27 / /dev/shm rw,nosuid,nodev shared:3 - tmpfs tmpfs rw,inode64\n34 29 0:28 / /dev/pts rw,nosuid,noexec,relatime shared:4 - devpts devpts rw,gid=5,mode=620,ptmxmode=000\n35 28 0:29 / /run rw,nosuid,nodev shared:12 - tmpfs tmpfs rw,size=3273504k,nr_inodes=819200,mode=755,inode64\n36 35 0:30 / /run/lock rw,nosuid,nodev,noexec,relatime shared:13 - tmpfs tmpfs rw,size=5120k,inode64\n37 31 0:31 / /sys/fs/cgroup rw,nosuid,nodev,noexec,relatime shared:8 - cgroup2 cgroup2 rw,nsdelegate,memory_recursiveprot\n38 31 0:32 / /sys/fs/pstore rw,nosuid,nodev,noexec,relatime shared:9 - pstore none rw\n39 31 0:33 / /sys/firmware/efi/efivars rw,nosuid,nodev,noexec,relatime shared:10 - efivarfs efivarfs rw\n40 31 0:34 / /sys/fs/bpf rw,nosuid,nodev,noexec,relatime shared:11 - bpf bpf rw,mode=700\n41 30 0:35 / /proc/sys/fs/binfmt_misc rw,relatime shared:14 - autofs systemd-1 rw,fd=32,pgrp=1,timeout=0,minproto=5,maxproto=5,direct,pipe_ino=119\n42 29 0:36 / /dev/hugepages rw,nosuid,nodev,relatime shared:15 - hugetlbfs hugetlbfs rw,pagesize=2M\n43 29 0:23 / /dev/mqueue rw,nosuid,nodev,noexec,relatime shared:16 - mqueue mqueue rw\n44 31 0:9 / /sys/kernel/debug rw,nosuid,nodev,noexec,relatime shared:17 - debugfs debugfs rw\n45 31 0:14 / /sys/kernel/tracing rw,nosuid,nodev,noexec,relatime shared:18 - tracefs tracefs rw\n46 31 0:37 / /sys/fs/fuse/connections rw,nosuid,nodev,noexec,relatime shared:19 - fusectl fusectl rw\n47 31 0:21 / /sys/kernel/config rw,nosuid,nodev,noexec,relatime shared:20 - configfs configfs rw\n50 28 259:0 / /boot rw,relatime shared:44 - ext4 /dev/sda16 rw,discard\n52 50 8:15 / /boot/efi rw,relatime shared:46 - vfat /dev/sda15 rw,fmask=0077,dmask=0077,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro\n54 41 0:39 / /proc/sys/fs/binfmt_misc rw,nosuid,nodev,noexec,relatime shared:48 - binfmt_misc binfmt_misc rw\n67 35 0:51 / /run/user/1001 rw,nosuid,nodev,relatime shared:338 - tmpfs tmpfs rw,size=1636752k,nr_inodes=409188,mode=700,uid=1001,gid=1001,inode64\n",
+  "versions": {
+    "containerd": "containerd containerd v2.4.2 b7a25261e029d68978bbf290df0a62fc819b3c51\n",
+    "docker": "{\"Client\":{\"Platform\":{\"Name\":\"Docker Engine - Community\"},\"Version\":\"28.0.4\",\"ApiVersion\":\"1.48\",\"DefaultAPIVersion\":\"1.48\",\"GitCommit\":\"b8034c0\",\"GoVersion\":\"go1.23.7\",\"Os\":\"linux\",\"Arch\":\"amd64\",\"BuildTime\":\"Tue Mar 25 15:07:16 2025\",\"Context\":\"default\"},\"Server\":{\"Platform\":{\"Name\":\"Docker Engine - Community\"},\"Components\":[{\"Name\":\"Engine\",\"Version\":\"28.0.4\",\"Details\":{\"ApiVersion\":\"1.48\",\"Arch\":\"amd64\",\"BuildTime\":\"Tue Mar 25 15:07:16 2025\",\"Experimental\":\"false\",\"GitCommit\":\"6430e49\",\"GoVersion\":\"go1.23.7\",\"KernelVersion\":\"7.0.0-1017-azure\",\"MinAPIVersion\":\"1.24\",\"Os\":\"linux\"}},{\"Name\":\"containerd\",\"Version\":\"v2.4.2\",\"Details\":{\"GitCommit\":\"b7a25261e029d68978bbf290df0a62fc819b3c51\"}},{\"Name\":\"runc\",\"Version\":\"1.5.2\",\"Details\":{\"GitCommit\":\"v1.5.2-0-g29dd3dc2\"}},{\"Name\":\"docker-init\",\"Version\":\"0.19.0\",\"Details\":{\"GitCommit\":\"de40ad0\"}}],\"Version\":\"28.0.4\",\"ApiVersion\":\"1.48\",\"MinAPIVersion\":\"1.24\",\"GitCommit\":\"6430e49\",\"GoVersion\":\"go1.23.7\",\"Os\":\"linux\",\"Arch\":\"amd64\",\"KernelVersion\":\"7.0.0-1017-azure\",\"BuildTime\":\"2025-03-25T15:07:16.000000000+00:00\"}}\n",
+    "python": "Python 3.12.3\n",
+    "runc": "runc version 1.5.2\ncommit: v1.5.2-0-g29dd3dc2\nspec: 1.3.0\ngo: go1.27.3\nlibseccomp: 2.5.5\n",
+    "systemd": "systemd 255 (255.4-1ubuntu8.18)\n+PAM +AUDIT +SELINUX +APPARMOR +IMA +SMACK +SECCOMP +GCRYPT -GNUTLS +OPENSSL +ACL +BLKID +CURL +ELFUTILS +FIDO2 +IDN2 -IDN +IPTC +KMOD +LIBCRYPTSETUP +LIBFDISK +PCRE2 -PWQUALITY +P11KIT +QRENCODE +TPM2 +BZIP2 +LZ4 +XZ +ZLIB +ZSTD -BPF_FRAMEWORK -XKBCOMMON +UTMP +SYSVINIT default-hierarchy=unified\n"
+  }
+}

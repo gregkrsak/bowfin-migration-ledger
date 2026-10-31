@@ -1,0 +1,34 @@
+{
+  "accepted": false,
+  "files": [
+    {
+      "bytes": 7219,
+      "path": "host/attestation.json",
+      "sha256": "36f297eb060516ff16232646bdfc0b2dde53d052f2b88adc3c0f8a7f0a0667d0"
+    },
+    {
+      "bytes": 0,
+      "path": "host/deadline-journal.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 228,
+      "path": "host/final-state.json",
+      "sha256": "0dbeaa6c2498fe20601f8e18b05c37fc6f8d3409b6fa2df14505b96fff26472e"
+    },
+    {
+      "bytes": 106,
+      "path": "host/launch-status.json",
+      "sha256": "8197cbf0fd32514a8a831f95d2cc1d592d757747b1839d5052ece09729c8e495"
+    },
+    {
+      "bytes": 440,
+      "path": "report.md",
+      "sha256": "fde9a28a5524fe36862dcf58fb5d95f2e004e62454aed1fe738d0bf149509adb"
+    }
+  ],
+  "mode": "qualify",
+  "record_class": "unaccepted_qualification_capture",
+  "retry_authorized": false,
+  "self_hash": "none"
+}
