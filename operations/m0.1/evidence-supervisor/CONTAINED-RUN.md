@@ -3,16 +3,19 @@
 Status: prepared for independent static review, **not installed, qualified, or
 authorized to execute**. This document replaces no historical record. Its
 subject is the successor to reviewed head
-`e8889f9b310dd90888a329b3ab4acf8230c3e908`, tree
-`7a53ab3e06f9f1e577570a657338eeb3a304f153`. The containing successor commit/tree
+`16110b5a399c678b64669cd7f2b806e59bc65750`, tree
+`cf3a1537575d219f69307d6290cd5d6574a5e0ba`. The containing successor commit/tree
 and the invocation-plan blob/SHA-256 are supplied externally in the PR report
 and later review/owner instruction; they are not circularly embedded here.
 
 ## 1. Narrow repair and authority
 
-Greg authorized static preparation of a runtime-portability repair and its
-containment plan. Only the synthetic harness's interpreter path and expected
-executable SHA-256 change. The supervisor, receipt schema, all 22 test methods,
+Greg authorized the static C01-C03 repair after Sarah's review of the runtime-
+portability/containment proposal. This successor changes only the controller,
+probe, their deployment hashes, this contract, and new repair/control sources.
+The earlier portability revision changed the synthetic harness's interpreter
+path and executable SHA-256; that harness is unchanged in this repair.
+The supervisor, receipt schema, all 22 test methods,
 fixture logic, expected outputs, assertions, timeout tests, and negative cases
 are preserved. There is no environment-variable override or fallback runtime.
 
@@ -89,6 +92,12 @@ are root-owned, mode 0644; directories 0755. No repository hooks, Git filters,
 checkout-time code or archived payload is used. Source remains immutable for
 the invocation; no concurrent writers are permitted.
 
+The dedicated timer and service are exclusively controlled by this attempt.
+No privileged concurrent starts, reloads, timer resets/restarts, daemon reexec,
+clock-namespace changes, or unit-file modifications are permitted. The same-host
+Linux `CLOCK_MONOTONIC` domain binds the recorded expiry and controller checks.
+Unknown or changed host-manager state blocks a favorable disposition.
+
 Install only the three reviewed units under `/run/systemd/system/` (ephemeral
 VM only), byte-for-byte, root-owned and not writable by the workload. The
 controller checks those copies. The operator's independently supplied SHA-256
@@ -151,7 +160,12 @@ distinct cases. They are not supervisor-suite invocations:
    checks interpreter identity, effective UID/capabilities/no-new-privileges,
    seccomp, loopback-only networking, read-only source/root and usable private
    `/proc/self/fd` file/directory links. It starts a separately-sessioned child.
-   The host confirms containment and tests whole-job cleanup. Compare effective
+   The host sends exactly `GO\n` followed by EOF through the same gate used by
+   suite mode. The probe must acknowledge `BOWFIN_PR18_RELEASE_CONFIRMED` before
+   its harmless child/session path; it never executes the suite in this mode.
+   Created and live Docker configuration must explicitly set `AttachStdin`,
+   `OpenStdin`, and `StdinOnce` true and `Tty` false. The host confirms containment
+   and tests whole-job cleanup. Compare effective
    cgroup, namespaces, mount flags/quotas and Docker settings against this plan;
    a success message from the probe alone is insufficient.
 2. **Independent deadline:** on another fresh VM, invoke controller mode
@@ -161,6 +175,10 @@ distinct cases. They are not supervisor-suite invocations:
    independent service's termination/removal and retained-parent empty readback.
    Killing the controller is part of this separately authorized qualification,
    not permission to interrupt a production evidence job.
+
+Both qualification modes use that exact release/EOF transport. A stalled EOF,
+missing acknowledgment or wrong stdin configuration fails qualification before
+any suite is authorized; no extra mode or implicit retry is introduced.
 
 The intended probe remains alive until externally killed; it is not expected
 to exit zero. Qualification success means the stated boundaries were observed,
@@ -238,6 +256,52 @@ Do not disarm it until cleanup is confirmed. Keep the parent active until its
 readback is retained. `populated 0` proves no live processes recursively; it
 does not independently prove every zombie was reaped or physical persistence.
 
+### Terminal arbitration (C01 repair)
+
+`result.json` is always provisional, even if its `candidate_classification`
+describes a successful bounded observation. It is never sufficient terminal
+evidence. A separate `terminal.json` binds its exact SHA-256 and plan identity.
+
+The controller and deadline service arbitrate that terminal record using the
+same root-owned, precreated, never-replaced zero-byte `terminal.lock` inode.
+Lock acquisition waits at most five seconds. Process death releases the lock.
+The deadline service records activation before waiting for the lock and still
+attempts cleanup after a lock/marker/arbitration error; such an error is retained
+in `deadline-cleanup.json`. Cleanup is never conditional on winning the lock.
+
+After confirmed workload cleanup, the controller may seal a favorable bounded
+observation only after all of the following while holding the lock:
+
+1. Compare the still-active, untriggered timer with the exact initially armed
+   `NextElapseUSecMonotonic`; do not derive a new later deadline.
+2. Synchronously stop the timer **strictly before** that original earliest
+   expiry, measured in the same host monotonic microsecond clock. `WakeSystem`
+   must be false and timer accuracy adds delay, not an earlier firing point.
+3. Separately synchronously stop/drain the deadline service. A timer stop alone
+   does not cancel an already-activated service.
+4. Read back both units inactive with no scheduled/running job, service substate
+   dead, no observed service-start/activation or timer-trigger history, and no
+   adverse marker. Retain all those observations and monotonic checkpoints.
+5. Require reconciliation strictly before the original earliest expiry, then
+   create the one terminal record exclusively. No prior terminal is replaced.
+
+The absolute pre-expiry check is essential: zero history after systemd unit
+garbage collection/reload cannot turn a post-deadline completion into success.
+Under exclusive trusted-host control, a stopped timer plus a drained service
+has no remaining activation source after sealing. Missing/partial seal, elapsed
+deadline, lock failure, tool failure, pending job, observed activation, or
+ambiguous state is indeterminate. Stopping a service waiting for the lock cannot
+erase the original monotonic deadline. An adverse deadline disposition cannot
+be overwritten by the controller. An unexpected later adverse record conflicts
+with any favorable evidence and rejects; readers must inspect the whole set.
+
+Only `watchdog_quiescent_pending_independent_review` in a complete controller
+terminal record can support further review, and only together with the bound
+provisional result, full streams, engine state and cleanup evidence. It grants
+no acceptance or execution authority. Death before sealing leaves no favorable
+terminal evidence; death after sealing cannot restart the drained watchdog under
+the stated assumptions. This is a source-level argument, not observed behavior.
+
 The suite deletes its fixture TemporaryDirectories. Container tmpfs also
 disappears on stop. Consequently **individual synthetic receipts are not promised
 as retained output**. Retain the external reservation, preflight and launch
@@ -255,17 +319,22 @@ The closed controller-output inventory under `/var/tmp/bowfin-pr18/control` is:
 | Both qualification modes | `qualification-membership.json` |
 | Deliberate controller-loss qualification | `watchdog-test-ready.json` |
 | Independent deadline actually fires | `deadline-fired.json`, `deadline-cleanup.json` |
+| Shared terminal protocol | `terminal.json`, zero-byte `terminal.lock` |
 
-This is at most 18 files: two streams capped at 4 MiB each and sixteen JSON
-records capped at 256 KiB each, at most 12 MiB total file payload. The sole
+This is at most 20 files: two streams capped at 4 MiB each, seventeen JSON
+records capped at 256 KiB each, and a zero-byte lock; at most 12 MiB plus 256 KiB
+total file payload. The sole
 additional directory, `docker-config`, must remain empty and contains no
 credentials. Early failures may produce only an adverse partial inventory;
 they are not successful runs with optional evidence omitted. A normal successful
-suite has the common files plus the three normal-completion files. The deliberate
+suite has the common files, three normal-completion files and terminal-protocol
+files. The deliberate
 SIGKILL case instead expects no `attach.json`, `controller-cleanup.json` or
 `result.json`; its independently retained deadline evidence supplies cleanup
 observations, not a fabricated primary-controller result. Its flushed stream
 bytes require separate bounded capture/hash readback before publication.
+Its terminal record has deadline origin and indeterminate classification, not
+a positive suite disposition. Early failures need not have a complete seal.
 
 Host provisioning/job attestation and the later human-readable report are
 separate records whose exact paths and bounds must be approved in the future
@@ -274,7 +343,8 @@ filesystem collection nor publication now.
 
 Passing synthetic evidence requires all 22 methods reported without failures,
 errors or skips, a corroborating successful container result, complete bounded
-capture, no adverse intervention, and confirmed cleanup. External review checks
+capture, no adverse intervention, confirmed cleanup, and the complete favorable
+terminal seal with matching provisional-result digest. External review checks
 these jointly. It proves neither storage durability under power loss nor
 production evidence validity. No emitted JSON or successful status grants
 acceptance, ready-state, merge, retry, M0.1 completion or later-phase authority.
@@ -302,5 +372,6 @@ permissions of this synthetic plan.
 - [Docker isolated loopback](https://docs.docker.com/engine/network/drivers/none/)
 - [Kernel cgroup v2](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html)
 - [systemd timers](https://www.freedesktop.org/software/systemd/man/255/systemd.timer.html)
+- [systemd manager/unit API](https://www.freedesktop.org/software/systemd/man/255/org.freedesktop.systemd1.html)
 
 These document mechanisms, not an attestation of the future runner.

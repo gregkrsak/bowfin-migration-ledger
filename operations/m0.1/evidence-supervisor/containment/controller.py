@@ -7,8 +7,11 @@ required for each separately authorized qualification or suite invocation.
 """
 
 import argparse
+from contextlib import contextmanager
+import fcntl
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -51,8 +54,18 @@ def pairs(items):
     return out
 
 
+def finite_float(token):
+    if len(token) > 128:
+        raise ValueError("JSON float token limit")
+    value = float(token)
+    if not math.isfinite(value):
+        raise ValueError("nonfinite JSON float")
+    return value
+
+
 def decode(raw):
     return json.loads(raw.decode("utf-8"), object_pairs_hook=pairs,
+                      parse_float=finite_float,
                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError("nonfinite JSON")))
 
 
@@ -87,6 +100,28 @@ def record(name, value):
         stream.write(raw)
         stream.flush()
         os.fsync(stream.fileno())
+
+
+@contextmanager
+def terminal_lock():
+    """Root-owned precreated inode; never unlink/replace it during this attempt."""
+    fd = os.open(CONTROL / "terminal.lock", os.O_RDWR | os.O_NOFOLLOW)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o077 or info.st_size != 0:
+            raise ValueError("invalid terminal lock")
+        expires = time.monotonic() + 5
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= expires:
+                    raise RuntimeError("terminal lock timeout")
+                time.sleep(0.01)
+        yield
+    finally:
+        os.close(fd)  # SIGKILL/process exit also releases this kernel lock.
 
 
 def bounded(argv, timeout=10, cap=TOOL_CAP):
@@ -247,7 +282,83 @@ def verify_loaded_units():
         raise RuntimeError("unexpected timer interval")
     if bus_property("bowfinpr18-deadline.timer", "Timer", "AccuracyUSec") != ["t", "1000000"] or bus_property("bowfinpr18-deadline.timer", "Timer", "RandomizedDelayUSec") != ["t", "0"]:
         raise RuntimeError("unexpected timer accuracy or randomization")
+    if bus_property("bowfinpr18-deadline.timer", "Timer", "WakeSystem") != ["b", "false"]:
+        raise RuntimeError("timer must use CLOCK_MONOTONIC, not boottime")
     record("loaded-units.json", retained)
+
+
+def quiesce_watchdog(earliest_deadline):
+    """Called with terminal lock held, after confirmed workload cleanup.
+
+    Stopping a timer alone cannot drain an activated service. Positive sealing
+    needs pre-expiry timer disarm, a separate synchronous service stop, and
+    manager readback. Absolute monotonic time is essential: zeroed history after
+    unit garbage collection must never rehabilitate a post-deadline completion.
+    """
+    if type(earliest_deadline) is not int or earliest_deadline <= 0:
+        raise ValueError("missing armed monotonic deadline")
+    def before_deadline():
+        now = time.monotonic_ns() // 1000
+        if now >= earliest_deadline:
+            raise RuntimeError("not strictly before independent deadline")
+        return now
+    before = before_deadline()
+    timer = "bowfinpr18-deadline.timer"
+    service = "bowfinpr18-deadline.service"
+    pre_disarm = {"active_state": bus_property(timer, "Unit", "ActiveState"),
+                  "last_trigger": bus_property(timer, "Timer", "LastTriggerUSecMonotonic"),
+                  "next_elapse": bus_property(timer, "Timer", "NextElapseUSecMonotonic")}
+    if pre_disarm != {"active_state": ["s", "active"], "last_trigger": ["t", "0"],
+                      "next_elapse": ["t", str(earliest_deadline)]}:
+        raise RuntimeError("timer is not the untriggered armed deadline")
+    checked(["/usr/bin/systemctl", "stop", timer])
+    stopped_before = before_deadline()
+    # This drains/cancels already queued or active deadline-service work; it is
+    # safe to disarm cleanup only because workload cleanup is already proven.
+    checked(["/usr/bin/systemctl", "stop", service])
+    observations = {}
+    for unit in (timer, service):
+        active = bus_property(unit, "Unit", "ActiveState")
+        job = bus_property(unit, "Unit", "Job")
+        if active != ["s", "inactive"] or job != ["(uo)", "0", "/"]:
+            raise RuntimeError("watchdog unit not quiescent")
+        observations[unit] = {"active_state": active, "job": job}
+    history = {"service_substate": bus_property(service, "Unit", "SubState"),
+               "service_inactive_exit_usec": bus_property(service, "Unit", "InactiveExitTimestampMonotonic"),
+               "service_exec_start_usec": bus_property(service, "Service", "ExecMainStartTimestampMonotonic"),
+               "timer_last_trigger_usec": bus_property(timer, "Timer", "LastTriggerUSecMonotonic")}
+    if history != {"service_substate": ["s", "dead"], "service_inactive_exit_usec": ["t", "0"],
+                   "service_exec_start_usec": ["t", "0"], "timer_last_trigger_usec": ["t", "0"]}:
+        raise RuntimeError("deadline activation history is not empty")
+    if (CONTROL / "deadline-fired.json").exists():
+        raise RuntimeError("deadline event recorded")
+    return {"earliest_deadline_usec": earliest_deadline,
+            "before_disarm_usec": before, "timer_stopped_usec": stopped_before,
+            "reconciled_usec": before_deadline(), "units": observations,
+            "pre_disarm": pre_disarm, "history": history}
+
+
+def finish(output, armed, earliest_deadline, intent):
+    """A provisional result is never favorable terminal evidence on its own."""
+    provisional = dict(output, classification="provisional",
+                       candidate_classification=output["classification"], provisional=True)
+    record("result.json", provisional)
+    with terminal_lock():
+        if (CONTROL / "terminal.json").exists():
+            return False  # An adverse deadline disposition already won.
+        terminal = {"origin": "controller", "classification": "indeterminate",
+                    "plan_sha256": intent["plan_sha256"],
+                    "result_sha256": sha(trusted(CONTROL / "result.json", TOOL_CAP)),
+                    "accepted": False, "retry_authorized": False, "merge_authorized": False}
+        if armed and output.get("cleanup_complete"):
+            try:
+                terminal["watchdog"] = quiesce_watchdog(earliest_deadline)
+                if output["classification"] != "indeterminate":
+                    terminal["classification"] = "watchdog_quiescent_pending_independent_review"
+            except Exception as error:
+                terminal["error"] = type(error).__name__ + ": " + str(error)[:2048]
+        record("terminal.json", terminal)
+        return terminal["classification"] == "watchdog_quiescent_pending_independent_review"
 
 
 def cgroup_kill():
@@ -265,10 +376,12 @@ def population():
     return raw, values["populated"]
 
 
-def cleanup(intent, prefix):
+def cleanup(intent, prefix, arbitration_error=None):
     """Fence delayed starts by exact container removal, then prove group empty."""
     result = {"complete": False, "live_tasks_absent": False, "all_zombies_reaped": False,
               "container_removed": False, "terminal_container_state": None, "errors": []}
+    if prefix == "deadline":
+        result["terminal_arbitration_error"] = arbitration_error
     deadline = time.monotonic() + CLEANUP_SECONDS
     try:
         ownership = decode(trusted(CONTROL / "cgroup-owned.json", 4096))
@@ -309,9 +422,20 @@ def cleanup(intent, prefix):
 
 def deadline_mode():
     intent = decode(trusted(CONTROL / "intent.json", 4096))
-    # Root-owned terminal marker also prohibits a later normal-success claim.
-    record("deadline-fired.json", {"reason": "independent_systemd_deadline", "monotonic": time.monotonic()})
-    result = cleanup(intent, "deadline")
+    arbitration_error = None
+    try:
+        # Record activation before waiting for arbitration. Cleanup must remain
+        # available even if a stalled controller retains the terminal lock.
+        record("deadline-fired.json", {"reason": "independent_systemd_deadline", "monotonic": time.monotonic()})
+        with terminal_lock():
+            if not (CONTROL / "terminal.json").exists():
+                record("terminal.json", {"origin": "deadline", "classification": "indeterminate",
+                       "plan_sha256": intent["plan_sha256"], "accepted": False,
+                       "retry_authorized": False, "merge_authorized": False})
+    except Exception as error:
+        arbitration_error = type(error).__name__ + ": " + str(error)[:2048]
+    # No lock is held over cleanup; marker/lock failure cannot suppress it.
+    result = cleanup(intent, "deadline", arbitration_error)
     return 1 if result["complete"] else 2
 
 
@@ -337,7 +461,7 @@ def check_container(info, mode):
     cfg, host = info["Config"], info["HostConfig"]
     command = create_argv(mode, "0" * 64)
     expected_cmd = command[command.index(IMAGE) + 1:]
-    if info["Image"] != IMAGE_CONFIG or cfg["Image"] != IMAGE or cfg["User"] != "65532:65532" or cfg["Entrypoint"] != ["/usr/bin/env"] or cfg["Cmd"] != expected_cmd or cfg["Tty"] is not False or cfg["OpenStdin"] is not True:
+    if info["Image"] != IMAGE_CONFIG or cfg["Image"] != IMAGE or cfg["User"] != "65532:65532" or cfg["Entrypoint"] != ["/usr/bin/env"] or cfg["Cmd"] != expected_cmd or cfg["Tty"] is not False or cfg["OpenStdin"] is not True or cfg.get("AttachStdin") is not True or cfg.get("StdinOnce") is not True:
         raise ValueError("created image or process configuration mismatch")
     checks = {"ReadonlyRootfs": True, "Privileged": False, "NetworkMode": "none", "IpcMode": "private", "PidMode": "", "UTSMode": "", "CgroupnsMode": "private", "CgroupParent": "bowfinpr18.slice", "CpuPeriod": 100000, "CpuQuota": 200000, "Memory": 536870912, "MemorySwap": 536870912, "PidsLimit": 64, "ShmSize": 1048576}
     if any(host.get(key) != value for key, value in checks.items()) or host["CapDrop"] != ["ALL"] or host.get("CapAdd") not in (None, []) or host["RestartPolicy"] != {"Name": "no", "MaximumRetryCount": 0} or host["LogConfig"] != {"Type": "none", "Config": {}}:
@@ -390,7 +514,8 @@ def attach(cid, mode, expires):
     files = {}
     marker = bytearray()
     released = False
-    result = {"docker_attach_status": None, "reason": None, "streams_complete": False}
+    result = {"docker_attach_status": None, "reason": None, "streams_complete": False,
+              "release_confirmed": False}
     try:
         for name in counts:
             fd = os.open(CONTROL / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
@@ -412,14 +537,14 @@ def attach(cid, mode, expires):
                 files[key.data].write(retained)
                 hashes[key.data].update(retained)
                 counts[key.data] += len(retained)
-                if key.data == "stdout" and not released and len(marker) < 65536:
+                if key.data == "stdout" and len(marker) < 65536:
                     marker.extend(retained[:65536 - len(marker)])
                 if len(data) > room:
                     result["reason"] = "output_limit"
                     break
             if result["reason"]:
                 break
-            if mode == "suite" and not released and b"BOWFIN_PR18_GATE_READY\n" in marker:
+            if not released and b"BOWFIN_PR18_GATE_READY\n" in marker:
                 info, observations = live_gate(cid)
                 check_container(info, mode)
                 record("live-gate.json", observations)
@@ -429,9 +554,10 @@ def attach(cid, mode, expires):
                 proc.stdin.flush()
                 proc.stdin.close()
                 released = True
-            if mode in ("qualify", "qualify-watchdog") and b"BOWFIN_PR18_PROBE_READY\n" in marker:
+            if released and b"BOWFIN_PR18_RELEASE_CONFIRMED\n" in marker:
+                result["release_confirmed"] = True
+            if mode in ("qualify", "qualify-watchdog") and result["release_confirmed"] and b"BOWFIN_PR18_PROBE_READY\n" in marker:
                 info, observations = live_gate(cid)
-                record("live-gate.json", observations)
                 pid = info["State"]["Pid"]
                 if type(pid) is not int or pid <= 1:
                     raise ValueError("invalid host container PID")
@@ -463,8 +589,8 @@ def attach(cid, mode, expires):
         if result["reason"] is None:
             result["streams_complete"] = True
             result["docker_attach_status"] = proc.wait(timeout=2)
-            if mode == "suite" and not released:
-                result["reason"] = "suite_not_released"
+            if not released or not result["release_confirmed"]:
+                result["reason"] = "release_not_confirmed"
         else:
             os.killpg(proc.pid, signal.SIGKILL)
             result["docker_attach_status"] = proc.wait(timeout=2)
@@ -504,12 +630,15 @@ def main():
     verify_plan(args.plan_sha256)
     CONTROL.mkdir(mode=0o700)  # Exclusive attempt reservation; never resume/reuse.
     (CONTROL / "docker-config").mkdir(mode=0o700)
+    lock_fd = os.open(CONTROL / "terminal.lock", os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    os.close(lock_fd)
     intent = {"mode": args.mode, "name": "bowfinpr18-" + args.mode,
               "plan_sha256": args.plan_sha256, "image": IMAGE, "attempt_reusable": False}
     record("intent.json", intent)
     output = {"classification": "indeterminate", "accepted": False, "merge_authorized": False,
               "retry_authorized": False, "error": None}
     armed = False
+    earliest_deadline = None
     try:
         verify_loaded_units()
         daemon = decode(checked(["/usr/bin/docker", "info", "--format", "{{json .}}"] ))
@@ -546,8 +675,9 @@ def main():
         if "ActiveState=active\n" not in timer or "Unit=bowfinpr18-deadline.service\n" not in timer:
             raise RuntimeError("independent deadline is not armed")
         next_elapse = bus_property("bowfinpr18-deadline.timer", "Timer", "NextElapseUSecMonotonic")
-        if len(next_elapse) != 2 or next_elapse[0] != "t" or not next_elapse[1].isdigit() or not time.monotonic() < int(next_elapse[1]) / 1000000 <= started + 962:
+        if len(next_elapse) != 2 or next_elapse[0] != "t" or not next_elapse[1].isdigit() or not started + 959 <= int(next_elapse[1]) / 1000000 <= started + 962 or time.monotonic() >= int(next_elapse[1]) / 1000000:
             raise RuntimeError("deadline expiry is not finite and within reviewed bound")
+        earliest_deadline = int(next_elapse[1])
         record("timer-armed.json", {"properties": timer, "next_elapse_usec": int(next_elapse[1]), "controller_monotonic": started})
         if (CONTROL / "deadline-fired.json").exists():
             raise RuntimeError("deadline already fired; no launch")
@@ -555,9 +685,9 @@ def main():
         cleaned = cleanup(intent, "controller")
         output["cleanup_complete"] = cleaned["complete"]
         state = cleaned["terminal_container_state"]
-        if args.mode == "suite" and captured["reason"] is None and captured["streams_complete"] and captured["docker_attach_status"] == 0 and cleaned["complete"] and isinstance(state, dict) and state.get("Running") is False and state.get("ExitCode") == 0 and state.get("OOMKilled") is False and state.get("Error") == "" and state.get("StartedAt", "").startswith("20") and state.get("FinishedAt", "").startswith("20") and not (CONTROL / "deadline-fired.json").exists():
+        if args.mode == "suite" and captured["reason"] is None and captured["streams_complete"] and captured["release_confirmed"] and captured["docker_attach_status"] == 0 and cleaned["complete"] and isinstance(state, dict) and state.get("Running") is False and state.get("ExitCode") == 0 and state.get("OOMKilled") is False and state.get("Error") == "" and state.get("StartedAt", "").startswith("20") and state.get("FinishedAt", "").startswith("20") and not (CONTROL / "deadline-fired.json").exists():
             output["classification"] = "docker_reported_suite_exit_zero_pending_independent_review"
-        elif args.mode == "qualify" and captured["reason"] == "qualification_cleanup_probe" and cleaned["complete"] and not (CONTROL / "deadline-fired.json").exists():
+        elif args.mode == "qualify" and captured["reason"] == "qualification_cleanup_probe" and captured["release_confirmed"] and cleaned["complete"] and not (CONTROL / "deadline-fired.json").exists():
             output["classification"] = "qualification_probe_and_cleanup_observed_pending_review"
     except Exception as error:
         output["error"] = type(error).__name__ + ": " + str(error)[:2048]
@@ -565,16 +695,8 @@ def main():
             cleaned = cleanup(intent, "controller")
             output["cleanup_complete"] = cleaned["complete"]
     finally:
-        if armed and output.get("cleanup_complete"):
-            try:
-                checked(["/usr/bin/systemctl", "stop", "bowfinpr18-deadline.timer"])
-            except Exception as error:
-                output["classification"] = "indeterminate"
-                output["timer_stop_error"] = str(error)[:1024]
-        if (CONTROL / "deadline-fired.json").exists():
-            output["classification"] = "indeterminate"
-        record("result.json", output)
-    return 0 if output["classification"] != "indeterminate" else 2
+        favorable_terminal = finish(output, armed, earliest_deadline, intent)
+    return 0 if favorable_terminal else 2
 
 
 if __name__ == "__main__":

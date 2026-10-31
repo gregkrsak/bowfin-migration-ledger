@@ -24,13 +24,13 @@
     },
     {
       "path": "containment/controller.py",
-      "bytes": 31984,
-      "sha256": "2d02f69f78c2244df64e196a397fd8a7a1440e0af5e1a5f110705ac0958375f3"
+      "bytes": 38652,
+      "sha256": "32788f0050715c57b46ac211ec86e2c335c561c4d064828fa493c0e9a4f9d577"
     },
     {
       "path": "containment/probe.py",
-      "bytes": 4111,
-      "sha256": "3e0d1f3f324cc82083876eab39eac249643cf3806f9b8aa3b9e1ace5bb9fe69b"
+      "bytes": 4130,
+      "sha256": "dddcab3765b04522e66d8b01d031fb9ce4fdc831690bf253707be9adb302c75a"
     },
     {
       "path": "containment/seccomp.json",

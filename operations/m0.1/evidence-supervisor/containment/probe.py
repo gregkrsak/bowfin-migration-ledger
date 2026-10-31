@@ -16,6 +16,7 @@ def require(condition, message):
 
 
 def main():
+    require(sys.argv[1:] in ([], ["--suite-gate"]), "unexpected qualification arguments")
     runtime = Path("/usr/local/bin/python3.12")
     require(Path(sys.executable).resolve() == runtime, "wrong interpreter path")
     with runtime.open("rb") as stream:
@@ -44,25 +45,25 @@ def main():
             require(os.readlink(f"/proc/self/fd/{fd}") == str(path), "procfs fd classifier unavailable")
         finally:
             os.close(fd)
+    signal.alarm(60)
+    print("BOWFIN_PR18_GATE_READY", flush=True)
+    received = bytearray()
+    while len(received) < 4:
+        part = os.read(0, 4 - len(received))
+        if not part:
+            break
+        received.extend(part)
+    require(bytes(received) == b"GO\n", "no exact bounded release")
+    signal.alarm(0)
+    null = os.open("/dev/null", os.O_RDONLY)
+    os.dup2(null, 0)
+    if null != 0:
+        os.close(null)
+    print("BOWFIN_PR18_RELEASE_CONFIRMED", flush=True)
     if sys.argv[1:] == ["--suite-gate"]:
-        signal.alarm(60)
-        print("BOWFIN_PR18_GATE_READY", flush=True)
-        received = bytearray()
-        while len(received) < 4:
-            part = os.read(0, 4 - len(received))
-            if not part:
-                break
-            received.extend(part)
-        require(bytes(received) == b"GO\n", "no exact bounded release")
-        signal.alarm(0)
-        null = os.open("/dev/null", os.O_RDONLY)
-        os.dup2(null, 0)
-        if null != 0:
-            os.close(null)
         runtime = "/usr/local/bin/python3.12"
         os.execve(runtime, [runtime, "-I", "-B", "/reviewed/test_supervisor.py", "-v"],
                   {"LANG": "C", "LC_ALL": "C", "TZ": "UTC"})
-    require(sys.argv[1:] == [], "unexpected qualification arguments")
     # The probe and child remain alive for external membership and cgroup-kill
     # observation. Alarm is last-resort bounded lifetime, not cleanup evidence.
     signal.alarm(1000)
