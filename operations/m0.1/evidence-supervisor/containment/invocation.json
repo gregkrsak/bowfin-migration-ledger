@@ -1,0 +1,56 @@
+{
+  "format": "bowfin-pr18-contained-run-v1",
+  "image": "docker.io/library/python@sha256:2986c55feb36e6cae00fa1fefb454283e4b33f35e75ff8bdd123b134130be301",
+  "source_files": [
+    {
+      "path": "containment/LICENSE.moby",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "containment/bowfinpr18-deadline.service",
+      "bytes": 304,
+      "sha256": "bf880ec9682539e8fc424c53519c383e163d2dd33e72cfccacf069c9576604f2"
+    },
+    {
+      "path": "containment/bowfinpr18-deadline.timer",
+      "bytes": 150,
+      "sha256": "8c5329d74aa25ed1ba0722e04b3ec4f1d0213f6eee4d281ebd6df4c0772c69fa"
+    },
+    {
+      "path": "containment/bowfinpr18.slice",
+      "bytes": 201,
+      "sha256": "b150b5d8b396604793e14c56492d18cd27d0fb11fc61a0bffda83fd0ba26c258"
+    },
+    {
+      "path": "containment/controller.py",
+      "bytes": 38652,
+      "sha256": "32788f0050715c57b46ac211ec86e2c335c561c4d064828fa493c0e9a4f9d577"
+    },
+    {
+      "path": "containment/probe.py",
+      "bytes": 4130,
+      "sha256": "dddcab3765b04522e66d8b01d031fb9ce4fdc831690bf253707be9adb302c75a"
+    },
+    {
+      "path": "containment/seccomp.json",
+      "bytes": 17868,
+      "sha256": "514c38e72edc5363e87287ea87212211172c6c3251a974ca21ebfd05a56c7f5d"
+    },
+    {
+      "path": "runtime-pin.json",
+      "bytes": 3719,
+      "sha256": "785a7367879813550c1c7b8345b677d8f6e319982410e9f68a965e004c4735cf"
+    },
+    {
+      "path": "supervisor.py",
+      "bytes": 22348,
+      "sha256": "ff828c196cc5e29c5c1aa89c5941428102b87fae4d361d8ed1aa38850b15b7b9"
+    },
+    {
+      "path": "test_supervisor.py",
+      "bytes": 29296,
+      "sha256": "821af92e30133db5859c0be5b08004b7cf018d512b15f8514b96af60f24ab7e1"
+    }
+  ]
+}

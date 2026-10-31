@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Proposed M0.1 operational child-status receipt, version 1",
+  "$comment": "Schema validation is not execution, authorization, attestation, freshness, or acceptance. A reader must also enforce DESIGN.md readback semantics, including hashes, exact launch/map association, arithmetic status consistency, publication state, and complete captures. Format assertions must be enabled. This schema is not imported into the accepted migration verifier.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "attempt_id", "attempt_kind", "map", "subject", "launch", "limits", "reservation", "timing", "process", "interventions", "cancellation_signal", "capture", "outcome", "supervisor_errors", "authority"],
+  "properties": {
+    "format": {"const": "m01-supervisor-receipt-v1"},
+    "attempt_id": {"type": "string", "pattern": "^M0\\.1-(EVIDENCE-02|SYNTHETIC-[0-9]{3})$"},
+    "attempt_kind": {"enum": ["evidence", "synthetic"]},
+    "map": {
+      "type": "object", "additionalProperties": false,
+      "required": ["commit", "tree", "blob", "sha256"],
+      "properties": {"commit": {"$ref": "#/$defs/git"}, "tree": {"$ref": "#/$defs/git"}, "blob": {"$ref": "#/$defs/git"}, "sha256": {"$ref": "#/$defs/hash"}}
+    },
+    "subject": {
+      "type": "object", "additionalProperties": false,
+      "required": ["commit", "tree"],
+      "properties": {"commit": {"$ref": "#/$defs/git"}, "tree": {"$ref": "#/$defs/git"}}
+    },
+    "launch": {
+      "type": "object", "additionalProperties": false,
+      "required": ["argv", "cwd", "environment", "runtime_sha256", "supervisor_sha256"],
+      "properties": {
+        "argv": {"type": "array", "minItems": 3, "maxItems": 256, "items": {"type": "string", "minLength": 1, "maxLength": 4096}, "prefixItems": [{"type": "string", "pattern": "^/"}, {"const": "-I"}]},
+        "cwd": {"type": "string", "minLength": 1, "maxLength": 4096, "pattern": "^/"},
+        "environment": {"const": {"LANG": "C", "LC_ALL": "C", "TZ": "UTC"}},
+        "runtime_sha256": {"$ref": "#/$defs/hash"},
+        "supervisor_sha256": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "limits": {
+      "type": "object", "additionalProperties": false,
+      "required": ["timeout_seconds", "per_stream_bytes", "aggregate_stream_bytes", "read_bytes", "term_grace_seconds", "cleanup_seconds", "eof_grace_seconds"],
+      "properties": {
+        "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 3600},
+        "per_stream_bytes": {"const": 1048576},
+        "aggregate_stream_bytes": {"const": 2097152},
+        "read_bytes": {"const": 65536},
+        "term_grace_seconds": {"const": 2},
+        "cleanup_seconds": {"const": 5},
+        "eof_grace_seconds": {"const": 2}
+      }
+    },
+    "reservation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["file", "sha256"],
+      "properties": {"file": {"const": "intent.json"}, "sha256": {"$ref": "#/$defs/hash"}}
+    },
+    "timing": {
+      "type": "object", "additionalProperties": false,
+      "required": ["reserved_at", "pre_spawn_at", "status_observed_at", "finished_at", "elapsed_monotonic_seconds"],
+      "properties": {
+        "reserved_at": {"$ref": "#/$defs/time"},
+        "pre_spawn_at": {"anyOf": [{"$ref": "#/$defs/time"}, {"type": "null"}]},
+        "status_observed_at": {"anyOf": [{"$ref": "#/$defs/time"}, {"type": "null"}]},
+        "finished_at": {"$ref": "#/$defs/time"},
+        "elapsed_monotonic_seconds": {"type": "number", "minimum": 0}
+      }
+    },
+    "process": {
+      "type": "object", "additionalProperties": false,
+      "required": ["spawn_attempted", "pid", "wait_status", "returncode", "exit_code", "signal"],
+      "properties": {
+        "spawn_attempted": {"type": "boolean"},
+        "pid": {"type": ["integer", "null"], "minimum": 1},
+        "wait_status": {"type": ["integer", "null"], "minimum": 0, "maximum": 65535},
+        "returncode": {"type": ["integer", "null"], "minimum": -255, "maximum": 255},
+        "exit_code": {"type": ["integer", "null"], "minimum": 0, "maximum": 255},
+        "signal": {"type": ["integer", "null"], "minimum": 1, "maximum": 255}
+      }
+    },
+    "interventions": {"type": "array", "uniqueItems": true, "maxItems": 16, "items": {"type": "string", "minLength": 1, "maxLength": 128}},
+    "cancellation_signal": {"enum": [null, 2, 15]},
+    "capture": {
+      "type": "object", "additionalProperties": false,
+      "required": ["stdout", "stderr", "complete"],
+      "properties": {
+        "stdout": {"allOf": [{"$ref": "#/$defs/stream"}, {"properties": {"file": {"const": "stdout"}}}]},
+        "stderr": {"allOf": [{"$ref": "#/$defs/stream"}, {"properties": {"file": {"const": "stderr"}}}]},
+        "complete": {"type": "boolean"}
+      }
+    },
+    "outcome": {"enum": ["observed_exit_zero", "observed_nonzero", "indeterminate"]},
+    "supervisor_errors": {"type": "array", "maxItems": 16, "items": {"type": "string", "minLength": 1, "maxLength": 256}},
+    "authority": {
+      "const": {"attempt_reusable": false, "acceptance": false, "ready_state": false, "merge": false, "m01_completion": false, "later_execution": false}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"attempt_kind": {"const": "evidence"}}},
+      "then": {"properties": {"attempt_id": {"const": "M0.1-EVIDENCE-02"}}},
+      "else": {"properties": {"attempt_id": {"pattern": "^M0\\.1-SYNTHETIC-[0-9]{3}$"}}}
+    },
+    {
+      "if": {"properties": {"outcome": {"enum": ["observed_exit_zero", "observed_nonzero"]}}},
+      "then": {
+        "properties": {
+          "process": {"properties": {"spawn_attempted": {"const": true}, "pid": {"type": "integer"}, "wait_status": {"type": "integer"}, "returncode": {"type": "integer"}}},
+          "timing": {"properties": {"pre_spawn_at": {"$ref": "#/$defs/time"}, "status_observed_at": {"$ref": "#/$defs/time"}}},
+          "interventions": {"maxItems": 0}, "supervisor_errors": {"maxItems": 0}, "cancellation_signal": {"type": "null"},
+          "capture": {"properties": {"complete": {"const": true}, "stdout": {"$ref": "#/$defs/complete_stream"}, "stderr": {"$ref": "#/$defs/complete_stream"}}}
+        }
+      },
+      "else": {"properties": {"capture": {"properties": {"complete": {"const": false}}}}}
+    },
+    {
+      "if": {"properties": {"outcome": {"const": "observed_exit_zero"}}},
+      "then": {"properties": {"process": {"properties": {"returncode": {"const": 0}, "exit_code": {"const": 0}, "signal": {"type": "null"}}}}}
+    },
+    {
+      "if": {"properties": {"outcome": {"const": "observed_nonzero"}}},
+      "then": {"properties": {"process": {"properties": {"returncode": {"not": {"const": 0}}}}}}
+    },
+    {
+      "if": {"properties": {"process": {"properties": {"returncode": {"type": "null"}}}}},
+      "then": {"properties": {"process": {"properties": {"wait_status": {"type": "null"}, "exit_code": {"type": "null"}, "signal": {"type": "null"}}}}},
+      "else": {
+        "properties": {"process": {"properties": {"wait_status": {"type": "integer"}}}},
+        "if": {"properties": {"process": {"properties": {"returncode": {"minimum": 0}}}}},
+        "then": {"properties": {"process": {"properties": {"exit_code": {"type": "integer"}, "signal": {"type": "null"}}}}},
+        "else": {"properties": {"process": {"properties": {"exit_code": {"type": "null"}, "signal": {"type": "integer"}}}}}
+      }
+    }
+  ],
+  "$defs": {
+    "git": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "time": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "stream": {
+      "type": "object", "additionalProperties": false,
+      "required": ["file", "byte_count", "sha256", "eof"],
+      "properties": {
+        "file": {"enum": ["stdout", "stderr"]},
+        "byte_count": {"type": ["integer", "null"], "minimum": 0, "maximum": 1048576},
+        "sha256": {"anyOf": [{"$ref": "#/$defs/hash"}, {"type": "null"}]},
+        "eof": {"type": "boolean"}
+      }
+    },
+    "complete_stream": {"properties": {"byte_count": {"type": "integer"}, "sha256": {"$ref": "#/$defs/hash"}, "eof": {"const": true}}}
+  }
+}

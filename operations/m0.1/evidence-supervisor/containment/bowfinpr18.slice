@@ -1,0 +1,12 @@
+[Unit]
+Description=PR18 bounded synthetic workload only
+StopWhenUnneeded=no
+
+[Slice]
+CPUAccounting=yes
+MemoryAccounting=yes
+TasksAccounting=yes
+CPUQuota=200%
+MemoryMax=512M
+MemorySwapMax=0
+TasksMax=64
