@@ -1,0 +1,63 @@
+{
+  "record_class": "static_oci_runtime_inspection",
+  "status": "bytes_verified_not_executed",
+  "image": "docker.io/library/python@sha256:2986c55feb36e6cae00fa1fefb454283e4b33f35e75ff8bdd123b134130be301",
+  "discovery_tag": "3.12.12-slim-bookworm",
+  "discovery_index_sha256": "593bd06efe90efa80dc4eee3948be7c0fde4134606dd40d8dd8dbcade98e669c",
+  "platform": {"os": "linux", "architecture": "amd64"},
+  "manifest": {"sha256": "2986c55feb36e6cae00fa1fefb454283e4b33f35e75ff8bdd123b134130be301", "bytes": 1752},
+  "config": {"sha256": "9cb180cb36bd45dc786105b834d3cb5f3b1d69a6a63c79ca10fc64f108aa649a", "bytes": 5676},
+  "layers": [
+    {
+      "digest": "sha256:84a2afebaf4de2e8eb885634a69abd0087b79c947c53fa4f0481235d6dfadc6c",
+      "size": 28236279,
+      "diff_id": "sha256:9eb9a78eeb101ab215acf43ffb2a709d5fca9ca2a22178564c7ee5cc30774c60",
+      "uncompressed_bytes": 77895680,
+      "archive_entries": 4226,
+      "whiteouts": 0
+    },
+    {
+      "digest": "sha256:2e8ff2a71e9573673dd17ca594722bd27eed7eb917debc0fb74ff9eb5d522ad1",
+      "size": 3517403,
+      "diff_id": "sha256:9a0912b10e7336b5032c96abfaaad92f0fba6c03cbb315ea5f9ff37442520911",
+      "uncompressed_bytes": 9570304,
+      "archive_entries": 541,
+      "whiteouts": 0
+    },
+    {
+      "digest": "sha256:f9f25941dc135427be9d16894ce71a921adff16e2d43060139ed05c33fcd668e",
+      "size": 13667814,
+      "diff_id": "sha256:78a4eeeff9630145665d0439c75b49eb0fb4ae92de07a5fa541365d8587ac5aa",
+      "uncompressed_bytes": 41590784,
+      "archive_entries": 1878,
+      "whiteouts": 0
+    },
+    {
+      "digest": "sha256:dbeb2af0e7bd53c2dff6896f9bde583874dc48fbb85d8cda0e9040dec5424ca8",
+      "size": 249,
+      "diff_id": "sha256:1f6b48d1b8f31d448ca0c4f981b51eaec48e38809d015e7d941534aa12c452b6",
+      "uncompressed_bytes": 5120,
+      "archive_entries": 8,
+      "whiteouts": 0
+    }
+  ],
+  "interpreter": {
+    "path": "/usr/local/bin/python3.12",
+    "sha256": "4dbf3143240288fb2170257ffaa7bd030cdda5d2703d1f5f30b627042267e2e3",
+    "bytes": 14480,
+    "type": "regular",
+    "mode": "0755",
+    "source_layer_index": 2,
+    "directory_ancestors": ["usr", "usr/local", "usr/local/bin"],
+    "later_override_or_whiteout": false
+  },
+  "official_source": {
+    "repository": "docker-library/python",
+    "revision_from_image_annotation": "90e9ca41dc404ee7d22c09b894823e8925227c17",
+    "path_from_image_annotation": "3.12/slim-bookworm",
+    "base_image_digest_from_annotation": "sha256:74a21da88cf4b2e8fde34558376153c5cd80b00ca81da2e659387e76524edc73"
+  },
+  "method": "Anonymous HTTPS reads of the official library/python registry namespace. Validated raw index-to-linux/amd64-manifest binding, raw manifest/config/layer SHA-256 and lengths, every uncompressed gzip diff_id, and ordered tar headers including lower-layer whiteouts and later overrides. Read interpreter member bytes without extracting or executing image code. Interpreter ancestors resolve to directory entries. All 6576 final path entries were tracked as metadata.",
+  "complete_image_binding": "The platform manifest transitively content-addresses the full image configuration and root filesystem layers, including interpreter, standard library, native extensions, native libraries and loader. The executable hash is an additional check, not the whole runtime closure.",
+  "limitations": "No image was executed, installed, imported, or mounted. No publisher-signature verification, reproducible-build proof, vulnerability audit, runtime qualification, host-kernel attestation, or test-pass claim is made. Registry availability is not guaranteed. Source annotations are provenance claims, not independently rebuilt source proof. No layers are to be committed to the ledger."
+}

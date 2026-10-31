@@ -1,0 +1,8 @@
+[Unit]
+Description=Independent PR18 whole-job deadline
+
+[Timer]
+OnActiveSec=960s
+AccuracySec=1s
+RandomizedDelaySec=0
+Unit=bowfinpr18-deadline.service

@@ -1,0 +1,12 @@
+[Unit]
+Description=PR18 deadline cleanup outside candidate cgroup
+
+[Service]
+Type=exec
+Slice=system.slice
+ExecStart=/usr/bin/python3 -I /var/tmp/bowfin-pr18/source/containment/controller.py deadline
+RuntimeMaxSec=45s
+TimeoutStopSec=5s
+KillMode=control-group
+Restart=no
+Environment=LANG=C LC_ALL=C TZ=UTC

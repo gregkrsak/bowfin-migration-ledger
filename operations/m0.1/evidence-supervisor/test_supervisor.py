@@ -24,8 +24,10 @@ from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 SOURCE = HERE / "supervisor.py"
-RUNTIME = Path("/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12")
-RUNTIME_SHA256 = "fa67443527ed9647f760d807e2a38f26340757123e643c4639cf273ed15d5ea7"
+# Public linux/amd64 image and complete layer closure: runtime-pin.json.
+# No PATH lookup, environment override, or fallback interpreter is permitted.
+RUNTIME = Path("/usr/local/bin/python3.12")
+RUNTIME_SHA256 = "4dbf3143240288fb2170257ffaa7bd030cdda5d2703d1f5f30b627042267e2e3"
 STREAM_LIMIT = 1_048_576
 OUTER_TIMEOUT = 20
 ENV = {"LANG": "C", "LC_ALL": "C", "TZ": "UTC"}
