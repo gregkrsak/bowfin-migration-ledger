@@ -1,0 +1,9 @@
+{
+  "accepted": false,
+  "classification": "indeterminate",
+  "error": "HTTPError: HTTP Error 403: rate limit exceeded",
+  "merge_authorized": false,
+  "mode": "qualify",
+  "retry_authorized": false,
+  "suite_executed": false
+}
