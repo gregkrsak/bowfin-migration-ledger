@@ -107,6 +107,75 @@ def fault_worker(kind, counter_path, arguments):
             Path(counter_path).with_name("wait-loss.json").write_text(
                 json.dumps(observation, sort_keys=True), encoding="ascii",
             )
+        elif kind.startswith("sync:"):
+            # Classify syncs by the open object and publication state, not by
+            # call number. Record attempts even if the injected sync fails.
+            requested = kind.removeprefix("sync:")
+            real_fsync = module.os.fsync
+            stages = []
+
+            def checked_sync(fd):
+                path = Path(os.readlink(f"/proc/self/fd/{fd}"))
+                if path.name == "capture":
+                    stage = "parent"
+                elif path.name in ("intent.json", "stdout", "stderr", "receipt.tmp"):
+                    stage = path.name
+                elif path.is_dir() and path.name.startswith("M0.1-SYNTHETIC-"):
+                    temporary = (path / "receipt.tmp").exists()
+                    final = (path / "receipt.json").exists()
+                    stage = ("postlink" if temporary and final else
+                             "prelink" if temporary else
+                             "final" if final else "intent-directory")
+                else:
+                    raise AssertionError(f"unexpected sync target: {path}")
+                stages.append(stage)
+                if stage == requested:
+                    raise OSError("injected stage-specific sync failure")
+                return real_fsync(fd)
+
+            with mock.patch.object(module.os, "fsync", side_effect=checked_sync):
+                status = module.main(arguments)
+            Path(counter_path).with_name("sync-stages.json").write_text(
+                json.dumps(stages), encoding="ascii",
+            )
+        elif kind.startswith("wait:"):
+            # Reap the real child before returning a synthetic malformed value;
+            # never signal a PID after that ownership has been lost.
+            case = kind.removeprefix("wait:")
+            real_waitpid = module.os.waitpid
+            real_killpg = module.os.killpg
+            lost = []
+            unsafe_signals = []
+
+            def malformed_wait(pid, flags):
+                if not lost:
+                    result = real_waitpid(pid, flags)
+                    if result[0] == 0:
+                        return result
+                    lost.append(result[1])
+                if case == "wrong-pid":
+                    return (pid + 1, 0)
+                if case == "nonterminal":
+                    return (pid, 0x7f)
+                if case == "wrong-type":
+                    return (True, 0)
+                if case == "shape":
+                    return None
+                raise AssertionError("unknown wait fixture")
+
+            def guard_signal(pid, number):
+                if lost:
+                    unsafe_signals.append(number)
+                    return
+                return real_killpg(pid, number)
+
+            with mock.patch.object(module.os, "waitpid", side_effect=malformed_wait):
+                with mock.patch.object(module.os, "killpg", side_effect=guard_signal):
+                    status = module.main(arguments)
+            Path(counter_path).with_name("wait-fault.json").write_text(
+                json.dumps({"reaped": lost, "unsafe_signals": unsafe_signals}),
+                encoding="ascii",
+            )
         else:
             raise ValueError("unknown synthetic fault")
         Path(counter_path).write_text(str(spawn.call_count), encoding="ascii")
@@ -283,6 +352,7 @@ class SupervisorControls(unittest.TestCase):
         record = self.receipt()
         self.assertEqual(record["outcome"], "observed_exit_zero")
         self.assertEqual(record["capture"]["stdout"]["byte_count"], STREAM_LIMIT)
+        self.assertEqual((self.attempt / "stdout").read_bytes(), b"x" * STREAM_LIMIT)
         self.assertTrue(record["capture"]["complete"])
         self.assert_capture_identity(record)
 
@@ -293,6 +363,7 @@ class SupervisorControls(unittest.TestCase):
         self.assertEqual(record["outcome"], "indeterminate")
         self.assertIn("output_limit", record["interventions"])
         self.assertEqual(record["capture"]["stdout"]["byte_count"], STREAM_LIMIT)
+        self.assertEqual((self.attempt / "stdout").read_bytes(), b"x" * STREAM_LIMIT)
         self.assertNotEqual(record["outcome"], "observed_exit_zero")
         self.assertFalse(record["capture"]["complete"])
         self.assert_capture_identity(record)
@@ -427,6 +498,92 @@ class SupervisorControls(unittest.TestCase):
         finally:
             signal.signal(signal.SIGCHLD, prior)
         self.assertFalse(self.attempt.exists())
+
+    def test_20_both_streams_retain_exact_distinct_bytes(self):
+        child = ("import os; "
+                 "[(os.write(1, b'out-' * 1024), os.write(2, b'ERR!' * 1024)) "
+                 "for _ in range(32)]")
+        arguments = self.prepare(20, child)
+        self.assertEqual(self.run_outer(arguments), 0)
+        record = self.receipt()
+        self.assertEqual((self.attempt / "stdout").read_bytes(), b"out-" * 32768)
+        self.assertEqual((self.attempt / "stderr").read_bytes(), b"ERR!" * 32768)
+        self.assertTrue(record["capture"]["complete"])
+        self.assert_capture_identity(record)
+
+    def test_21_sync_sequence_normal_and_selective_failures(self):
+        # Each case uses a distinct reservation. These assertions examine
+        # control flow, not physical persistence across power or host loss.
+        stages = ["parent", "intent.json", "intent-directory", "stdout", "stderr",
+                  "receipt.tmp", "prelink", "postlink", "final"]
+        for number, failed in enumerate(["none", *stages], start=21):
+            with self.subTest(failed=failed):
+                arguments = self.prepare(number, "print('known output')")
+                status = self.run_outer(arguments, fault="sync:" + failed)
+                events = json.loads((self.root / "sync-stages.json").read_text(encoding="ascii"))
+                spawns = int((self.root / "spawn-count").read_text(encoding="ascii"))
+                self.assertEqual(events.count(failed), 0 if failed == "none" else 1)
+                self.assertTrue(self.attempt.is_dir())
+                if failed == "none":
+                    self.assertEqual(status, 0)
+                    self.assertEqual(spawns, 1)
+                    self.assertEqual(events, stages)
+                    self.assertEqual((self.attempt / "stdout").read_bytes(), b"known output\n")
+                    self.assertEqual(self.receipt()["outcome"], "observed_exit_zero")
+                elif failed in stages[:3]:
+                    self.assertEqual(status, 2)
+                    self.assertEqual(spawns, 0)
+                    self.assertEqual((self.attempt / "intent.json").exists(), failed != "parent")
+                    self.assertFalse((self.attempt / "stdout").exists())
+                    self.assertFalse((self.attempt / "receipt.json").exists())
+                elif failed in ("stdout", "stderr"):
+                    self.assertEqual(status, 1)
+                    self.assertEqual(spawns, 1)
+                    self.assertEqual(self.receipt()["outcome"], "indeterminate")
+                    self.assertIn("stream_sync_" + failed + ":OSError", self.receipt()["supervisor_errors"])
+                    self.assertFalse(self.receipt()["capture"]["complete"])
+                else:
+                    self.assertEqual(status, 2)
+                    self.assertEqual(spawns, 1)
+                    self.assertEqual((self.attempt / "receipt.json").exists(), failed in ("postlink", "final"))
+                    self.assertEqual((self.attempt / "receipt.tmp").exists(), failed != "final")
+                    # A visible receipt on publication failure cannot prove
+                    # the enclosing publication or final synchronization.
+                if failed != "parent":
+                    self.assertTrue((self.attempt / "intent.json").is_file())
+                if spawns:
+                    self.assertTrue((self.attempt / "stdout").is_file())
+                    self.assertTrue((self.attempt / "stderr").is_file())
+                self.assert_zero_spawn(arguments)
+
+    def test_22_malformed_wait_results_never_become_success(self):
+        for number, case in enumerate(("wrong-pid", "nonterminal", "wrong-type", "shape"), start=31):
+            with self.subTest(case=case):
+                arguments = self.prepare(number, "raise SystemExit(2)")
+                status = self.run_outer(arguments, fault="wait:" + case)
+                self.assertEqual((self.root / "spawn-count").read_text(encoding="ascii"), "1")
+                observation = json.loads((self.root / "wait-fault.json").read_text(encoding="ascii"))
+                self.assertEqual(len(observation["reaped"]), 1)
+                self.assertTrue(os.WIFEXITED(observation["reaped"][0]))
+                self.assertEqual(os.WEXITSTATUS(observation["reaped"][0]), 2)
+                self.assertEqual(observation["unsafe_signals"], [])
+                receipt_path = self.attempt / "receipt.json"
+                if case == "shape":
+                    # The current implementation can propagate TypeError from
+                    # cleanup; that is an adverse wrapper result, not a receipt.
+                    self.assertEqual(status, 2)
+                    self.assertFalse(receipt_path.exists())
+                else:
+                    self.assertEqual(status, 1)
+                    self.assertTrue(receipt_path.is_file())
+                    record = self.receipt()
+                    self.assertEqual(record["outcome"], "indeterminate")
+                    self.assertIn("wait_status_unavailable", record["interventions"])
+                    self.assertIn("waitpid:ValueError", record["supervisor_errors"])
+                    self.assertFalse(record["capture"]["complete"])
+                    for field in ("wait_status", "returncode", "exit_code", "signal"):
+                        self.assertIsNone(record["process"][field])
+                self.assert_zero_spawn(arguments)
 
 
 if __name__ == "__main__":
